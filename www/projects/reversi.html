@@ -27,7 +27,11 @@
           Address: <input type="text" id="addr" value="localhost"/><br>
           Port: <input type="text" id="port" value="7531" size="5"/><br>
           Update delay (ms): <input type="text" id="delay" value="1000" size="5"/><br><br>
-          <button type="button" onclick="makeSocketFromPage();">Open Socket</button>
+          <button type="button" onclick="makeSocketFromPage(
+            document.getElementById('addr').value,
+            document.getElementById('port').value,
+            document.getElementById('delay').value
+          );">Open Socket</button>
         </p>
       </div>
       <script src="../js/resize.js"></script>

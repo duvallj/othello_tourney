@@ -145,10 +145,10 @@ function init(socket, delay){
   window.setInterval(function(){socket.emit('refresh',{});}, delay);
 }
 
-function makeSocketFromPage(){
-  var socket = io('http://'+document.getElementById('addr').value+':'+document.getElementById('port').value);
+function makeSocketFromPage(addr, port, delay){
+  var socket = io('http://'+addr+':'+port);
   console.log('made socket');
-  var delay = parseInt(document.getElementById('delay').value);
+  var delay = parseInt(delay);
   init(socket, delay);
   console.log('finished initing socket');
 }

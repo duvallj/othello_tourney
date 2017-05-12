@@ -6,6 +6,14 @@ body {
   font-family: 'Roboto Mono', monospace;
 }
 
+input {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 16px;
+  color:#917a07;
+  border:#c79200 2px solid;
+  padding: 4px;
+}
+
 div.main {
   font-size: 16px;
   color:#33a122;
@@ -57,11 +65,11 @@ div.linkbar {
 }
 
 div.linkbar a:link{
-  color: #12d604;
+  color: #fffff0;
 }
 
 div.linkbar a:visited{
-  color: #12d604;
+  color: #fffff0;
 }
 
 p.output{
