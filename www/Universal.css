@@ -8,7 +8,7 @@ body {
 
 div.main {
   font-size: 16px;
-  color:#3399ff;
+  color:#33a122;
   width: 70%;
   padding-left: 15%;
   padding-right: 15%;
@@ -16,7 +16,7 @@ div.main {
 }
 
 div.top {
-  background-color: #3399ff;
+  background-color: #33a122;
   text-align: center;
   font-size: 30px;
   color: #fffff0;
@@ -37,18 +37,18 @@ a{
   font-size: 16px;
 }
 a:link{
-  color: #ff9900;
+  color: #a68b07;
 }
 
 a:visited{
-  color: #ff7700;
+  color: #917a07;
 }
 
 div.linkbar {
-  background-color: #ffdd33;
+  background-color: #917a07;
   font-size: 24px;
   width: 80%;
-  color: #3399ff;
+  color: #33a122;
   padding-left: 10%;
   padding-right: 10%;
   padding-top: 1%;
@@ -57,13 +57,13 @@ div.linkbar {
 }
 
 div.linkbar a:link{
-  color: #0066ff;
+  color: #12d604;
 }
 
 div.linkbar a:visited{
-  color: #0066ff;
+  color: #12d604;
 }
 
 p.output{
-  color:#ff7700;
+  color:#917a07;
 }
