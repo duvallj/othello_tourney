@@ -1,8 +1,0 @@
-Here is where all the AIs' code, data files, and identifiers should be stored. Also make a script (stored on the
-path), that 
-
-a) translates number <--> name and
-b) when given 2 numbers, starts a socket.io server running the 2 
-AIs against each other, opens the port on the router using UPNP, and returns the port. 
-
-Have a special number for player vs AI. Also allow board state to be saved at the end.
