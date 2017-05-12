@@ -1,0 +1,69 @@
+@charset "UTF-8";
+
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono');
+
+body {
+  font-family: 'Roboto Mono', monospace;
+}
+
+div.main {
+  font-size: 16px;
+  color:#3399ff;
+  width: 70%;
+  padding-left: 15%;
+  padding-right: 15%;
+  padding-top: 2%;
+}
+
+div.top {
+  background-color: #3399ff;
+  text-align: center;
+  font-size: 30px;
+  color: #fffff0;
+}
+
+div.title{
+  color: #ffffff;
+  text-align: center;
+  overflow: hidden;
+}
+
+.centered{
+  display: flex;
+  justify-content: center;
+}
+
+a{
+  font-size: 16px;
+}
+a:link{
+  color: #ff9900;
+}
+
+a:visited{
+  color: #ff7700;
+}
+
+div.linkbar {
+  background-color: #ffdd33;
+  font-size: 24px;
+  width: 80%;
+  color: #3399ff;
+  padding-left: 10%;
+  padding-right: 10%;
+  padding-top: 1%;
+  padding-bottom: 1%;
+  text-align: center;
+}
+
+div.linkbar a:link{
+  color: #0066ff;
+}
+
+div.linkbar a:visited{
+  color: #0066ff;
+}
+
+p.output{
+  color:#ff7700;
+}

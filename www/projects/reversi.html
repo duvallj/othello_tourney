@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title id="title">Reversi</title>
+    <meta charset="UTF-8">
+    <meta width="device-width">
+    <link rel="icon" type="image/vnd.microsoft.icon" href="../logo.ico">
+    <link rel="stylesheet" type="text/css" href="../Universal.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script !-->
+  </head>
+  <body>
+    <div class="top">
+      <p id="header">Reversi Visualizer</p>
+      <div class="linkbar">
+        <a href="/">Home</a>
+        <a href="/projects/index.html">Projects</a>
+        <a href="/downloads/index.html">Downloads</a>
+      </div>
+    </div>
+    <div class="main" id="text">
+      <div id="canvasContainer" class="centered">
+        <!-- canvas id="canvas" width="400" height="400"></canvas !-->
+        <p>
+          Enter the address and port of the Reversi game you want to watch:<br>
+          <br>
+          Address: <input type="text" id="addr" value="localhost"/><br>
+          Port: <input type="text" id="port" value="7531" size="5"/><br>
+          Update delay (ms): <input type="text" id="delay" value="1000" size="5"/><br><br>
+          <button type="button" onclick="makeSocketFromPage();">Open Socket</button>
+        </p>
+      </div>
+      <script src="../js/resize.js"></script>
+      <script src="../js/socket.io.min.js"></script>
+      <script src="../js/reversi.js"></script>
+    </div>
+  </body>
+</html>
