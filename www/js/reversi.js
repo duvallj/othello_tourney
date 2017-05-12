@@ -12,9 +12,9 @@ BLACK_CO = '#000000';
 BORDER_CO = '#663300';
 
 WHITE_IMG = new Image();
-WHITE_IMG.src = '../images/white.png';
+WHITE_IMG.src = './images/white.png';
 BLACK_IMG = new Image();
-BLACK_IMG.src = '../images/black.png';
+BLACK_IMG.src = './images/black.png';
 
 CH2NM = {};
 CH2NM[EMPTY_CH] = EMPTY_NM;

@@ -1,3 +1,0 @@
-So while django will be matching the AIs into games based on user request, there will
-need to be another service that actually runs the AIs. Because I'll probably forget about it,
-I'm writing this down. Work on that daemon in /ai_pool.
