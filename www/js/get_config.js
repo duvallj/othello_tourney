@@ -14,33 +14,22 @@ function loadConfig() {
 
     //xmlhttp.open("GET", "../ai_port_info.txt", true);
     //xmlhttp.send();
-    output = 'admin:5000\nstrategy5_2019jduvall:5001'
+    output = 'admin\nstrategy5_2019jduvall'
+    output += '\nhuman';
     pairs = output.split('\n');
-    pdict = {};
 
-    for(i=0, len=pairs.length; i<len; i++){
-      parts = pairs[i].split(':');
-      pdict[parseInt(parts[1])] = parts[0];
-    }
-
-    pdict[-1] = 'human';
-
-    return pdict;
+    return pairs;
 }
 
 function putConfigToPage(){
   pdict = loadConfig();
   buf = '<p>Black: <select id="ai1">';
-  for (var key in pdict){
-    if(pdict.hasOwnProperty(key)){
-      buf += '<option value="'+key.toString()+'">'+pdict[key]+'</option>'
-    }
+  for (var i=0; i<pdict.length; i++){
+    buf += '<option value="'+pdict[i]+'">'+pdict[i]+'</option>'
   }
   buf += '</select><br><br>White: <select id="ai2">';
-  for (var key in pdict){
-    if(pdict.hasOwnProperty(key)){
-      buf += '<option value="'+key.toString()+'">'+pdict[key]+'</option>'
-    }
+  for (var i=0; i<pdict.length; i++){
+    buf += '<option value="'+pdict[i]+'">'+pdict[i]+'</option>'
   }
   buf += '</select><br><br><button onclick="actuallyDoSocket();">Start Match!</button></p>'
   document.getElementById('canvasContainer').innerHTML = buf;

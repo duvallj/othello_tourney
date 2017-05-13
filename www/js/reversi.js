@@ -116,7 +116,7 @@ function init(socket, delay, port1, port2){
   var gap = rCanvas.rHeight - rCanvas.rWidth;
   rCanvas.black = new RText(0,rCanvas.rHeight-gap*2/5,'Black',gap*2/5,'Roboto Mono',BLACK_CO);
   rCanvas.white = new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*2/5,'White',gap*2/5,'Roboto Mono',WHITE_CO);
-  drawBoard(rCanvas,5,[1,1,0,1,1,1,2,0,2,1,0,0,0,0,0,2,0,0,0,2,0,2,2,2,0]);
+  drawBoard(rCanvas,13,[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
   rCanvas.resize();
   if(port1!==-1 && port2!==-1){
     socket.emit('0prequest',{black:port1,white:port2});
@@ -131,6 +131,7 @@ function init(socket, delay, port1, port2){
     socket.emit('1prequest',{black:port1,white:"human"});
   }
   socket.on('reply', function(data){
+    console.log('got reply');
     rCanvas.black.text = data.black;
     rCanvas.white.text = data.white;
     drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board));

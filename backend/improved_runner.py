@@ -1,11 +1,35 @@
 import socket_client_oth as sco
 from othello_admin import *
+from multiprocessing import Process, Value
+import os
+import time
+import ctypes
 
-def play_game(portA, portB, conn):
+TIMELIMIT = 5
+
+def get_move(strategy, board, player, time_limit):
+    best_shared = Value("i", -1)
+    best_shared.value = 11
+    running = Value("i", 1)
+    p = Process(target=strategy, args=(board, player, best_shared, running))
+    p.start()
+    t1 = time.time()
+    p.join(time_limit)
+    running.value = 0
+    time.sleep(0.01)
+    p.terminate()
+    time.sleep(0.01)
+    handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
+    ctypes.windll.kernel32.TerminateProcess(handle, -1)
+    ctypes.windll.kernel32.CloseHandle(handle)
+    #if p.is_alive(): os.kill(p.pid, signal.SIGKILL)
+    move = best_shared.value
+    return move
+
+def play_game(nameA, nameB, conn, name2strat):
     admin = Strategy()
     
-    socketA, socketB = sco.connect_to_sockets(portA, portB)
-    sockets = {core.BLACK:socketA, core.WHITE:socketB}
+    strategy = {core.BLACK:name2strat[nameA], core.WHITE:name2strat[nameB]}
 
     player = core.BLACK
     board = admin.initial_board()
@@ -13,7 +37,7 @@ def play_game(portA, portB, conn):
     forfeit = False
 
     while player is not None and not forfeit:
-        move = sco.ai_server(board, player, sockets)
+        move = get_move(strategy[player], board, player, TIMELIMIT)
         if not admin.is_legal(move, player, board):
             forfeit = True
             if player == core.BLACK:
@@ -25,4 +49,4 @@ def play_game(portA, portB, conn):
         player = admin.next_player(board, player)
         black_score = admin.score(core.BLACK, board)
 
-        conn.send({'bSize':'8','board':''.join(board).replace('?',''), 'black':str(portA), 'white':str(portB)})
+        conn.send({'bSize':'8','board':''.join(board).replace('?',''), 'black':nameA, 'white':nameB})
