@@ -1,0 +1,2 @@
+admin:5000
+strategy5_2019jduvall:5001

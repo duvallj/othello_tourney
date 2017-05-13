@@ -21,7 +21,7 @@
     <div class="main" id="text">
       <div id="canvasContainer" class="centered">
         <!-- canvas id="canvas" width="400" height="400"></canvas !-->
-        <p>
+        <!-- p>
           Enter the address and port of the Reversi game you want to watch:<br>
           <br>
           Address: <input type="text" id="addr" value="localhost"/><br>
@@ -32,11 +32,15 @@
             document.getElementById('port').value,
             document.getElementById('delay').value
           );">Open Socket</button>
+        </p !-->
+        <p>
+          Loading port list...
         </p>
       </div>
+      <script src="./js/get_config.js"></script>
       <script src="./js/resize.js"></script>
       <script src="./js/socket.io.min.js"></script>
-      <script src="./js/reversi.js"></script>
+      <script src="./js/reversi.js" onload="putConfigToPage();"></script>
     </div>
   </body>
 </html>

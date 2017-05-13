@@ -104,7 +104,7 @@ function resize(canvas, gWidth, gHeight){
   }
 }
 
-function init(socket, delay){
+function init(socket, delay, port1, port2){
   document.getElementById('canvasContainer').innerHTML =
     '<canvas id="canvas" width="890" height="1000"></canvas>';
   var canvas = document.getElementById('canvas');
@@ -118,6 +118,18 @@ function init(socket, delay){
   rCanvas.white = new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*2/5,'White',gap*2/5,'Roboto Mono',WHITE_CO);
   drawBoard(rCanvas,5,[1,1,0,1,1,1,2,0,2,1,0,0,0,0,0,2,0,0,0,2,0,2,2,2,0]);
   rCanvas.resize();
+  if(port1!==-1 && port2!==-1){
+    socket.emit('0prequest',{black:port1,white:port2});
+  }
+  else if (port1 === -1 && port2 === -1){
+    //pass
+  }
+  else if (port1 === -1){
+    socket.emit('1prequest',{black:"human",white:port2});
+  }
+  else if (port2 === -1){
+    socket.emit('1prequest',{black:port1,white:"human"});
+  }
   socket.on('reply', function(data){
     rCanvas.black.text = data.black;
     rCanvas.white.text = data.white;
@@ -145,10 +157,10 @@ function init(socket, delay){
   window.setInterval(function(){socket.emit('refresh',{});}, delay);
 }
 
-function makeSocketFromPage(addr, port, delay){
+function makeSocketFromPage(addr, port, port1, port2, delay){
   var socket = io('http://'+addr+':'+port);
   console.log('made socket');
   var delay = parseInt(delay);
-  init(socket, delay);
+  init(socket, delay, port1, port2);
   console.log('finished initing socket');
 }
