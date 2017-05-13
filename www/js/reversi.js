@@ -26,6 +26,8 @@ NM2CO[EMPTY_NM] = EMPTY_CO;
 NM2CO[WHITE_NM] = WHITE_CO;
 NM2CO[BLACK_NM] = BLACK_CO;
 
+YELLOW_CO = '#fff700';
+
 function drawBoard(rCanvas, bSize, bArray){
   if(bSize === rCanvas.bSize) {
     for(var i=0; i<bSize*bSize; i++){
@@ -53,13 +55,13 @@ function drawBoard(rCanvas, bSize, bArray){
       for(var x=0; x<bSize; x++){
         var index = bSize*y+x;
         var toAdd;
-        if (bArray[index]==EMPTY_NM){
+        if (bArray[index]===EMPTY_NM){
           toAdd = new RRect(un*x+bd, un*y+bd, sq, sq, EMPTY_CO);
         }
-        else if (bArray[index]==WHITE_NM) {
+        else if (bArray[index]===WHITE_NM) {
           toAdd = new RImg(un*x+bd, un*y+bd, sq, sq, WHITE_IMG);
         }
-        else if (bArray[index]==BLACK_NM) {
+        else if (bArray[index]===BLACK_NM) {
           toAdd = new RImg(un*x+bd, un*y+bd, sq, sq, BLACK_IMG);
         }
         rCanvas.add(toAdd);
@@ -80,6 +82,7 @@ function drawBoard(rCanvas, bSize, bArray){
   rCanvas.black.text = rCanvas.black.text.split(':')[0]+': '+bCount.toString();
   rCanvas.white.text = rCanvas.white.text.split(':')[0]+': '+wCount.toString();
   rCanvas.draw();
+  rCanvas.lBSize = bSize;
 }
 
 function bStringToBArray(bString){
@@ -107,53 +110,42 @@ function resize(canvas, gWidth, gHeight){
 function init(socket, delay, port1, port2){
   document.getElementById('canvasContainer').innerHTML =
     '<canvas id="canvas" width="890" height="1000"></canvas>';
+
   var canvas = document.getElementById('canvas');
   var gWidth = canvas.width;
   var gHeight = canvas.height;
+
   resize(canvas, gWidth, gHeight);
   var rCanvas = new RCanvas(canvas, gWidth, gHeight);
+
   window.addEventListener('resize', function(){ resize(canvas, gWidth, gHeight);rCanvas.resize();});
+  document.addEventListener('mousemove', function(event){rCanvas.handleMouseMove(event);});
+  document.addEventListener('mouseup', function(){rCanvas.handleMouseUp();});
+  document.addEventListener('mousedown',function(){rCanvas.handleMouseDown();});
+
   var gap = rCanvas.rHeight - rCanvas.rWidth;
   rCanvas.black = new RText(0,rCanvas.rHeight-gap*2/5,'Black',gap*2/5,'Roboto Mono',BLACK_CO);
   rCanvas.white = new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*2/5,'White',gap*2/5,'Roboto Mono',WHITE_CO);
+
   drawBoard(rCanvas,13,[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+
   rCanvas.resize();
-  if(port1!==-1 && port2!==-1){
-    socket.emit('0prequest',{black:port1,white:port2});
-  }
-  else if (port1 === -1 && port2 === -1){
-    //pass
-  }
-  else if (port1 === -1){
-    socket.emit('1prequest',{black:"human",white:port2});
-  }
-  else if (port2 === -1){
-    socket.emit('1prequest',{black:port1,white:"human"});
-  }
+  socket.emit('prequest',{black:port1,white:port2});
   socket.on('reply', function(data){
-    console.log('got reply');
     rCanvas.black.text = data.black;
     rCanvas.white.text = data.white;
     drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board));
-    /*else if(data.type === 'win'){
-      rCanvas.objects = [];
-      if(data.winner === 'black'){
-        rCanvas.add(new RRect(0,0,rCanvas.rWidth,rCanvas.rHeight,BLACK_CO));
-        rCanvas.font = (rCanvas.rHeight/10).toString()+'px Roboto Mono'
-        rCanvas.add(new RText((rCanvas.ctx.measureText('Black Wins!').width)/2,rCanvas.rHeight/2,
-          'Black Wins!',rCanvas.rHeight/10,'Roboto Mono',WHITE_CO));
-      }
-      else if(data.winner === 'white'){
-        rCanvas.add(new RRect(0,0,rCanvas.rWidth,rCanvas.rHeight,WHITE_CO));
-        rCanvas.font = (rCanvas.rHeight/10).toString()+'px Roboto Mono'
-        rCanvas.add(new RText((rCanvas.ctx.measureText('White Wins!').width)/2,rCanvas.rHeight/2,
-          'White Wins!',rCanvas.rHeight/10,'Roboto Mono',BLACK_CO));
-      }
-      rCanvas.add(new RRect(0,rCanvas.rWidth,rCanvas.rWidth,rCanvas.rHeight-rCanvas.rWidth,'#808080'));
-      rCanvas.add(rCanvas.black);
-      rCanvas.add(rCanvas.white);
-      rCanvas.draw();
-    }*/
+  });
+  rCanvas.clickEvent = function(){
+    var cy = Math.floor(this.my * this.lBSize / this.rHeight);
+    var cx = Math.floor(this.mx * this.lBSize / this.rWidth);
+    this.lastClicked = cy * (this.lBSize+2) + cx + 3 + this.lBSize;
+  };
+
+  socket.on('moverequest', function(data){
+    rCanvas.lastClicked = -1;
+    while (rCanvas.lastClicked === -1){;}
+    socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
   });
   window.setInterval(function(){socket.emit('refresh',{});}, delay);
 }

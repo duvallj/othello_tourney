@@ -19,6 +19,45 @@ function RCanvas(canvasObj, rWidth, rHeight){
   this.add = function(obj){
     this.objects[this.objects.length] = obj;
   };
+  this.mx = 0;
+  this.my = 0;
+  this.handleMouseMove = function(event) {
+    // "stolen" from stackoverflow
+
+    var dot, eventDoc, doc, body, pageX, pageY;
+
+    event = event || window.event; // IE-ism
+
+    // If pageX/Y aren't available and clientX/Y are,
+    // calculate pageX/Y - logic taken from jQuery.
+    // (This is to support old IE)
+    if (event.pageX == null && event.clientX != null) {
+        eventDoc = (event.target && event.target.ownerDocument) || document;
+        doc = eventDoc.documentElement;
+        body = eventDoc.body;
+        event.pageX = event.clientX +
+            (doc && doc.scrollLeft || body && body.scrollLeft || 0) -
+            (doc && doc.clientLeft || body && body.clientLeft || 0);
+        event.pageY = event.clientY +
+            (doc && doc.scrollTop  || body && body.scrollTop  || 0) -
+            (doc && doc.clientTop  || body && body.clientTop  || 0 );
+    }
+    this.mx = (event.pageX - this.canvas.getBoundingClientRect().x) / this.wFactor;
+    this.my = (event.pageY - this.canvas.getBoundingClientRect().y) / this.hFactor;
+    //console.log(this.mx+','+this.my);
+  }
+  this.clickEvent = function(){;};
+  this.md = false;
+  this.handleMouseDown = function() {
+    if (!this.md){
+      this.clickEvent();
+    }
+    this.md = true;
+  }
+  this.handleMouseUp = function() {
+    this.md = false;
+  }
+  this.lBSize = 1;
 }
 
 function RRect(x,y,width,height,fill){
