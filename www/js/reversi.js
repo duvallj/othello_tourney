@@ -174,12 +174,13 @@ function init(socket, delay, port1, port2){
     drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board), data.tomove);
   });
   rCanvas.clickEvent = function(){
+    var olc = this.lastClicked;
     var cy = Math.floor(rCanvas.my / rCanvas.un);
     var cx = Math.floor(rCanvas.mx / rCanvas.un);
     if (cx >= 0 && cx < rCanvas.lBSize && cy >= 0 && cy < rCanvas.lBSize){
       this.lastClicked = cy * (this.lBSize+2) + cx + 3 + this.lBSize;
     }
-    if (this.lastClicked === -1){
+    if (olc === -1){
       console.log('sent move '+rCanvas.lastClicked);
       socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
     }

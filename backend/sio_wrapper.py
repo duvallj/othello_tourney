@@ -78,8 +78,9 @@ def send_reply(sid, data):
         message, data = sid2queue[sid].recv()
         if message == 'reply':
             sid2lsrcv[sid] = data
-        else:
-            sio.emit(message, data=data, room=sid)
+        elif message == 'moverequest':
+            sid2mrq[sid] = data
+            sio.emit(message, data=dict(), room=sid)
     sio.emit('reply',data=sid2lsrcv[sid],room=sid)
     sys.stdout.flush()
 
@@ -116,8 +117,7 @@ def get_move(strategy, board, player, time_limit):
 
 def get_player_move(board, player, conn, sid):
     p_end, c_end = mp.Pipe()
-    sid2mrq[sid] = (board, player, c_end)
-    conn.send(('moverequest',dict()))
+    conn.send(('moverequest',(board, player, c_end)))
     print('move request sent')
     return p_end.recv()
 
