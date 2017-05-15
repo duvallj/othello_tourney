@@ -8,7 +8,9 @@ function RCanvas(canvasObj, rWidth, rHeight){
   this.objects = [];
   this.draw = function(){
     for(var obj in this.objects){
-      this.objects[obj].draw(this.ctx,this.wFactor,this.hFactor);
+      if (this.objects.hasOwnProperty(obj)){
+        this.objects[obj].draw(this.ctx,this.wFactor,this.hFactor);
+      }
     }
   };
   this.resize = function(){

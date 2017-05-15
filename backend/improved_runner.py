@@ -1,6 +1,4 @@
-import socket_client_oth as sco
 from othello_admin import *
-from multiprocessing import Process, Value
 import os
 import time
 import ctypes
@@ -8,10 +6,10 @@ import ctypes
 TIMELIMIT = 5
 
 def get_move(strategy, board, player, time_limit):
-    best_shared = Value("i", -1)
+    best_shared = mp.Value("i", -1)
     best_shared.value = 11
     running = Value("i", 1)
-    p = Process(target=strategy, args=(board, player, best_shared, running))
+    p = np.Process(target=strategy, args=(board, player, best_shared, running))
     p.start()
     t1 = time.time()
     p.join(time_limit)
@@ -25,11 +23,13 @@ def get_move(strategy, board, player, time_limit):
     #if p.is_alive(): os.kill(p.pid, signal.SIGKILL)
     move = best_shared.value
     return move
+    
 
 def play_game(nameA, nameB, conn, name2strat):
     admin = Strategy()
     
     strategy = {core.BLACK:name2strat[nameA], core.WHITE:name2strat[nameB]}
+    names ={core.BLACK:nameA, core.WHITE:nameB}
 
     player = core.BLACK
     board = admin.initial_board()
@@ -37,7 +37,10 @@ def play_game(nameA, nameB, conn, name2strat):
     forfeit = False
 
     while player is not None and not forfeit:
-        move = get_move(strategy[player], board, player, TIMELIMIT)
+        if names[player] == 'you':
+            pass
+        else:
+            move = get_move(strategy[player], board, player, TIMELIMIT)
         if not admin.is_legal(move, player, board):
             forfeit = True
             if player == core.BLACK:
@@ -49,4 +52,8 @@ def play_game(nameA, nameB, conn, name2strat):
         player = admin.next_player(board, player)
         black_score = admin.score(core.BLACK, board)
 
-        conn.send({'bSize':'8','board':''.join(board).replace('?',''), 'black':nameA, 'white':nameB})
+        conn.send({'bSize':'8',
+                   'board':''.join(board).replace('?',''),
+                   'black':nameA,
+                   'white':nameB,
+                   'tomove':admin.opponent(player)})

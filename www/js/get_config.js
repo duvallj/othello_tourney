@@ -15,7 +15,7 @@ function loadConfig() {
     //xmlhttp.open("GET", "../ai_port_info.txt", true);
     //xmlhttp.send();
     output = 'admin\nstrategy5_2019jduvall'
-    output += '\nhuman';
+    output += '\nyou';
     pairs = output.split('\n');
 
     return pairs;
