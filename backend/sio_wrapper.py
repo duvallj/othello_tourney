@@ -13,9 +13,8 @@ from othello_admin import *
 
 ailist_filename = 'C:/Users/Me/Documents/GitHub/othello_tourney/www/ai_port_info.txt'
 name2strat = dict()
-eventlet.monkey_patch() # why is this name
-mgr = socketio.KombuManager('redis://')
-sio = socketio.Server(client_manager=mgr)
+sio = socketio.Server()
+admin = Strategy()
 
 def get_possible_files():
     folders = os.listdir(os.getcwd()+'/Students')
@@ -47,22 +46,27 @@ sid2mrq = dict()
 def connect(sid, environ):
     print('connect',sid)
     sio.enter_room(sid, "room_"+sid)
+    sio.emit('reply',data={'bSize':'8',
+                      'board':'...........................o@......@o...........................',
+                      'black':'black', 'white':'white'}, room=sid)
     sys.stdout.flush()
 
 @sio.on('prequest')
 def make_reg_game(sid, data):
     print(data)
+
     parent_conn, child_conn = mp.Pipe()
     sid2queue[sid] = parent_conn
     sid2lsrcv[sid] = {'bSize':'8',
                       'board':'...........................o@......@o...........................',
                       'black':data['black'], 'white':data['white']}
 
+
     game = mp.Process(target=play_game, args=(data['black'],
                                             data['white'],
                                             child_conn,
-                                            name2strat,
-                                            sid))
+                                            name2strat, sid))
+
     game.start()
     sid2game[sid] = game
     sid2mrq[sid] = False
@@ -71,7 +75,11 @@ def make_reg_game(sid, data):
 def send_reply(sid, data):
     print('refreshing ',sid)
     while sid2queue[sid].poll():
-        sid2lsrcv[sid] = sid2queue[sid].recv()
+        message, data = sid2queue[sid].recv()
+        if message == 'reply':
+            sid2lsrcv[sid] = data
+        else:
+            sio.emit(message, data=data, room=sid)
     sio.emit('reply',data=sid2lsrcv[sid],room=sid)
     sys.stdout.flush()
 
@@ -106,10 +114,10 @@ def get_move(strategy, board, player, time_limit):
     move = best_shared.value
     return move
 
-def get_player_move(sid, board, player):
+def get_player_move(board, player, conn, sid):
     p_end, c_end = mp.Pipe()
     sid2mrq[sid] = (board, player, c_end)
-    sio.emit('moverequest',room=sid)
+    conn.send(('moverequest',dict()))
     print('move request sent')
     return p_end.recv()
 
@@ -128,10 +136,9 @@ def recv_player_move(sid, data):
     
 
 def play_game(nameA, nameB, conn, name2strat, sid):
-    admin = Strategy()
     
     strategy = {core.BLACK:name2strat[nameA], core.WHITE:name2strat[nameB]}
-    names ={core.BLACK:nameA, core.WHITE:nameB}
+    names = {core.BLACK:nameA, core.WHITE:nameB}
 
     player = core.BLACK
     board = admin.initial_board()
@@ -140,7 +147,7 @@ def play_game(nameA, nameB, conn, name2strat, sid):
 
     while player is not None and not forfeit:
         if names[player] == 'you':
-            move = get_player_move(sid, board, player)
+            move = get_player_move(board, player, conn, sid)
         else:
             move = get_move(strategy[player], board, player, TIMELIMIT)
         if not admin.is_legal(move, player, board):
@@ -154,11 +161,11 @@ def play_game(nameA, nameB, conn, name2strat, sid):
         player = admin.next_player(board, player)
         black_score = admin.score(core.BLACK, board)
 
-        conn.send({'bSize':'8',
+        conn.send(('reply',{'bSize':'8',
                    'board':''.join(board).replace('?',''),
                    'black':nameA,
                    'white':nameB,
-                   'tomove':player})
+                   'tomove':player}))
 
 if __name__=="__main__":
     spin_up_threads()

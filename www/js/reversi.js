@@ -179,14 +179,15 @@ function init(socket, delay, port1, port2){
     if (cx >= 0 && cx < rCanvas.lBSize && cy >= 0 && cy < rCanvas.lBSize){
       this.lastClicked = cy * (this.lBSize+2) + cx + 3 + this.lBSize;
     }
+    if (this.lastClicked === -1){
+      console.log('sent move '+rCanvas.lastClicked);
+      socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
+    }
   };
 
   socket.on('moverequest', function(){
     console.log('move requested');
     rCanvas.lastClicked = -1;
-    while (rCanvas.lastClicked === -1){;}
-    console.log('sent move '+rCanvas.lastClicked);
-    socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
   });
   window.setInterval(function(){socket.emit('refresh',{});}, delay);
 }
