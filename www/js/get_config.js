@@ -15,8 +15,10 @@ function ajaxConfig(callback){
 };
 
 function putConfigToPage(output){
-  output += '\nyou'
+  //output += '\nyou'
+  output = 'admin\nstrategy5_2019jduvall\nyou';
   pdict = output.split('\n');
+  console.log(output);
   buf = '<p>Black: <select id="ai1">';
   for (var i=0; i<pdict.length; i++){
     buf += '<option value="'+pdict[i]+'">'+pdict[i]+'</option>'
