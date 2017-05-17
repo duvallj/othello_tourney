@@ -27,12 +27,15 @@ function putConfigToPage(output){
   for (var i=0; i<pdict.length; i++){
     buf += '<option value="'+pdict[i]+'">'+pdict[i]+'</option>'
   }
-  buf += '</select><br><br><button onclick="actuallyDoSocket();">Start Match!</button></p>'
+  buf += '</select><br><br>';
+  buf += 'Time limit (secs): <input type="number" id="tml" value="5"/><br><br>'
+  buf += '<button onclick="actuallyDoSocket();">Start Match!</button></p>'
   document.getElementById('canvasContainer').innerHTML = buf;
 };
 
 function actuallyDoSocket(){
   var port1 = document.getElementById('ai1').value;
   var port2 = document.getElementById('ai2').value;
-  makeSocketFromPage('localhost','7531',port1,port2,'1000');
+  var timelimit = document.getElementById('tml').value;
+  makeSocketFromPage('localhost','7531',port1,port2,'1000',timelimit);
 };

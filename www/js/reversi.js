@@ -118,7 +118,7 @@ function resize(canvas, gWidth, gHeight){
   }
 }
 
-function init(socket, delay, port1, port2){
+function init(socket, delay, port1, port2, timelimit){
   document.getElementById('canvasContainer').innerHTML =
     '<canvas id="canvas" width="890" height="1000"></canvas>';
 
@@ -167,7 +167,7 @@ function init(socket, delay, port1, port2){
   document.addEventListener('mousedown',function(){rCanvas.handleMouseDown();});
 
   rCanvas.resize();
-  socket.emit('prequest',{black:port1,white:port2});
+  socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
   socket.on('reply', function(data){
     rCanvas.black.text = data.black;
     rCanvas.white.text = data.white;
@@ -193,10 +193,10 @@ function init(socket, delay, port1, port2){
   window.setInterval(function(){socket.emit('refresh',{});}, delay);
 }
 
-function makeSocketFromPage(addr, port, port1, port2, delay){
+function makeSocketFromPage(addr, port, port1, port2, delay, timelimit){
   var socket = io('http://'+addr+':'+port);
   console.log('made socket');
   var delay = parseInt(delay);
-  init(socket, delay, port1, port2);
+  init(socket, delay, port1, port2, timelimit);
   console.log('finished initing socket');
 }

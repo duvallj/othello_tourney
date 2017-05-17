@@ -34,7 +34,7 @@ class GameManager(socketio.Server):
         
         self.games[sid].set_names(data['black'], data['white'])
         self.pipes[sid] = parent_conn
-        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
+        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,int(data['tml'])))
 
         self.procs[sid].start()
         log.debug('Started game for '+sid)
@@ -134,7 +134,7 @@ class GameRunner:
         move = best_shared.value
         return move
 
-    def run_game(self, conn):
+    def run_game(self, conn, timelimit):
         strategy = {core.BLACK: self.BLACK_STRAT, core.WHITE: self.WHITE_STRAT}
         names = {core.BLACK: self.BLACK, core.WHITE: self.WHITE}
 
@@ -161,7 +161,7 @@ class GameRunner:
 
                 log.debug('Move '+str(move)+' determined legal')
             else:
-                move = self.get_move(strategy[self.player], self.board, self.player, TIMELIMIT)
+                move = self.get_move(strategy[self.player], self.board, self.player, timelimit)
                 log.debug('Strategy '+names[self.player]+' returned move '+str(move))
 
             if not self.core.is_legal(move, self.player, self.board):
