@@ -10,8 +10,8 @@ import ctypes
 
 from othello_admin import *
 
-ailist_filename = 'C:/Users/Me/Documents/GitHub/othello_tourney/www/ai_port_info.txt'
-TIMELIMIT = 5
+ailist_filename = 'C:/Users/Me/Documents/GitHub/othello_tourney/static/ai_port_info.txt'
+log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.WARN)
 
 class GameManager(socketio.Server):
     def __init__(self, *args, **kw):
@@ -27,6 +27,7 @@ class GameManager(socketio.Server):
         self.on('movereply', self.send_move)
 
     def create_game(self, sid, environ):
+        print(self.name2strat)
         self.games[sid] = GameRunner(self.name2strat)
 
     def start_game(self, sid, data):
@@ -62,9 +63,9 @@ class GameManager(socketio.Server):
         log.info('Recieved move '+str(move)+' from '+sid)
 
     def get_possible_files(self):
-        folders = os.listdir(os.getcwd()+'/Students')
+        folders = os.listdir(os.getcwd()+'/private/Students')
         log.debug('Listed Student folders successfully')
-        return ['Students.'+x+'.strategy' for x in folders if x != '__pycache__']
+        return ['private.Students.'+x+'.strategy' for x in folders if x != '__pycache__']
 
     def spin_up_threads(self):
         files = self.get_possible_files()
@@ -75,9 +76,9 @@ class GameManager(socketio.Server):
         
         for x in range(len(files)):
             
-            name = files[x].split('.')[1]
+            name = files[x].split('.')[2]
             
-            path = old_path+'/Students/'+name
+            path = old_path+'/private/Students/'+name
             os.chdir(path)
             
             sys.path = [path] + old_sys
@@ -104,6 +105,7 @@ class GameRunner:
         self.name2strat = name2strat
 
     def set_names(self, nameA, nameB):
+        print(self.name2strat)
         self.BLACK = nameA
         self.WHITE = nameB
         self.BLACK_STRAT = self.name2strat[self.BLACK]
@@ -184,10 +186,3 @@ class GameRunner:
                                  'tomove':self.player
                                  }
             ))
-
-if __name__=='__main__':
-    log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
-    gm = GameManager()
-    gm.spin_up_threads()
-    app = socketio.Middleware(gm)
-    eventlet.wsgi.server(eventlet.listen(('', 7531)), app)

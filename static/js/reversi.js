@@ -190,7 +190,7 @@ function init(socket, delay, port1, port2, timelimit){
     console.log('move requested');
     rCanvas.lastClicked = -1;
   });
-  window.setInterval(function(){socket.emit('refresh',{});}, delay);
+  window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
 }
 
 function makeSocketFromPage(addr, port, port1, port2, delay, timelimit){
