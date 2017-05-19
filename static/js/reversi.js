@@ -194,7 +194,7 @@ function init(socket, delay, port1, port2, timelimit){
 }
 
 function makeSocketFromPage(addr, port, port1, port2, delay, timelimit){
-  var socket = io('http://'+addr+':'+port);
+  var socket = io('https://'+addr+':'+port,{path:'/othello/socket.io/'});
   console.log('made socket');
   var delay = parseInt(delay);
   init(socket, delay, port1, port2, timelimit);

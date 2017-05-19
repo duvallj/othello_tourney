@@ -37,5 +37,5 @@ function actuallyDoSocket(){
   var port1 = document.getElementById('ai1').value;
   var port2 = document.getElementById('ai2').value;
   var timelimit = document.getElementById('tml').value;
-  makeSocketFromPage('localhost','80',port1,port2,'1000',timelimit);
+  makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
 };

@@ -10,8 +10,8 @@ import ctypes
 
 from othello_admin import *
 
-ailist_filename = 'C:/Users/Me/Documents/GitHub/othello_tourney/static/ai_port_info.txt'
-log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.WARN)
+ailist_filename = '/web/activities/othello/static/ai_port_info.txt'
+log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
 
 class GameManager(socketio.Server):
     def __init__(self, *args, **kw):
@@ -31,6 +31,7 @@ class GameManager(socketio.Server):
         self.games[sid] = GameRunner(self.name2strat)
 
     def start_game(self, sid, data):
+        print('Friggin work tho')
         parent_conn, child_conn = Pipe()
         
         self.games[sid].set_names(data['black'], data['white'])
@@ -128,10 +129,10 @@ class GameRunner:
         time.sleep(0.01)
         p.terminate()
         time.sleep(0.01)
-        handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
-        ctypes.windll.kernel32.TerminateProcess(handle, -1)
-        ctypes.windll.kernel32.CloseHandle(handle)
-        #if p.is_alive(): os.kill(p.pid, signal.SIGKILL)
+        #handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
+        #ctypes.windll.kernel32.TerminateProcess(handle, -1)
+        #ctypes.windll.kernel32.CloseHandle(handle)
+        if p.is_alive(): os.kill(p.pid, signal.SIGKILL)
         log.debug('Killed process')
         move = best_shared.value
         return move

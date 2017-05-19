@@ -50,3 +50,6 @@ Temporary Items
 __pycache__
 *.pyc
 *.log
+
+# Don't back up venv
+venv

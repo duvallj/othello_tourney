@@ -1,4 +1,4 @@
-#!/usr/sbin/python
+#!/usr/bin/python3
 
 from better_sio import *
 import socketio
@@ -25,8 +25,8 @@ def serve_img(file):
     return app.send_static_file('images/'+file)
 
 if __name__=='__main__':
-    os.environ['PORT']='80'
-
+    #os.environ['PORT']='10770'
+    print('Listening on port '+str(os.environ['PORT']))
     gm = GameManager()
     gm.spin_up_threads()
 
