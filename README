@@ -1,0 +1,15 @@
+## TJ Othello Tournament
+
+# How to set up:
+ * Clone this repository
+ * `virtualenv --python python3 venv`
+ * `pip install eventlet flask`
+ * Try `pip install socketio`
+   * If that doesn't work:
+   * `cd venv`
+   * `wget <pasted name of python-socketio source>`
+   * `tar xvf <python-socketio tar>`
+   * `cd python-socketio`
+   * `python3 setup.py install`
+ * Set `$PORT` to the port you want the server to listen on
+ * Set `run.sh` to run at boot/whenever you want
