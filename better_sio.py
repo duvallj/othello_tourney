@@ -25,6 +25,7 @@ class GameManager(socketio.Server):
         self.on('disconnect', self.delete_game)
         self.on('refresh', self.refresh_game)
         self.on('movereply', self.send_move)
+                
 
     def create_game(self, sid, environ):
         print(self.name2strat)
