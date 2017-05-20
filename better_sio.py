@@ -28,11 +28,11 @@ class GameManager(socketio.Server):
                 
 
     def create_game(self, sid, environ):
-        print(self.name2strat)
+        log.info('Client '+sid+' connected')
         self.games[sid] = GameRunner(self.name2strat)
 
     def start_game(self, sid, data):
-        print('Friggin work tho')
+        log.info('Client '+sid+' requests game '+str(data))
         parent_conn, child_conn = Pipe()
         
         self.games[sid].set_names(data['black'], data['white'])
@@ -43,6 +43,7 @@ class GameManager(socketio.Server):
         log.debug('Started game for '+sid)
 
     def delete_game(self, sid):
+        log.info('Client '+sid+' disconnected')
         if self.procs[sid].is_alive():
             self.procs[sid].terminate()
             
