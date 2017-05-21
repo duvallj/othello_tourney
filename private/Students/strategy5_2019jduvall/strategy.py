@@ -1,6 +1,7 @@
 import pickle
 import time
-from math import inf
+#from math import inf
+inf = float('inf')
 from multiprocessing import Process, Value
 
 import my_core as my_core
@@ -26,8 +27,11 @@ def write_matrix(matrix, filename):
 
 # tDict = loadMatrix('C:/Users/Me/Documents/AI/othello/lookupdict.pkl')
 class Strategy(my_core.MyCore):
+    def __init__(self):
+        self.tMatrix = load_matrix('./nmatrix.pkl')
+        self.players = oc.BLACK+oc.WHITE
+
     def best_strategy(self, board, player, move, flag):
-        tMatrix = load_matrix('./nmatrix.pkl')
         tDict = {}
         spots_left = set(x for x in sq if board[x] == oc.EMPTY)
         startnode = [0, board, player, spots_left, [], None, find_all_brackets(board, player, spots_left, self), -1, -1, player+''.join(board)]
@@ -42,17 +46,17 @@ class Strategy(my_core.MyCore):
         # * 7 = prev move
         # * 8 = best move
         # * 9 = condensed board w/ player (for lookups)
-        move.value = abprune(startnode, self, 0, 2, tMatrix, -inf, inf, player, tDict)[1]  #
+        move.value = abprune(startnode, self, 0, 2, self.tMatrix, -inf, inf, player, tDict)[1]  #
         print(move.value)
         startnode = [0, board, player, spots_left, [], None, startnode[6], -1, -1, player+''.join(board)]  #
-        move.value = abprune(startnode, self, 0, 4, tMatrix, -inf, inf, player, tDict)[1]  #
+        move.value = abprune(startnode, self, 0, 4, self.tMatrix, -inf, inf, player, tDict)[1]  #
         print(move.value)
 
         d = 6
         while d<130:
 
             startnode = [0, board, player, spots_left, [], None, startnode[6], -1, -1, player+''.join(board)]  #
-            move.value = abprune(startnode, self, 0, d, tMatrix, -inf, inf, player, tDict)[1]
+            move.value = abprune(startnode, self, 0, d, self.tMatrix, -inf, inf, player, tDict)[1]
             print(move.value,d)
             d += 1
 

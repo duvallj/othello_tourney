@@ -32,7 +32,7 @@ class LocalAI:
         best_shared = Value("i", -1)
         best_shared.value = 11
         running = Value("i", 1)
-        p = Process(target=self.strat, args=(board, player, best_shared, running))
+        p = Process(target=self.strat, args=(list(board), player, best_shared, running))
         p.start()
         t1 = time.time()
         p.join(self.timelimit)
@@ -49,6 +49,8 @@ class LocalAI:
 
 
 if __name__=="__main__":
+    print('process started')
+    sys.stdout.flush()
     ai = LocalAI(sys.argv[1], sys.argv[2])
     # That means we just got called by srun
     recv = ''
@@ -57,5 +59,6 @@ if __name__=="__main__":
         if recv == 'kys':
             break
         board, player = recv.split(' ')
+        print('Doing for player '+player)
         sys.stderr.write(str(ai.get_move(board, player)))
         sys.stderr.flush()
