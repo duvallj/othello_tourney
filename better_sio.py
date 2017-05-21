@@ -34,10 +34,15 @@ class GameManager(socketio.Server):
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
         parent_conn, child_conn = Pipe()
+
+        if data['tml'].isdigit():
+            timelimit = int(data['tml'])
+        else:
+            timelimit = 5
         
         self.games[sid].set_names(data['black'], data['white'])
         self.pipes[sid] = parent_conn
-        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,int(data['tml'])))
+        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn, timelimit))
 
         self.procs[sid].start()
         log.debug('Started game for '+sid)
@@ -86,14 +91,14 @@ class GameManager(socketio.Server):
             
             sys.path = [path] + old_sys
             
-            self.name2strat[name] = importlib.import_module(files[x]).Strategy().best_strategy
-            log.debug('Imported strategy '+name)
+            #self.name2strat[name] = importlib.import_module(files[x]).Strategy().best_strategy
+            #log.debug('Imported strategy '+name)
             
             buf += name +'\n'
             
         log.info('All strategies read')
         
-        self.name2strat['you'] = None
+        #self.name2strat['you'] = None
         
         pfile = open(ailist_filename, 'w')
         pfile.write(buf[:-1])
@@ -111,81 +116,63 @@ class GameRunner:
         print(self.name2strat)
         self.BLACK = nameA
         self.WHITE = nameB
-        self.BLACK_STRAT = self.name2strat[self.BLACK]
-        self.WHITE_STRAT = self.name2strat[self.WHITE]
+        self.BLACK_STRAT = RemoteAI(nameA)
+        self.WHITE_STRAT = RemoteAI(nameB)
         log.debug('Set names to '+nameA+' '+nameB)
-        self.board = self.core.initial_board()
-        self.player = core.BLACK
-
-    def get_move(self, strategy, board, player, timelimit):
-        best_shared = Value("i", -1)
-        best_shared.value = 11
-        running = Value("i", 1)
-        log.debug('Created shared Values')
-        p = Process(target=strategy, args=(board, player, best_shared, running))
-        p.start()
-        log.debug('Started process')
-        t1 = time.time()
-        p.join(timelimit)
-        running.value = 0
-        time.sleep(0.01)
-        p.terminate()
-        time.sleep(0.01)
-        #handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
-        #ctypes.windll.kernel32.TerminateProcess(handle, -1)
-        #ctypes.windll.kernel32.CloseHandle(handle)
-        if p.is_alive(): os.kill(p.pid, signal.SIGKILL)
-        log.debug('Killed process')
-        move = best_shared.value
-        return move
 
     def run_game(self, conn, timelimit):
+        board = self.core.initial_board()
+        player = core.BLACK
+	
+        self.BLACK_STRAT.make_connection(timelimit)
+        self.WHITE_STRAT.make_connection(timelimit)
+        
         strategy = {core.BLACK: self.BLACK_STRAT, core.WHITE: self.WHITE_STRAT}
         names = {core.BLACK: self.BLACK, core.WHITE: self.WHITE}
 
         conn.send(('board', {'bSize':'8',
-                                 'board':''.join(self.board),
+                                 'board':''.join(board),
                                  'black':self.BLACK, 'white':self.WHITE,
-                                 'tomove':self.player
+                                 'tomove':player
                                  }
             ))
 
         forfeit = False
 
-        while self.player is not None and not forfeit:
-            if strategy[self.player] is None:
+        while player is not None and not forfeit:
+            if strategy[player] is None:
                 move = 0
                 
                 # clear out queue from moves sent by rouge client
                 while conn.poll(): temp=conn.recv()
                 
-                while not self.core.is_legal(move, self.player, self.board):
+                while not self.core.is_legal(move, player, board):
                     conn.send(('getmove', 0))
                     move = conn.recv()
                     log.debug('Game recieved move '+str(move))
 
                 log.debug('Move '+str(move)+' determined legal')
             else:
-                move = self.get_move(strategy[self.player], self.board, self.player, timelimit)
-                log.debug('Strategy '+names[self.player]+' returned move '+str(move))
+                move = strategy[player].get_move(board, player)
+                log.debug('Strategy '+names[player]+' returned move '+str(move))
 
-            if not self.core.is_legal(move, self.player, self.board):
+            if not self.core.is_legal(move, player, board):
                 forfeit = True
-                if self.player == core.BLACK:
+                if player == core.BLACK:
                     black_score = -100
                 else:
                     black_score = 100
                 continue
 
-            self.board = self.core.make_move(move, self.player, self.board)
-            self.player = self.core.next_player(self.board, self.player)
-            black_score = self.core.score(core.BLACK, self.board)
+            board = self.core.make_move(move, player, board)
+            player = self.core.next_player(board, player)
+            black_score = self.core.score(core.BLACK, board)
 
-            log.debug(self.core.print_board(self.board))
+            log.debug(self.core.print_board(board))
 
             conn.send(('board', {'bSize':'8',
-                                 'board':''.join(self.board),
+                                 'board':''.join(board),
                                  'black':self.BLACK, 'white':self.WHITE,
-                                 'tomove':self.player
+                                 'tomove':player
                                  }
             ))
