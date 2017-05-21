@@ -27,7 +27,7 @@ class RemoteAI:
         self.client = client
         self.name = name
 
-    def make_connection(self, timelimit)
+    def make_connection(self, timelimit):
         self.stdin, self.stdout, self.stderr = \
                     self.client.exec_command(CMD_PREFIX+'python3 '+RUN_AI_PATH+' '+self.name+' '+str(timelimit))
 

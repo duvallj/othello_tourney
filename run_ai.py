@@ -9,17 +9,20 @@ from othello_admin import *
 class LocalAI:
     def __init__(self, name, timelimit):
         self.name = name
-        self.timelimit = timelimit
+        if timelimit.isdigit():
+            self.timelimit = int(timelimit)
+        else:
+            self.timelimit = 5
 
         old_path = os.getcwd()
         old_sys = sys.path
 
-        path = old_path + '/Students/'+name
+        path = old_path + '/private/Students/'+name
         os.chdir(path)
 
         sys.path = [path] + old_sys
 
-        self.strat = importlib.import_module('Students.'+name+'.strategy').\
+        self.strat = importlib.import_module('private.Students.'+name+'.strategy').\
                      Strategy().best_strategy
 
         os.chdir(old_path)
@@ -29,7 +32,7 @@ class LocalAI:
         best_shared = Value("i", -1)
         best_shared.value = 11
         running = Value("i", 1)
-        p = Process(target=strategy, args=(board, player, best_shared, running))
+        p = Process(target=self.strat, args=(board, player, best_shared, running))
         p.start()
         t1 = time.time()
         p.join(self.timelimit)
@@ -55,3 +58,4 @@ if __name__=="__main__":
             break
         board, player = recv.split(' ')
         sys.stderr.write(str(ai.get_move(board, player)))
+        sys.stderr.flush()
