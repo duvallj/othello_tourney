@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
 import paramiko
-
+import logging as log
 # In case others use a thing that can schedule tasks across
 # a bunch of different servers (like slurm)
-CMD_PREFIX = 'srun -n 1 '
-RUN_AI_PATH = '/home/2019jduvall/run_ai.py'
+CMD_PREFIX = ''
+RUN_AI_PATH = '/home/othello/run_ai.py'
 
 class RemoteAI:
     def __init__(self, name):
@@ -13,17 +13,8 @@ class RemoteAI:
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         
-        file = open('private/auth.log','r')
-        data = file.read().split('\n')
-        username = data[0]
-        password = data[1]
-        file.close()
+        client.connect('ovm1.vm.sites.tjhsst.edu', username='othello', password='othello')
         
-        client.connect('infosphere', username=username, password=password)
-        username, password, data = 'adsfsdafasdfsadfsdafsadfsadfsdafsdafsdafsadfasdfsdaf', \
-                                    'asdffdaasdfdfadfdfsdfqwersdfcxvdfqwersadfvczsdafefq', \
-                                    'qewraerweqsdadsfsdavcxzvzxcvzcvasdfqwertwqrtfgasdfdas'
-
         self.client = client
         self.name = name
 
