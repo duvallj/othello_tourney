@@ -7,6 +7,8 @@ import socket
 
 from othello_admin import *
 
+sys.path = [sys.path[0]]+sys.path
+
 class LocalAI:
     def __init__(self, name, timelimit):
         self.name = name
@@ -16,22 +18,17 @@ class LocalAI:
             self.timelimit = 5
 
         old_path = os.getcwd()
-        old_sys = sys.path
+        old_sys = sys.path[1:]
 
         path = old_path + '/private/Students/'+name
-        importlib.invalidate_caches()
         os.chdir(path)
 
-        sys.path = [path] + old_sys
-
-        print(os.getcwd(), sys.path)
-        sys.stdout.flush()
-        # Why did this work earlier and not now?
+        sys.path = [os.getcwd()] + old_sys
         
         self.strat = importlib.import_module('private.Students.'+name+'.strategy').Strategy().best_strategy
 
         os.chdir(old_path)
-        sys.path = old_sys
+        #sys.path = old_sys
 
     def get_move(self, board, player):
         best_shared = Value("i", -1)
