@@ -1,36 +1,35 @@
 #!/usr/bin/python3
 
-import paramiko
 import logging as log
-# In case others use a thing that can schedule tasks across
-# a bunch of different servers (like slurm)
-CMD_PREFIX = ''
-RUN_AI_PATH = '/home/othello/run_ai.py'
+import socket
 
 class RemoteAI:
     def __init__(self, name):
-        client = paramiko.SSHClient()
-        client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
-        client.connect('ovm1.vm.sites.tjhsst.edu', username='othello', password='othello')
-        
-        self.client = client
         self.name = name
 
     def make_connection(self, timelimit):
-        self.channel = self.client.get_transport().open_channel('session')
-        self.channel.exec_command(CMD_PREFIX+'python3 -u '+RUN_AI_PATH+' '+self.name+' '+str(timelimit))
+        self.socket = socket.socket()
+        self.socket.connect(('localhost',9820))
+
+        self.socket.send(bytes(self.name, 'utf-8'))
+        rcv = self.socket.recv(2)
+        self.socket.send(bytes(str(timelimit), 'utf-8'))
+        port = self.socket.recv(128).decode()
+        port = int(port)
+
+        self.socket.close()
+        self.socket = socket.socket()
+        self.socket.connect(('localhost',port))
 
     def get_move(self, board, player):
-        self.channel.sendall(board+' '+player+'\n')
-        while not self.channel.recv_stderr_ready(): pass
-        result = self.channel.recv_stderr(4)
+        self.socket.send(bytes(board+' '+player+'\n', 'utf-8'))
+        result = self.socket.recv(4).decode()
         if result.isdigit():
             return int(result)
         else:
             return -1
 
     def kill_remote(self):
-        self.channel.sendall('kys\n')
+        self.socket.send(bytes('kys\n', 'utf-8'))
+        self.socket.close()
 

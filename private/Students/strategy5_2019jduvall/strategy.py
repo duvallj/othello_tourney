@@ -4,7 +4,7 @@ import time
 inf = float('inf')
 from multiprocessing import Process, Value
 
-import my_core as my_core
+import my_core
 import Othello_Core as oc
 
 sq = oc.OthelloCore().squares()
