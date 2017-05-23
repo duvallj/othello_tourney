@@ -19,6 +19,7 @@ class LocalAI:
         old_sys = sys.path
 
         path = old_path + '/private/Students/'+name
+        importlib.invalidate_caches()
         os.chdir(path)
 
         sys.path = [path] + old_sys
@@ -26,8 +27,8 @@ class LocalAI:
         print(os.getcwd(), sys.path)
         sys.stdout.flush()
         # Why did this work earlier and not now?
-        self.strat = importlib.import_module('private.Students.'+name+'.strategy').\
-                     Strategy().best_strategy
+        
+        self.strat = importlib.import_module('private.Students.'+name+'.strategy').Strategy().best_strategy
 
         os.chdir(old_path)
         sys.path = old_sys

@@ -33,3 +33,9 @@ class RemoteAI:
         self.socket.send(bytes('kys\n', 'utf-8'))
         self.socket.close()
 
+if __name__=='__main__':
+    ai = RemoteAI('strategy5_2019jduvall')
+    ai.make_connection(2)
+    import othello_admin as oa
+    print(ai.get_move(''.join(oa.Strategy().initial_board()), '@'))
+
