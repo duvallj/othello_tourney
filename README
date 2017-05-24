@@ -1,15 +1,12 @@
 ## TJ Othello Tournament
 
 # How to set up:
- * Clone this repository
- * `virtualenv --python python3 venv`
- * `pip install eventlet flask`
- * Try `pip install socketio`
-   * If that doesn't work:
-   * `cd venv`
-   * `wget <pasted name of python-socketio source>`
-   * `tar xvf <python-socketio tar>`
-   * `cd python-socketio`
-   * `python3 setup.py install`
+ * Clone this repository onto all machines/vms you will use
+ * run `setup.sh web` on the server you want to host it from
+ * run `setup.sh vm` on the servers you want the AIs to run on
  * Set `$PORT` to the port you want the server to listen on
- * Set `run.sh` to run at boot/whenever you want
+ * Set `host_list` in `run_on_cluster.py` of all hostnames/IPs the AIs will run on
+
+# How to run:
+ * run `run.sh` on the vm server
+ * run `python3 run_ai.py` on the AI servers
