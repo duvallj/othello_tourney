@@ -8,8 +8,11 @@ class RemoteAI:
         self.name = name
 
     def make_connection(self, timelimit):
-        self.socket = socket.socket()
-        self.socket.connect(('localhost',9820))
+        if self.name == 'you':
+            return
+
+        self.socket = socket.socket(socket.AF_INET6)
+        self.socket.connect(('ovm1.vm.sites.tjhsst.edu',9820))
 
         self.socket.send(bytes(self.name, 'utf-8'))
         rcv = self.socket.recv(2)
@@ -18,10 +21,13 @@ class RemoteAI:
         port = int(port)
 
         self.socket.close()
-        self.socket = socket.socket()
-        self.socket.connect(('localhost',port))
+        self.socket = socket.socket(socket.AF_INET6)
+        self.socket.connect(('ovm1.vm.sites.tjhsst.edu',port))
 
     def get_move(self, board, player):
+        if self.name == 'you':
+            return -1
+
         self.socket.send(bytes(board+' '+player+'\n', 'utf-8'))
         result = self.socket.recv(4).decode()
         if result.isdigit():
@@ -30,6 +36,9 @@ class RemoteAI:
             return -1
 
     def kill_remote(self):
+        if self.name == 'you':
+            return
+
         self.socket.send(bytes('kys\n', 'utf-8'))
         self.socket.close()
 

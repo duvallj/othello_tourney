@@ -48,7 +48,7 @@ class LocalAI:
         #handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
         #ctypes.windll.kernel32.TerminateProcess(handle, -1)
         #ctypes.windll.kernel32.CloseHandle(handle)
-        if p.is_alive(): os.kill(p.pid, signal.SIGKILL)
+        if p.is_alive(): os.kill(p.pid, 9)
         move = best_shared.value
         return move
 
@@ -57,7 +57,7 @@ class AIManager:
         self.used_ports = set()
         self.unused_ports = set(range(5000,6000))
         self.processes = list()
-        self.rqsocket = socket.socket()
+        self.rqsocket = socket.socket(socket.AF_INET6)
         self.rqsocket.bind(('', 9820))
 
     def mainloop(self):
@@ -65,7 +65,7 @@ class AIManager:
         # it assumes networks are perfect, but
         # hey, it should work
         while True:
-            self.rqsocket.listen()
+            self.rqsocket.listen(0)
             conn, addr = self.rqsocket.accept()
 
             for i in list(range(len(self.processes)))[::-1]:
@@ -88,9 +88,9 @@ class AIManager:
 
             conn.send(bytes(str(new_port), 'utf-8'))
             
-            new_sock = socket.socket()
+            new_sock = socket.socket(socket.AF_INET6)
             new_sock.bind(('', new_port))
-            new_sock.listen()
+            new_sock.listen(0)
             nconn, naddr = new_sock.accept()
 
             p = Process(target=self.serve_ai, args=(nconn, lai))
@@ -103,8 +103,9 @@ class AIManager:
             message = ''
             while not message.endswith('\n'):
                 message += conn.recv(1024).decode()
-            if len(message) > 3:
-                board, player = message[:-1].split(' ')
+            message = message[:-1]
+            if len(message) > 5:
+                board, player = message.split(' ')
                 move = lai.get_move(board, player)
                 conn.send(bytes(str(move), 'utf-8'))
         

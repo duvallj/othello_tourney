@@ -56,12 +56,21 @@ class GameManager(socketio.Server):
         del self.games[sid]
 
     def refresh_game(self, sid, data):
+        log.debug('sid: '+str(sid))
+        log.debug('Have pipes: '+str(self.pipes))
+        log.debug('Exists: '+str(sid in self.pipes))
+        log.debug('What is: '+str(self.pipes[sid]))
+        log.debug('Can poll: '+str(self.pipes[sid].poll()))
         while self.pipes[sid].poll():
+            log.debug('2')
             mtype, data = self.pipes[sid].recv()
+            log.debug('3')
             log.debug(mtype+' '+str(data))
             if mtype == 'board':
+                log.debug('4')
                 self.emit('reply', data=data, room=sid)
             elif mtype == 'getmove':
+                log.debug('5')
                 self.emit('moverequest', data=dict(), room=sid)
 
     def send_move(self, sid, data):
@@ -122,14 +131,10 @@ class GameRunner:
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
         player = core.BLACK
-        log.debug('1')
         self.BLACK_STRAT.make_connection(timelimit)
-        log.debug('2.0')
         self.WHITE_STRAT.make_connection(timelimit)
-        log.debug('2.1')
         strategy = {core.BLACK: self.BLACK_STRAT, core.WHITE: self.WHITE_STRAT}
         names = {core.BLACK: self.BLACK, core.WHITE: self.WHITE}
-        log.debug('3')
         conn.send(('board', {'bSize':'8',
                                  'board':''.join(board),
                                  'black':self.BLACK, 'white':self.WHITE,
@@ -141,7 +146,7 @@ class GameRunner:
 
         while player is not None and not forfeit:
             log.debug('Main loop!')
-            if strategy[player] is None:
+            if names[player] == 'you':
                 move = 0
                 
                 # clear out queue from moves sent by rouge client
@@ -154,7 +159,7 @@ class GameRunner:
 
                 log.debug('Move '+str(move)+' determined legal')
             else:
-                move = strategy[player].get_move(board, player)
+                move = strategy[player].get_move(''.join(board), player)
                 log.debug('Strategy '+names[player]+' returned move '+str(move))
             log.debug('Actually got move')
             if not self.core.is_legal(move, player, board):
@@ -178,3 +183,6 @@ class GameRunner:
                                  }
             ))
             log.debug('Sent move out to parent')
+
+        self.BLACK_STRAT.kill_remote()
+        self.WHITE_STRAT.kill_remote()
