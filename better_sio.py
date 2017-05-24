@@ -1,5 +1,5 @@
 import socketio
-import eventlet
+#import eventlet
 from multiprocessing import Process, Value, Pipe
 import os
 import sys
@@ -12,8 +12,8 @@ from othello_admin import *
 from run_on_cluster import *
 
 ailist_filename = '/web/activities/othello/static/ai_port_info.txt'
-log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
-eventlet.monkey_patch()
+log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.INFO)
+#eventlet.monkey_patch()
 
 class GameManager(socketio.Server):
     def __init__(self, *args, **kw):
