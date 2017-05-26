@@ -44,9 +44,8 @@ function RCanvas(canvasObj, rWidth, rHeight){
             (doc && doc.scrollTop  || body && body.scrollTop  || 0) -
             (doc && doc.clientTop  || body && body.clientTop  || 0 );
     }
-    this.mx = (event.pageX - this.canvas.getBoundingClientRect().x) / this.wFactor;
-    this.my = (event.pageY - this.canvas.getBoundingClientRect().y) / this.hFactor;
-    //console.log(this.mx+','+this.my);
+    this.mx = (event.pageX - this.canvas.getBoundingClientRect().left) / this.wFactor;
+    this.my = (event.pageY - this.canvas.getBoundingClientRect().top) / this.hFactor;
   }
   this.clickEvent = function(){;};
   this.md = false;
