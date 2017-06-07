@@ -15,8 +15,7 @@ function ajaxConfig(callback){
 };
 
 function putConfigToPage(output){
-  //output += '\nyou'
-  output = 'admin\nstrategy5_2019jduvall\nyou';
+  output += '\nyou'
   pdict = output.split('\n');
   console.log(output);
   buf = '<p>Black: <select id="ai1">';
