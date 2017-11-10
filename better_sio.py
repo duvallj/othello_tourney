@@ -10,6 +10,7 @@ import ctypes
 
 from othello_admin import *
 from run_on_cluster import *
+from run_ai import *
 
 ailist_filename = '/web/activities/othello/static/ai_port_info.txt'
 log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.INFO)
@@ -107,7 +108,7 @@ class GameManager(socketio.Server):
         log.info('All strategies read')
         
         #self.name2strat['you'] = None
-        
+        os.chdir(old_path)
         pfile = open(ailist_filename, 'w')
         pfile.write(buf[:-1])
         pfile.close()
@@ -123,16 +124,16 @@ class GameRunner:
     def set_names(self, nameA, nameB):
         self.BLACK = nameA
         self.WHITE = nameB
-        self.BLACK_STRAT = RemoteAI(nameA)
-        self.WHITE_STRAT = RemoteAI(nameB)
+        self.BLACK_STRAT = None #RemoteAI(nameA)
+        self.WHITE_STRAT = None #RemoteAI(nameB)
         log.debug('Set names to '+nameA+' '+nameB)
 
     def run_game(self, conn, timelimit):
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
         player = core.BLACK
-        self.BLACK_STRAT.make_connection(timelimit)
-        self.WHITE_STRAT.make_connection(timelimit)
+        self.BLACK_STRAT = LocalAI(self.BLACK, str(timelimit)) #.make_connection(timelimit)
+        self.WHITE_STRAT = LocalAI(self.WHITE, str(timelimit)) #.make_connection(timelimit)
         strategy = {core.BLACK: self.BLACK_STRAT, core.WHITE: self.WHITE_STRAT}
         names = {core.BLACK: self.BLACK, core.WHITE: self.WHITE}
         conn.send(('board', {'bSize':'8',
@@ -184,5 +185,5 @@ class GameRunner:
             ))
             log.debug('Sent move out to parent')
 
-        self.BLACK_STRAT.kill_remote()
-        self.WHITE_STRAT.kill_remote()
+        #self.BLACK_STRAT.kill_remote()
+        #self.WHITE_STRAT.kill_remote()
