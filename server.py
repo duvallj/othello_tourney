@@ -25,10 +25,10 @@ def serve_img(file):
     return app.send_static_file('images/'+file)
 
 if __name__=='__main__':
-    #os.environ['PORT']='10770'
+    os.environ['PORT']='10770'
     print('Listening on port '+str(os.environ['PORT']))
     gm = GameManager()
-    gm.spin_up_threads()
+    gm.write_ai()
 
     srv = socketio.Middleware(gm, app)
     eventlet.wsgi.server(eventlet.listen(('localhost', int(os.environ['PORT']))), srv)

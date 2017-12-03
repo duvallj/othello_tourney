@@ -9,12 +9,10 @@ import time
 import ctypes
 
 from othello_admin import *
-from run_on_cluster import *
 from run_ai import *
 
-ailist_filename = '/web/activities/othello/static/ai_port_info.txt'
-log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.INFO)
-#eventlet.monkey_patch()
+ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
+log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
 
 class GameManager(socketio.Server):
     def __init__(self, *args, **kw):
@@ -22,17 +20,16 @@ class GameManager(socketio.Server):
         self.games = dict()
         self.pipes = dict()
         self.procs = dict()
-        self.name2strat = dict()
+        self.possible_names = set()
         self.on('connect', self.create_game)
         self.on('prequest', self.start_game)
         self.on('disconnect', self.delete_game)
         self.on('refresh', self.refresh_game)
         self.on('movereply', self.send_move)
-                
 
     def create_game(self, sid, environ):
         log.info('Client '+sid+' connected')
-        self.games[sid] = GameRunner(self.name2strat)
+        self.games[sid] = GameRunner()
 
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
@@ -41,9 +38,9 @@ class GameManager(socketio.Server):
             timelimit = int(data['tml'])
         else:
             timelimit = 5
-        self.games[sid].set_names(data['black'], data['white'])
+        self.games[sid].post_init(data['black'], data['white'], timelimit)
         self.pipes[sid] = parent_conn
-        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn, timelimit))
+        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
         self.procs[sid].start()
         log.debug('Started game for '+sid)
 
@@ -63,15 +60,10 @@ class GameManager(socketio.Server):
         log.debug('What is: '+str(self.pipes[sid]))
         log.debug('Can poll: '+str(self.pipes[sid].poll()))
         while self.pipes[sid].poll():
-            log.debug('2')
             mtype, data = self.pipes[sid].recv()
-            log.debug('3')
-            log.debug(mtype+' '+str(data))
             if mtype == 'board':
-                log.debug('4')
                 self.emit('reply', data=data, room=sid)
             elif mtype == 'getmove':
-                log.debug('5')
                 self.emit('moverequest', data=dict(), room=sid)
 
     def send_move(self, sid, data):
@@ -84,31 +76,17 @@ class GameManager(socketio.Server):
         log.debug('Listed Student folders successfully')
         return ['private.Students.'+x+'.strategy' for x in folders if x != '__pycache__']
 
-    def spin_up_threads(self):
+    def write_ai(self):
         files = self.get_possible_files()
         buf = ''
         
-        old_path = os.getcwd()
-        old_sys = sys.path
-        
         for x in range(len(files)):
-            
             name = files[x].split('.')[2]
-            
-            path = old_path+'/private/Students/'+name
-            os.chdir(path)
-            
-            sys.path = [path] + old_sys
-            
-            #self.name2strat[name] = importlib.import_module(files[x]).Strategy().best_strategy
-            #log.debug('Imported strategy '+name)
-            
+            self.possible_names.add(name)
             buf += name +'\n'
             
         log.info('All strategies read')
         
-        #self.name2strat['you'] = None
-        os.chdir(old_path)
         pfile = open(ailist_filename, 'w')
         pfile.write(buf[:-1])
         pfile.close()
@@ -117,37 +95,38 @@ class GameManager(socketio.Server):
         log.debug('Filename: '+ailist_filename)
 
 class GameRunner:
-    def __init__(self, name2strat):
+    def __init__(self):
         self.core = Strategy()
-        self.name2strat = name2strat
 
-    def set_names(self, nameA, nameB):
-        self.BLACK = nameA
-        self.WHITE = nameB
-        self.BLACK_STRAT = None #RemoteAI(nameA)
-        self.WHITE_STRAT = None #RemoteAI(nameB)
-        log.debug('Set names to '+nameA+' '+nameB)
+    def post_init(self, nameA, nameB, timelimit):
+        self.BLACK = nameA if nameA in self.possible_names else None
+        self.WHITE = nameB if nameB in self.possible_names else None
+        self.BLACK_STRAT = LocalAI(self.BLACK, self.possible_names, timelimit)
+        self.WHITE_STRAT = LocalAI(self.WHITE, self.possible_names, timelimit)
+        log.debug('Set names to '+str(nameA)+' '+str(nameB))
 
     def run_game(self, conn, timelimit):
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
         player = core.BLACK
-        self.BLACK_STRAT = LocalAI(self.BLACK, str(timelimit)) #.make_connection(timelimit)
-        self.WHITE_STRAT = LocalAI(self.WHITE, str(timelimit)) #.make_connection(timelimit)
+        
         strategy = {core.BLACK: self.BLACK_STRAT, core.WHITE: self.WHITE_STRAT}
         names = {core.BLACK: self.BLACK, core.WHITE: self.WHITE}
-        conn.send(('board', {'bSize':'8',
-                                 'board':''.join(board),
-                                 'black':self.BLACK, 'white':self.WHITE,
-                                 'tomove':player
-                                 }
-            ))
+        conn.send((
+            'board',
+            {
+                'bSize':'8',
+                'board':''.join(board),
+                'black':self.BLACK, 'white':self.WHITE,
+                'tomove':player
+            }
+        ))
 
         forfeit = False
 
         while player is not None and not forfeit:
             log.debug('Main loop!')
-            if names[player] == 'you':
+            if names[player] is None:
                 move = 0
                 
                 # clear out queue from moves sent by rouge client
@@ -162,6 +141,7 @@ class GameRunner:
             else:
                 move = strategy[player].get_move(''.join(board), player)
                 log.debug('Strategy '+names[player]+' returned move '+str(move))
+                
             log.debug('Actually got move')
             if not self.core.is_legal(move, player, board):
                 forfeit = True
