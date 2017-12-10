@@ -11,7 +11,7 @@ from othello_admin import *
 from run_ai import *
 
 ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
-human_player_name = 'You, a Human'
+human_player_name = 'Yourself'
 log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
 
 class GameManager(socketio.Server):
@@ -56,15 +56,24 @@ class GameManager(socketio.Server):
     def refresh_game(self, sid, data):
         log.debug('sid: '+str(sid))
         log.debug('Have pipes: '+str(self.pipes))
-        log.debug('Exists: '+str(sid in self.pipes))
-        log.debug('What is: '+str(self.pipes[sid]))
-        log.debug('Can poll: '+str(self.pipes[sid].poll()))
-        while self.pipes[sid].poll():
-            mtype, data = self.pipes[sid].recv()
-            if mtype == 'board':
-                self.emit('reply', data=data, room=sid)
-            elif mtype == 'getmove':
-                self.emit('moverequest', data=dict(), room=sid)
+        exists = sid in self.pipes
+        log.debug('Exists: '+str(exists))
+        if exists:
+            log.debug('What is: '+str(self.pipes[sid]))
+            closed = self.pipes[sid].closed
+            log.debug('Closed: '+str(closed))
+            if not closed:
+                try:
+                    log.debug('Can poll: '+str(self.pipes[sid].poll()))
+                    while self.pipes[sid].poll():
+                        mtype, data = self.pipes[sid].recv()
+                        if mtype == 'board':
+                            self.emit('reply', data=data, room=sid)
+                        elif mtype == 'getmove':
+                            self.emit('moverequest', data=dict(), room=sid)
+                except BrokenPipeError:
+                    log.debug('Pipe is broken, closing...')
+                    self.pipes[sid].close()
 
     def send_move(self, sid, data):
         move = int(data['move'])
@@ -163,7 +172,7 @@ class GameRunner:
                                  'board':''.join(board),
                                  'black': self.BLACK if self.BLACK else human_player_name,
                                  'white': self.WHITE if self.WHITE else human_player_name,
-                                 'tomove':player
+                                 'tomove': player if player else core.BLACK
                                  }
             ))
             log.debug('Sent move out to parent')

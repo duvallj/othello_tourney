@@ -17,7 +17,7 @@ function ajaxConfig(callback){
 };
 
 function putConfigToPage(output){
-  output += '\nyou'
+  output += '\nYourself'
   pdict = output.split('\n');
   console.log(output);
   buf = '<p>Black: <select id="ai1">';
