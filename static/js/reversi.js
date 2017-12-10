@@ -226,11 +226,6 @@ function init(socket, delay, port1, port2, timelimit){
     }
   }
   document.addEventListener('mousemove', augmentedMouseMove);
-  document.addEventListener('mouseup', function(){rCanvas.handleMouseUp();});
-  document.addEventListener('mousedown',function(){rCanvas.handleMouseDown();});
-  document.addEventListener('touchmove', augmentedMouseMove);
-  document.addEventListener('touchend', function(){rCanvas.handleMouseUp();});
-  document.addEventListener('touchstart',function(){rCanvas.handleMouseDown();});
 
   rCanvas.resize();
   socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
@@ -239,18 +234,19 @@ function init(socket, delay, port1, port2, timelimit){
     rCanvas.white.text = data.white;
     drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board), CH2NM[data.tomove]);
   });
-  rCanvas.clickEvent = function(){
-    var olc = this.lastClicked;
+  clickHandler = function(event){
+    var olc = rCanvas.lastClicked;
     var cy = Math.floor(rCanvas.my / rCanvas.un);
     var cx = Math.floor(rCanvas.mx / rCanvas.un);
     if (cx >= 0 && cx < rCanvas.lBSize && cy >= 0 && cy < rCanvas.lBSize){
-      this.lastClicked = cy * (this.lBSize+2) + cx + 3 + this.lBSize;
+      rCanvas.lastClicked = cy * (rCanvas.lBSize+2) + cx + 3 + rCanvas.lBSize;
     }
     if (olc === -1){
       console.log('sent move '+rCanvas.lastClicked);
       socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
     }
   };
+  document.addEventListener('click', clickHandler);
 
   socket.on('moverequest', function(){
     console.log('move requested');

@@ -23,7 +23,7 @@ function RCanvas(canvasObj, rWidth, rHeight){
   };
   this.mx = 0;
   this.my = 0;
-  this.handleMouseMove = function(event) {
+  this.getMousePos = function(event) {
     // "stolen" from stackoverflow
 
     var dot, eventDoc, doc, body, pageX, pageY;
@@ -46,17 +46,6 @@ function RCanvas(canvasObj, rWidth, rHeight){
     }
     this.mx = (event.pageX - this.canvas.getBoundingClientRect().left) / this.wFactor;
     this.my = (event.pageY - this.canvas.getBoundingClientRect().top) / this.hFactor;
-  }
-  this.clickEvent = function(){;};
-  this.md = false;
-  this.handleMouseDown = function() {
-    if (!this.md){
-      this.clickEvent();
-    }
-    this.md = true;
-  }
-  this.handleMouseUp = function() {
-    this.md = false;
   }
   this.lBSize = 1;
 }
