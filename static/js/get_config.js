@@ -1,4 +1,4 @@
-LOCAL_COPY = false;
+LOCAL_COPY = true;
 
 function ajaxConfig(callback){
     var xmlhttp = new XMLHttpRequest();
@@ -39,7 +39,7 @@ function actuallyDoSocket(){
   var port2 = document.getElementById('ai2').value;
   var timelimit = document.getElementById('tml').value;
   if (LOCAL_COPY) {
-    makeSocketFromPage('localhost','10770',port1,port2,'1000',timelimit);
+    makeSocketFromPage('192.168.1.14','10770',port1,port2,'1000',timelimit);
   } else {
     makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
   }

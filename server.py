@@ -31,4 +31,4 @@ if __name__=='__main__':
     gm.write_ai()
 
     srv = socketio.Middleware(gm, app)
-    eventlet.wsgi.server(eventlet.listen(('localhost', int(os.environ['PORT']))), srv)
+    eventlet.wsgi.server(eventlet.listen(('', int(os.environ['PORT']))), srv)

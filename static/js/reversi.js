@@ -1,5 +1,5 @@
 EMPTY_NM = 0;
-WHITE_NM = 1
+WHITE_NM = 1;
 BLACK_NM = 2;
 
 EMPTY_CH = '.';
@@ -55,16 +55,14 @@ function addPieces(rCanvas, bSize, bArray, un, bd, sq) {
       
       if (toAdd !== null) {
         rCanvas.add(toAdd);
-        rCanvas.board[index] = toAdd;
       }
+      rCanvas.board[index] = bArray[index];
     }
   }
 }
 
 function countPieces(bSize, bArray) {
-  var bCount = 0;
-  var wCount = 0;
-  
+  var bCount = 0; var wCount = 0;
   for(var y=0; y<bSize; y++){
     for(var x=0; x<bSize; x++){
       var index = bSize*y+x;
@@ -103,7 +101,7 @@ function findBracket(spotx, spoty, player, board, bSize, dirx, diry) {
     x += dirx;
     y += diry;
   }
-  return inBounds(x, y, bSize) && getSpot(x, y, board, bSize) === player;
+  return {good:(inBounds(x, y, bSize) && getSpot(x, y, board, bSize) === player), bx: x, by: y};
 }
 
 function addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq) {
@@ -113,7 +111,7 @@ function addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq) {
         var badspot = true;
         for (var dy=-1; dy<2 && badspot; dy++) {
           for (var dx=-1; dx<2 && badspot; dx++) {
-            if (!(dx === 0 && dy === 0) && findBracket(x, y, tomove, bArray, bSize, dx, dy)) {
+            if (!(dx === 0 && dy === 0) && findBracket(x, y, tomove, bArray, bSize, dx, dy).good) {
               badspot = false;
             }
           }
@@ -124,6 +122,28 @@ function addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq) {
       }
     }
   }
+}
+
+function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
+  var cx = x;
+  var cy = y;
+  for (var dy=-1; dy<2; dy++) {
+    for (var dx=-1; dx<2; dx++) {
+      if (!(dx === 0 && dy === 0)) {
+        bracketObj = findBracket(x, y, tomove, bArray, bSize, dx, dy);
+        if (bracketObj.good) {
+          var cx = x;
+          var cy = y;
+          while (cx !== bracketObj.bx || cy !== bracketObj.by) {
+            bArray[cy*bSize+cx] = tomove;
+            cx += dx;
+            cy += dy;
+          }
+        }
+      }
+    }
+  }
+  return bArray;
 }
 
 function drawBoard(rCanvas, bSize, bArray, tomove){
@@ -137,12 +157,12 @@ function drawBoard(rCanvas, bSize, bArray, tomove){
   rCanvas.un = un;
 
   rCanvas.objects = [];
+  
   rCanvas.add(rCanvas.fullbg);
-
   addBorders(rCanvas, bSize, un, bd, rc);
+  
   addPieces(rCanvas, bSize, bArray, un, bd, sq);
   addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq);
-  
   rCanvas.add(rCanvas.select);
   
   rCanvas.add(rCanvas.textbg);
@@ -150,9 +170,8 @@ function drawBoard(rCanvas, bSize, bArray, tomove){
   rCanvas.add(rCanvas.white);
     
   var counts = countPieces(bSize, bArray);
-  // add code to show player scores as well
-  rCanvas.black.text = rCanvas.black.text.split(':')[0]+': '+counts[BLACK_NM].toString();
-  rCanvas.white.text = rCanvas.white.text.split(':')[0]+': '+counts[WHITE_NM].toString();
+  rCanvas.black.text = rCanvas.black_name+': '+counts[BLACK_NM].toString();
+  rCanvas.white.text = rCanvas.white_name+': '+counts[WHITE_NM].toString();
   if(tomove === BLACK_NM){
     rCanvas.black.text = '('+rCanvas.black.text+')';
   }
@@ -195,6 +214,11 @@ function init(socket, delay, port1, port2, timelimit){
 
   resize(canvas, gWidth, gHeight);
   var rCanvas = new RCanvas(canvas, gWidth, gHeight);
+  rCanvas.resize();
+  window.addEventListener('resize', function(){
+    resize(canvas, gWidth, gHeight);
+    rCanvas.resize();
+  });
 
   var gap = rCanvas.rHeight - rCanvas.rWidth;
   rCanvas.fullbg = new RRect(0, 0, rCanvas.rWidth, rCanvas.rHeight, EMPTY_CO, 1.0);
@@ -204,15 +228,19 @@ function init(socket, delay, port1, port2, timelimit){
 
   var selected = new RRect(0, 0, 1, 1, HIGHLIGHT_CO, 0.4);
   rCanvas.select = selected;
+  
+  var dBoard = [];
+  var dSize = 8;
+  for (var i=0; i<dSize*dSize; i++) {
+    dBoard[i] = 0;
+  }
 
-  drawBoard(rCanvas,13,[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-
-  window.addEventListener('resize', function(){
-    resize(canvas, gWidth, gHeight);
-    rCanvas.resize();
-  });
+  rCanvas.black_name = "Loading...";
+  rCanvas.white_name = "Loading...";
+  drawBoard(rCanvas, dSize, dBoard, BLACK_NM);
+  
   function augmentedMouseMove(event) {
-    rCanvas.handleMouseMove(event);
+    rCanvas.getMousePos(event);
     var cy = Math.floor(rCanvas.my / rCanvas.un);
     var cx = Math.floor(rCanvas.mx / rCanvas.un);
     var ox = selected.x;
@@ -227,14 +255,8 @@ function init(socket, delay, port1, port2, timelimit){
   }
   document.addEventListener('mousemove', augmentedMouseMove);
 
-  rCanvas.resize();
-  socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
-  socket.on('reply', function(data){
-    rCanvas.black.text = data.black;
-    rCanvas.white.text = data.white;
-    drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board), CH2NM[data.tomove]);
-  });
   clickHandler = function(event){
+    augmentedMouseMove(event);
     var olc = rCanvas.lastClicked;
     var cy = Math.floor(rCanvas.my / rCanvas.un);
     var cx = Math.floor(rCanvas.mx / rCanvas.un);
@@ -243,10 +265,20 @@ function init(socket, delay, port1, port2, timelimit){
     }
     if (olc === -1){
       console.log('sent move '+rCanvas.lastClicked);
+      makeFlips(cx, cy, rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
+      drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove);
       socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
     }
   };
   document.addEventListener('click', clickHandler);
+  
+  socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
+  socket.on('reply', function(data){
+    rCanvas.black_name = data.black;
+    rCanvas.white_name = data.white;
+    rCanvas.tomove = CH2NM[data.tomove];
+    drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board), CH2NM[data.tomove]);
+  });
 
   socket.on('moverequest', function(){
     console.log('move requested');
@@ -258,7 +290,7 @@ function init(socket, delay, port1, port2, timelimit){
 function makeSocketFromPage(addr, port, port1, port2, delay, timelimit){
   var socket;
   if (LOCAL_COPY) {
-    socket = io('http://localhost:'+port);
+    socket = io('http://'+addr+':'+port);
   } else {
     socket = io('https://'+addr+':'+port,{path:'/othello/socket.io/'});
   }

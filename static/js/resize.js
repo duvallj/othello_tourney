@@ -9,13 +9,15 @@ function RCanvas(canvasObj, rWidth, rHeight){
   this.draw = function(){
     for(var obj in this.objects){
       if (this.objects.hasOwnProperty(obj)){
-        this.objects[obj].draw(this.ctx,this.wFactor,this.hFactor);
+        this.objects[obj].draw(this.ctx, this.wFactor, this.hFactor);
       }
     }
   };
   this.resize = function(){
     this.wFactor = this.canvas.width / this.rWidth;
     this.hFactor = this.canvas.height / this.rHeight;
+    this.canvas.width = this.canvas.offsetWidth * window.devicePixelRatio;
+    this.canvas.height = this.canvas.offsetHeight * window.devicePixelRatio;
     this.draw();
   };
   this.add = function(obj){
