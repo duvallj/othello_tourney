@@ -229,8 +229,8 @@ function init(socket, delay, port1, port2, timelimit){
   document.addEventListener('mouseup', function(){rCanvas.handleMouseUp();});
   document.addEventListener('mousedown',function(){rCanvas.handleMouseDown();});
   document.addEventListener('touchmove', augmentedMouseMove);
-  document.addEventListener('touchstart', function(){rCanvas.handleMouseUp();});
-  document.addEventListener('touchend',function(){rCanvas.handleMouseDown();});
+  document.addEventListener('touchend', function(){rCanvas.handleMouseUp();});
+  document.addEventListener('touchstart',function(){rCanvas.handleMouseDown();});
 
   rCanvas.resize();
   socket.emit('prequest',{black:port1,white:port2,tml:timelimit});

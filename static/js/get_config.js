@@ -1,4 +1,4 @@
-LOCAL_COPY = true;
+LOCAL_COPY = false;
 
 function ajaxConfig(callback){
     var xmlhttp = new XMLHttpRequest();
