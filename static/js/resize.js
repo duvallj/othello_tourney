@@ -61,15 +61,18 @@ function RCanvas(canvasObj, rWidth, rHeight){
   this.lBSize = 1;
 }
 
-function RRect(x,y,width,height,fill){
+function RRect(x,y,width,height,fill,alpha){
   this.x = x;
   this.y = y;
   this.width = width;
   this.height = height;
   this.fill = fill;
+  this.alpha = alpha;
   this.draw = function(ctx, wFactor, hFactor){
     ctx.fillStyle = this.fill;
+    ctx.globalAlpha = this.alpha;
     ctx.fillRect(this.x*wFactor, this.y*hFactor, this.width*wFactor, this.height*hFactor);
+    ctx.globalAlpha = 1.0;
   };
 }
 

@@ -1,3 +1,5 @@
+LOCAL_COPY = true;
+
 function ajaxConfig(callback){
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
@@ -36,5 +38,9 @@ function actuallyDoSocket(){
   var port1 = document.getElementById('ai1').value;
   var port2 = document.getElementById('ai2').value;
   var timelimit = document.getElementById('tml').value;
-  makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
+  if (LOCAL_COPY) {
+    makeSocketFromPage('localhost','10770',port1,port2,'1000',timelimit);
+  } else {
+    makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
+  }
 };

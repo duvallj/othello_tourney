@@ -1,5 +1,4 @@
 import socketio
-#import eventlet
 from multiprocessing import Process, Value, Pipe
 import os
 import sys
@@ -12,6 +11,7 @@ from othello_admin import *
 from run_ai import *
 
 ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
+human_player_name = 'You, a Human'
 log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
 
 class GameManager(socketio.Server):
@@ -29,7 +29,7 @@ class GameManager(socketio.Server):
 
     def create_game(self, sid, environ):
         log.info('Client '+sid+' connected')
-        self.games[sid] = GameRunner()
+        self.games[sid] = GameRunner(self.possible_names)
 
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
@@ -38,7 +38,7 @@ class GameManager(socketio.Server):
             timelimit = int(data['tml'])
         else:
             timelimit = 5
-        self.games[sid].post_init(data['black'], data['white'], timelimit)
+        self.games[sid].post_init(data['black'].strip(), data['white'].strip(), timelimit)
         self.pipes[sid] = parent_conn
         self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
         self.procs[sid].start()
@@ -95,17 +95,18 @@ class GameManager(socketio.Server):
         log.debug('Filename: '+ailist_filename)
 
 class GameRunner:
-    def __init__(self):
+    def __init__(self, possible_names):
         self.core = Strategy()
+        self.possible_names = possible_names
 
     def post_init(self, nameA, nameB, timelimit):
         self.BLACK = nameA if nameA in self.possible_names else None
         self.WHITE = nameB if nameB in self.possible_names else None
         self.BLACK_STRAT = LocalAI(self.BLACK, self.possible_names, timelimit)
         self.WHITE_STRAT = LocalAI(self.WHITE, self.possible_names, timelimit)
-        log.debug('Set names to '+str(nameA)+' '+str(nameB))
+        log.debug('Set names to '+str(self.BLACK)+' '+str(self.WHITE))
 
-    def run_game(self, conn, timelimit):
+    def run_game(self, conn):
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
         player = core.BLACK
@@ -117,7 +118,8 @@ class GameRunner:
             {
                 'bSize':'8',
                 'board':''.join(board),
-                'black':self.BLACK, 'white':self.WHITE,
+                'black': self.BLACK if self.BLACK else human_player_name,
+                'white': self.WHITE if self.WHITE else human_player_name,
                 'tomove':player
             }
         ))
@@ -159,7 +161,8 @@ class GameRunner:
 
             conn.send(('board', {'bSize':'8',
                                  'board':''.join(board),
-                                 'black':self.BLACK, 'white':self.WHITE,
+                                 'black': self.BLACK if self.BLACK else human_player_name,
+                                 'white': self.WHITE if self.WHITE else human_player_name,
                                  'tomove':player
                                  }
             ))

@@ -1,5 +1,7 @@
 import os
 import sys
+if sys.platform == 'win32' or sys.platform == 'cygwin':
+    import ctypes
 import importlib
 from multiprocessing import Process, Value
 import time
@@ -40,9 +42,11 @@ class LocalAI:
         time.sleep(0.01)
         p.terminate()
         time.sleep(0.01)
-        #handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
-        #ctypes.windll.kernel32.TerminateProcess(handle, -1)
-        #ctypes.windll.kernel32.CloseHandle(handle)
-        if p.is_alive(): os.kill(p.pid, 9)
+        if sys.platform == 'win32' or sys.platform == 'cygwin':
+            handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
+            ctypes.windll.kernel32.TerminateProcess(handle, -1)
+            ctypes.windll.kernel32.CloseHandle(handle)
+        else:
+            if p.is_alive(): os.kill(p.pid, 9)
         move = best_shared.value
         return move
