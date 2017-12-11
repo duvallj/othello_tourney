@@ -206,17 +206,17 @@ function resize(canvas, gWidth, gHeight){
 
 function init(socket, delay, port1, port2, timelimit){
   document.getElementById('canvasContainer').innerHTML =
-    '<canvas id="canvas" width="890" height="1000"></canvas>';
+    '<canvas id="canvas"></canvas>';
 
   var canvas = document.getElementById('canvas');
-  var gWidth = canvas.width;
-  var gHeight = canvas.height;
+  var gWidth = 890;
+  var gHeight = 1000;
 
-  resize(canvas, gWidth, gHeight);
+  //resize(canvas, gWidth, gHeight);
   var rCanvas = new RCanvas(canvas, gWidth, gHeight);
   rCanvas.resize();
   window.addEventListener('resize', function(){
-    resize(canvas, gWidth, gHeight);
+    //resize(canvas, gWidth, gHeight);
     rCanvas.resize();
   });
 

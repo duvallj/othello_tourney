@@ -19,7 +19,7 @@ function ajaxConfig(callback){
 function putConfigToPage(output){
   output += '\nYourself'
   pdict = output.split('\n');
-  console.log(output);
+  //console.log(output);
   buf = '<p>Black: <select id="ai1">';
   for (var i=0; i<pdict.length; i++){
     buf += '<option value="'+pdict[i]+'">'+pdict[i]+'</option>'
@@ -39,7 +39,7 @@ function actuallyDoSocket(){
   var port2 = document.getElementById('ai2').value;
   var timelimit = document.getElementById('tml').value;
   if (LOCAL_COPY) {
-    makeSocketFromPage('192.168.1.14','10770',port1,port2,'1000',timelimit);
+    makeSocketFromPage('localhost','10770',port1,port2,'1000',timelimit);
   } else {
     makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
   }

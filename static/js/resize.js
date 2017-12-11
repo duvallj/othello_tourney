@@ -14,10 +14,12 @@ function RCanvas(canvasObj, rWidth, rHeight){
     }
   };
   this.resize = function(){
+    var nWidth = this.canvas.offsetWidth * window.devicePixelRatio;
+    var nHeight = this.canvas.offsetHeight * window.devicePixelRatio;
+    this.canvas.width = Math.min(nWidth, nHeight * this.rWidth / this.rHeight);
+    this.canvas.height = Math.min(nHeight, nWidth * this.rHeight / this.rWidth);
     this.wFactor = this.canvas.width / this.rWidth;
     this.hFactor = this.canvas.height / this.rHeight;
-    this.canvas.width = this.canvas.offsetWidth * window.devicePixelRatio;
-    this.canvas.height = this.canvas.offsetHeight * window.devicePixelRatio;
     this.draw();
   };
   this.add = function(obj){
@@ -26,28 +28,9 @@ function RCanvas(canvasObj, rWidth, rHeight){
   this.mx = 0;
   this.my = 0;
   this.getMousePos = function(event) {
-    // "stolen" from stackoverflow
-
-    var dot, eventDoc, doc, body, pageX, pageY;
-
-    event = event || window.event; // IE-ism
-
-    // If pageX/Y aren't available and clientX/Y are,
-    // calculate pageX/Y - logic taken from jQuery.
-    // (This is to support old IE)
-    if (event.pageX == null && event.clientX != null) {
-        eventDoc = (event.target && event.target.ownerDocument) || document;
-        doc = eventDoc.documentElement;
-        body = eventDoc.body;
-        event.pageX = event.clientX +
-            (doc && doc.scrollLeft || body && body.scrollLeft || 0) -
-            (doc && doc.clientLeft || body && body.clientLeft || 0);
-        event.pageY = event.clientY +
-            (doc && doc.scrollTop  || body && body.scrollTop  || 0) -
-            (doc && doc.clientTop  || body && body.clientTop  || 0 );
-    }
-    this.mx = (event.pageX - this.canvas.getBoundingClientRect().left) / this.wFactor;
-    this.my = (event.pageY - this.canvas.getBoundingClientRect().top) / this.hFactor;
+    var rect = this.canvas.getBoundingClientRect();
+    this.mx = (event.clientX - rect.left) * this.rWidth / rect.width;
+    this.my = (event.clientY - rect.top) * this.rHeight / rect.height;
   }
   this.lBSize = 1;
 }
