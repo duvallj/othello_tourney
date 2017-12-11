@@ -206,7 +206,7 @@ function resize(canvas, gWidth, gHeight){
 
 function init(socket, delay, port1, port2, timelimit){
   document.getElementById('canvasContainer').innerHTML =
-    '<canvas id="canvas"></canvas>';
+    '<canvas id="canvas" onClick=""></canvas>';
 
   var canvas = document.getElementById('canvas');
   var gWidth = 890;

@@ -65,6 +65,10 @@ div.title{
   justify-content: center;
 }
 
+canvas{
+  cursor: pointer;
+}
+
 #canvas{
   /* ratio of 100:89
    * multiplied by .95 to not touch screen edges */
