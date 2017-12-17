@@ -25,8 +25,7 @@ def serve_img(file):
     return app.send_static_file('images/'+file)
 
 if __name__=='__main__':
-    #os.environ['PORT']='10770'
-    print('Listening on port '+str(os.environ['PORT']))
+    print('Listening on port '+str(os.environ.get('PORT', 10770)))
     gm = GameManager()
     gm.write_ai()
 

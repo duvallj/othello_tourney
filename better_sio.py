@@ -5,6 +5,7 @@ import sys
 import importlib
 import logging as log
 import time
+import random
 import ctypes
 
 from othello_admin import *
@@ -14,12 +15,9 @@ ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
 human_player_name = 'Yourself'
 log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.INFO)
 
-class GameManager(socketio.Server):
+class GameManagerTemplate(socketio.Server):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self.games = dict()
-        self.pipes = dict()
-        self.procs = dict()
         self.possible_names = set()
         self.on('connect', self.create_game)
         self.on('prequest', self.start_game)
@@ -27,58 +25,11 @@ class GameManager(socketio.Server):
         self.on('refresh', self.refresh_game)
         self.on('movereply', self.send_move)
 
-    def create_game(self, sid, environ):
-        log.info('Client '+sid+' connected')
-        self.games[sid] = GameRunner(self.possible_names)
-
-    def start_game(self, sid, data):
-        log.info('Client '+sid+' requests game '+str(data))
-        parent_conn, child_conn = Pipe()
-        if data['tml'].isdigit():
-            timelimit = int(data['tml'])
-        else:
-            timelimit = 5
-        self.games[sid].post_init(data['black'].strip(), data['white'].strip(), timelimit)
-        self.pipes[sid] = parent_conn
-        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
-        self.procs[sid].start()
-        log.debug('Started game for '+sid)
-
-    def delete_game(self, sid):
-        log.info('Client '+sid+' disconnected')
-        if self.procs[sid].is_alive():
-            self.procs[sid].terminate()
-            
-        del self.procs[sid]
-        del self.pipes[sid]
-        del self.games[sid]
-
-    def refresh_game(self, sid, data):
-        log.debug('sid: '+str(sid))
-        log.debug('Have pipes: '+str(self.pipes))
-        exists = sid in self.pipes
-        log.debug('Exists: '+str(exists))
-        if exists:
-            log.debug('What is: '+str(self.pipes[sid]))
-            closed = self.pipes[sid].closed
-            log.debug('Closed: '+str(closed))
-            if not closed:
-                try:
-                    log.debug('Can poll: '+str(self.pipes[sid].poll()))
-                    while self.pipes[sid].poll():
-                        mtype, data = self.pipes[sid].recv()
-                        if mtype == 'board':
-                            self.emit('reply', data=data, room=sid)
-                        elif mtype == 'getmove':
-                            self.emit('moverequest', data=dict(), room=sid)
-                except BrokenPipeError:
-                    log.debug('Pipe is broken, closing...')
-                    self.pipes[sid].close()
-
-    def send_move(self, sid, data):
-        move = int(data['move'])
-        self.pipes[sid].send(move)
-        log.info('Recieved move '+str(move)+' from '+sid)
+    def create_game(self, sid, environ): pass
+    def start_game(self, sid, data): pass
+    def delete_game(self, sid): pass
+    def refresh_game(self, sid, data): pass
+    def send_move(self, sid, data): pass
 
     def get_possible_files(self):
         folders = os.listdir(os.getcwd()+'/private/Students')
@@ -102,6 +53,76 @@ class GameManager(socketio.Server):
         
         log.info('Wrote names to webserver file')
         log.debug('Filename: '+ailist_filename)
+
+class GameManager(GameManagerTemplate):
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.games = dict()
+        self.pipes = dict()
+        self.procs = dict()
+        
+    def create_game(self, sid, environ):
+        log.info('Client '+sid+' connected')
+        self.games[sid] = GameRunner(self.possible_names)
+
+    def start_game(self, sid, data):
+        log.info('Client '+sid+' requests game '+str(data))
+        parent_conn, child_conn = Pipe()
+        if data['tml'].isdigit():
+            timelimit = int(data['tml'])
+        else:
+            timelimit = 5
+        self.games[sid].post_init(data['black'].strip(), data['white'].strip(), timelimit)
+        self.pipes[sid] = parent_conn
+        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
+        self.procs[sid].start()
+        log.debug('Started game for '+sid)
+
+    def delete_game(self, sid):
+        log.info('Client '+sid+' disconnected')
+        try:
+            if self.procs[sid].is_alive():
+                self.procs[sid].terminate()
+            
+            del self.procs[sid]
+            del self.pipes[sid]
+        except:
+            pass
+        del self.games[sid]
+
+    def refresh_game(self, osid, data):
+        if 'watching' in data:
+            sid = data['watching']
+        else:
+            sid = osid
+        log.debug('sid: '+str(sid))
+        log.debug('Have pipes: '+str(self.pipes))
+        exists = sid in self.pipes
+        log.debug('Exists: '+str(exists))
+        if exists:
+            log.debug('What is: '+str(self.pipes[sid]))
+            closed = self.pipes[sid].closed
+            log.debug('Closed: '+str(closed))
+            if not closed:
+                try:
+                    log.debug('Can poll: '+str(self.pipes[sid].poll()))
+                    while self.pipes[sid].poll():
+                        mtype, data = self.pipes[sid].recv()
+                        if mtype == 'board':
+                            self.emit('reply', data=data, room=osid)
+                        elif mtype == 'getmove':
+                            self.emit('moverequest', data=dict(), room=osid)
+                except BrokenPipeError:
+                    log.debug('Pipe is broken, closing...')
+                    self.pipes[sid].close()
+            else:
+                log.debug('Telling client the game has ended...')
+                self.emit('gameend', data=dict(), room=osid)
+
+    def send_move(self, sid, data):
+        move = int(data['move'])
+        self.pipes[sid].send(move)
+        log.info('Recieved move '+str(move)+' from '+sid)
 
 class GameRunner:
     def __init__(self, possible_names):
