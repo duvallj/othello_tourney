@@ -12,7 +12,7 @@ from run_ai import *
 
 ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
 human_player_name = 'Yourself'
-log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
+log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.INFO)
 
 class GameManager(socketio.Server):
     def __init__(self, *args, **kw):

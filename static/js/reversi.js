@@ -127,6 +127,7 @@ function addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq) {
 function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
   var cx = x;
   var cy = y;
+  var good = false;
   for (var dy=-1; dy<2; dy++) {
     for (var dx=-1; dx<2; dx++) {
       if (!(dx === 0 && dy === 0)) {
@@ -134,6 +135,7 @@ function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
         if (bracketObj.good) {
           var cx = x;
           var cy = y;
+          good = true;
           while (cx !== bracketObj.bx || cy !== bracketObj.by) {
             bArray[cy*bSize+cx] = tomove;
             cx += dx;
@@ -143,7 +145,7 @@ function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
       }
     }
   }
-  return bArray;
+  return good;
 }
 
 function drawBoard(rCanvas, bSize, bArray, tomove){
@@ -264,10 +266,15 @@ function init(socket, delay, port1, port2, timelimit){
       rCanvas.lastClicked = cy * (rCanvas.lBSize+2) + cx + 3 + rCanvas.lBSize;
     }
     if (olc === -1){
-      console.log('sent move '+rCanvas.lastClicked);
-      makeFlips(cx, cy, rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
-      drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove);
-      socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
+      console.log('touched spot '+rCanvas.lastClicked);
+      var resultGood = makeFlips(cx, cy, rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
+      if (resultGood) {
+        drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove);
+        console.log('sending move');
+        socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
+      } else {
+        rCanvas.lastClicked = -1;
+      }
     }
   };
   document.addEventListener('click', clickHandler);
