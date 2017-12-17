@@ -1,4 +1,5 @@
 import socketio
+from socketIO_client import SocketIO, LoggingNamespace
 from multiprocessing import Process, Value, Pipe
 import os
 import sys
@@ -13,7 +14,7 @@ from run_ai import *
 
 ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
 human_player_name = 'Yourself'
-log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.INFO)
+log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
 
 class GameManagerTemplate(socketio.Server):
     def __init__(self, *args, **kw):
@@ -53,6 +54,43 @@ class GameManagerTemplate(socketio.Server):
         
         log.info('Wrote names to webserver file')
         log.debug('Filename: '+ailist_filename)
+
+
+class GameForwarder(GameManagerTemplate):
+    incoming = ['prequest', 'refresh', 'movereply']
+    outgoing = ['reply', 'moverequest', 'gameend']
+    
+    def __init__(self, host_list, *args, **kw):
+        super().__init__(*args, **kw)
+        self.host_list = host_list
+        self.sessions = dict()
+        for mtype in self.incoming:
+            self.create_forward_in(mtype)
+
+    def create_forward_in(self, mtype):
+        def forward_in(sid, data):
+            sess = self.sessions.get(sid, None)
+            if sess is not None:
+                sess.emit(mtype, data)
+            else:
+                log.warn("SID {} does not exist!".format(sid))
+        self.on(mtype, forward_in)
+
+    def forward_out(self, mtype, sid):
+        def inner_forward_out(nsid, data):
+            self.emit(mtype, data=data, room=nsid)
+        self.sessions[sid].on(mtype, forward_out)
+
+    def create_game(self, sid, environ):
+        target_host, target_port = random.choice(self.host_list)
+        self.sessions[sid] = SocketIO(target_host, target_port, LoggingNamespace)
+        for mtype in self.outgoing:
+            self.create_forward_out(mtype, sid)
+            
+    def delete_game(self, sid):
+        if sid in self.sessions:
+            self.sessions[sid].disconnect()
+            del self.sessions[sid]
 
 class GameManager(GameManagerTemplate):
     def __init__(self, *args, **kw):
