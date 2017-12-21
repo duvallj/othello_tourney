@@ -1,6 +1,7 @@
 import socketio
 from socketIO_client import SocketIO, LoggingNamespace
 from multiprocessing import Process, Value, Pipe
+import eventlet
 import os
 import sys
 import importlib
@@ -64,33 +65,38 @@ class GameForwarder(GameManagerTemplate):
         super().__init__(*args, **kw)
         self.host_list = host_list
         self.sessions = dict()
+        self.sprocs = dict()
+        self.spipes = dict()
         for mtype in self.incoming:
             self.create_forward_in(mtype)
 
     def create_forward_in(self, mtype):
-        def forward_in(sid, data):
+        def inner_forward_in(sid, data):
             sess = self.sessions.get(sid, None)
             if sess is not None:
                 sess.emit(mtype, data)
             else:
                 log.warn("SID {} does not exist!".format(sid))
-        self.on(mtype, forward_in)
+        self.on(mtype, inner_forward_in)
 
-    def forward_out(self, mtype, sid):
-        def inner_forward_out(nsid, data):
-            self.emit(mtype, data=data, room=nsid)
-        self.sessions[sid].on(mtype, forward_out)
+    def create_forward_out(self, mtype, sid):
+        def inner_forward_out(data):
+            self.emit(mtype, data=data, room=sid)
+        self.sessions[sid].on(mtype, inner_forward_out)
 
     def create_game(self, sid, environ):
         target_host, target_port = random.choice(self.host_list)
         self.sessions[sid] = SocketIO(target_host, target_port, LoggingNamespace)
         for mtype in self.outgoing:
             self.create_forward_out(mtype, sid)
+        self.sprocs[sid] = eventlet.spawn(self.sessions[sid].wait)
             
     def delete_game(self, sid):
         if sid in self.sessions:
+            self.sprocs[sid].kill()
             self.sessions[sid].disconnect()
             del self.sessions[sid]
+            del self.sprocs[sid]
 
 class GameManager(GameManagerTemplate):
     def __init__(self, *args, **kw):
