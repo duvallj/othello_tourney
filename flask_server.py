@@ -3,6 +3,7 @@
 import socketio
 import eventlet
 import os
+import socket
 from flask import Flask
 import argparse
 
@@ -39,11 +40,12 @@ def serve_img(file):
 if __name__=='__main__':
     print('Listening on port '+str(args.port))
     if args.remotes:
-        gm = GameForwarder(list(map(lambda x:tuple(x.split(":")), args.remotes)))
+        gm = GameForwarder(list(map(lambda x:tuple(x.split("=")), args.remotes)))
     else:
         gm = GameManager()
     gm.write_ai()
 
     srv = socketio.Middleware(gm, app)
-    target = 'localhost' if args.local else ''
-    eventlet.wsgi.server(eventlet.listen((target, args.port)), srv)
+    target = 'localhost' if args.local else '::'
+    addr = socket.getaddrinfo(target, args.port)
+    eventlet.wsgi.server(eventlet.listen(addr[0][4], addr[0][0]), srv)
