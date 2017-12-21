@@ -15,6 +15,7 @@ parser.add_argument('--port', type=int, default=10770,
                     help='Port to listen on')
 parser.add_argument('--remotes', type=str, nargs='*',
                     help='List of remote hosts to forward to')
+parser.add_argument('--local', help='Listen only on localhost?')
 
 args = parser.parse_args()
 app = Flask(__name__)
@@ -44,4 +45,5 @@ if __name__=='__main__':
     gm.write_ai()
 
     srv = socketio.Middleware(gm, app)
-    eventlet.wsgi.server(eventlet.listen(('localhost', args.port)), srv)
+    target = 'localhost' if args.local else ''
+    eventlet.wsgi.server(eventlet.listen((target, args.port)), srv)
