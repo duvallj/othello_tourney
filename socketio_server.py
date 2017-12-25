@@ -11,11 +11,12 @@ import random
 import ctypes
 
 from othello_admin import *
-from run_ai import *
+from run_ai import LocalAI
+from run_ai_remote import RemoteAI
 
 ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
 human_player_name = 'Yourself'
-log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.INFO)
+log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
 
 class GameManagerTemplate(socketio.Server):
     def __init__(self, *args, **kw):
@@ -26,6 +27,7 @@ class GameManagerTemplate(socketio.Server):
         self.on('disconnect', self.delete_game)
         self.on('refresh', self.refresh_game)
         self.on('movereply', self.send_move)
+        self.write_ai()
 
     def create_game(self, sid, environ): pass
     def start_game(self, sid, data): pass
@@ -74,6 +76,7 @@ class GameForwarder(GameManagerTemplate):
         def inner_forward_in(sid, data):
             sess = self.sessions.get(sid, None)
             if sess is not None:
+                log.debug("Callback forwarding in {} to {}".format(mtype, sid))
                 sess.emit(mtype, data)
             else:
                 log.warn("SID {} does not exist!".format(sid))
@@ -81,6 +84,7 @@ class GameForwarder(GameManagerTemplate):
 
     def create_forward_out(self, mtype, sid):
         def inner_forward_out(data):
+            log.debug("Callback forwarding out {} to {}".format(mtype, sid))
             self.emit(mtype, data=data, room=sid)
         self.sessions[sid].on(mtype, inner_forward_out)
 
@@ -99,22 +103,23 @@ class GameForwarder(GameManagerTemplate):
             del self.sprocs[sid]
 
 class GameManager(GameManagerTemplate):
-    def __init__(self, *args, **kw):
+    def __init__(self, *args, remotes=None, **kw):
         super().__init__(*args, **kw)
         self.games = dict()
         self.pipes = dict()
         self.procs = dict()
+        self.remotes = remotes
         
     def create_game(self, sid, environ):
         log.info('Client '+sid+' connected')
-        self.games[sid] = GameRunner(self.possible_names)
+        self.games[sid] = GameRunner(self.possible_names, self.remotes)
 
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
         parent_conn, child_conn = Pipe()
-        if data['tml'].isdigit():
-            timelimit = int(data['tml'])
-        else:
+        try:
+            timelimit = float(data['tml'])
+        except ValueError:
             timelimit = 5
         self.games[sid].post_init(data['black'].strip(), data['white'].strip(), timelimit)
         self.pipes[sid] = parent_conn
@@ -169,15 +174,23 @@ class GameManager(GameManagerTemplate):
         log.info('Recieved move '+str(move)+' from '+sid)
 
 class GameRunner:
-    def __init__(self, possible_names):
+    def __init__(self, possible_names, remotes=None):
         self.core = Strategy()
         self.possible_names = possible_names
+        self.remotes = remotes
+        if self.remotes:
+            self.AI = RemoteAI
+        else:
+            self.AI = LocalAI
+        self.timelimit = 5
+        
 
     def post_init(self, nameA, nameB, timelimit):
         self.BLACK = nameA if nameA in self.possible_names else None
         self.WHITE = nameB if nameB in self.possible_names else None
-        self.BLACK_STRAT = LocalAI(self.BLACK, self.possible_names, timelimit)
-        self.WHITE_STRAT = LocalAI(self.WHITE, self.possible_names, timelimit)
+        self.BLACK_STRAT = self.AI(self.BLACK, self.possible_names, self.remotes)
+        self.WHITE_STRAT = self.AI(self.WHITE, self.possible_names, self.remotes)
+        self.timelimit = timelimit
         log.debug('Set names to '+str(self.BLACK)+' '+str(self.WHITE))
 
     def run_game(self, conn):
@@ -187,13 +200,17 @@ class GameRunner:
         
         strategy = {core.BLACK: self.BLACK_STRAT, core.WHITE: self.WHITE_STRAT}
         names = {core.BLACK: self.BLACK, core.WHITE: self.WHITE}
+        name_strings = {
+            core.BLACK: self.BLACK if self.BLACK else human_player_name,
+            core.WHITE: self.WHITE if self.WHITE else human_player_name
+        }
         conn.send((
             'board',
             {
                 'bSize':'8',
                 'board':''.join(board),
-                'black': self.BLACK if self.BLACK else human_player_name,
-                'white': self.WHITE if self.WHITE else human_player_name,
+                'black': name_strings[core.BLACK],
+                'white': name_strings[core.WHITE],
                 'tomove':player
             }
         ))
@@ -215,7 +232,7 @@ class GameRunner:
 
                 log.debug('Move '+str(move)+' determined legal')
             else:
-                move = strategy[player].get_move(''.join(board), player)
+                move = strategy[player].get_move(''.join(board), player, self.timelimit)
                 log.debug('Strategy '+names[player]+' returned move '+str(move))
                 
             log.debug('Actually got move')
@@ -231,16 +248,13 @@ class GameRunner:
             player = self.core.next_player(board, player)
             black_score = self.core.score(core.BLACK, board)
 
-            log.debug(self.core.print_board(board))
+            log.debug("\n" + self.core.print_board(board))
 
             conn.send(('board', {'bSize':'8',
                                  'board':''.join(board),
-                                 'black': self.BLACK if self.BLACK else human_player_name,
-                                 'white': self.WHITE if self.WHITE else human_player_name,
+                                 'black': name_strings[core.BLACK],
+                                 'white': name_strings[core.WHITE],
                                  'tomove': player if player else core.BLACK
                                  }
             ))
             log.debug('Sent move out to parent')
-
-        #self.BLACK_STRAT.kill_remote()
-        #self.WHITE_STRAT.kill_remote()

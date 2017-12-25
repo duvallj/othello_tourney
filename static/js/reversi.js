@@ -297,6 +297,8 @@ function init(socket, delay, port1, port2, timelimit){
     window.clearInterval(refreshInterval);
     document.removeEventListener('click', clickHandler);
     socket.disconnect();
+    //Add something to signify that the game is over
+    rCanvas.draw();
   });
 }
 

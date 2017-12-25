@@ -8,15 +8,20 @@ from flask import Flask
 import argparse
 
 from socketio_server import *
+from run_ai_remote import LocalAIServer
 
 eventlet.monkey_patch()
 
 parser = argparse.ArgumentParser(description='Run the othello server, either on the vm part or the web part.')
 parser.add_argument('--port', type=int, default=10770,
                     help='Port to listen on')
+parser.add_argument('--hostname', type=str, default='127.0.0.1',
+                    help='Hostname to listen on')
 parser.add_argument('--remotes', type=str, nargs='*',
                     help='List of remote hosts to forward to')
-parser.add_argument('--local', help='Listen only on localhost?')
+parser.add_argument('--serve_ai_only', action='store_true',
+                    help='If no remotes provided, tells whether or not this should include the web interface as well.')
+
 
 args = parser.parse_args()
 app = Flask(__name__)
@@ -38,14 +43,20 @@ def serve_img(file):
     return app.send_static_file('images/'+file)
 
 if __name__=='__main__':
-    print('Listening on port '+str(args.port))
+    addr = socket.getaddrinfo(args.hostname, args.port)
+    host, family = addr[0][4], addr[0][0]
+    print('Listening on {} {}'.format(host, family))
+    
     if args.remotes:
-        gm = GameForwarder(list(map(lambda x:tuple(x.split("=")), args.remotes)))
+        args.remotes = list(map(lambda x:tuple(x.split("=")), args.remotes))
+        #gm = GameForwarder(args.remotes)
+        gm = GameManager(remotes=args.remotes)
     else:
-        gm = GameManager()
-    gm.write_ai()
+        gm = GameManager(remotes=None)
 
-    srv = socketio.Middleware(gm, app)
-    target = 'localhost' if args.local else '::'
-    addr = socket.getaddrinfo(target, args.port)
-    eventlet.wsgi.server(eventlet.listen(addr[0][4], addr[0][0]), srv)
+    if args.serve_ai_only:
+        srv = LocalAIServer(gm.possible_names)
+        srv.run(host, family)
+    else:
+        srv = socketio.Middleware(gm, app)
+        eventlet.wsgi.server(eventlet.listen(host, family), srv)
