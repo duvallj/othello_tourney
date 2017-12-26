@@ -9,7 +9,7 @@ import socket
 
 from othello_admin import *
 
-sys.path = [sys.path[0]]+sys.path
+ORIGINAL_SYS = sys.path[:]
 
 class AIBase:
     def __init__(self, name, possible_names, extra=None):
@@ -22,12 +22,13 @@ class AIBase:
 
 def get_strat(name):
     old_path = os.getcwd()
-    old_sys = sys.path[1:]
 
     path = old_path + '/private/Students/'+name
+    new_path = path
     os.chdir(path)
 
-    sys.path = [os.getcwd()] + old_sys
+    sys.path = [os.getcwd()] + ORIGINAL_SYS
+    new_sys = sys.path[:]
     
     strat = importlib.import_module('private.Students.'+name+'.strategy').\
             Strategy().best_strategy
@@ -35,16 +36,24 @@ def get_strat(name):
     os.chdir(old_path)
     #sys.path = old_sys
 
-    return strat
+    return strat, new_path, new_sys
 
 class LocalAI(AIBase):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self.strat = self.extra
+        self.strat = None
+        self.new_path = self.old_path = os.getcwd()
+        self.new_sys = self.old_sys = ORIGINAL_SYS
+        if self.name in self.possible_names:
+            self.strat, self.new_path, self.new_sys = get_strat(self.name)
 
-        if self.strat is None and self.name in self.possible_names:
-            self.strat = get_strat(self.name)
-            
+    def strat_wrapper(self, board, player, best_shared, running):
+        os.chdir(self.new_path)
+        sys.path = self.new_sys
+        move = self.strat(board, player, best_shared, running)
+        os.chdir(self.old_path)
+        sys.path = self.old_sys
+        return move
 
     def get_move(self, board, player, timelimit):
         best_shared = Value("i", -1)
@@ -52,7 +61,7 @@ class LocalAI(AIBase):
 
         running = Value("i", 1)
 
-        p = Process(target=self.strat, args=(list(board), player, best_shared, running))
+        p = Process(target=self.strat_wrapper, args=(list(board), player, best_shared, running))
         p.start()
 
         t1 = time.time()

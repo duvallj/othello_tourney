@@ -11,6 +11,7 @@ import random
 import ctypes
 
 from othello_admin import *
+import Othello_Core as oc
 from run_ai import LocalAI
 from run_ai_remote import RemoteAI
 
@@ -159,14 +160,16 @@ class GameManager(GameManagerTemplate):
                         mtype, data = self.pipes[sid].recv()
                         if mtype == 'board':
                             self.emit('reply', data=data, room=osid)
-                        elif mtype == 'getmove':
+                        elif mtype == 'getmove' and sid == osid:
                             self.emit('moverequest', data=dict(), room=osid)
+                        elif mtype == 'gameend':
+                            self.emit('gameend', data=data, room=osid)
                 except BrokenPipeError:
                     log.debug('Pipe is broken, closing...')
                     self.pipes[sid].close()
             else:
                 log.debug('Telling client the game has ended...')
-                self.emit('gameend', data=dict(), room=osid)
+                self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':False}, room=osid)
 
     def send_move(self, sid, data):
         move = int(data['move'])
@@ -196,26 +199,27 @@ class GameRunner:
     def run_game(self, conn):
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
-        player = core.BLACK
+        player = oc.BLACK
         
-        strategy = {core.BLACK: self.BLACK_STRAT, core.WHITE: self.WHITE_STRAT}
-        names = {core.BLACK: self.BLACK, core.WHITE: self.WHITE}
+        strategy = {oc.BLACK: self.BLACK_STRAT, oc.WHITE: self.WHITE_STRAT}
+        names = {oc.BLACK: self.BLACK, oc.WHITE: self.WHITE}
         name_strings = {
-            core.BLACK: self.BLACK if self.BLACK else human_player_name,
-            core.WHITE: self.WHITE if self.WHITE else human_player_name
+            oc.BLACK: self.BLACK if self.BLACK else human_player_name,
+            oc.WHITE: self.WHITE if self.WHITE else human_player_name
         }
         conn.send((
             'board',
             {
                 'bSize':'8',
                 'board':''.join(board),
-                'black': name_strings[core.BLACK],
-                'white': name_strings[core.WHITE],
+                'black': name_strings[oc.BLACK],
+                'white': name_strings[oc.WHITE],
                 'tomove':player
             }
         ))
 
         forfeit = False
+        black_score = 0
 
         while player is not None and not forfeit:
             log.debug('Main loop!')
@@ -246,15 +250,24 @@ class GameRunner:
 
             board = self.core.make_move(move, player, board)
             player = self.core.next_player(board, player)
-            black_score = self.core.score(core.BLACK, board)
+            black_score = self.core.score(oc.BLACK, board)
 
             log.debug("\n" + self.core.print_board(board))
 
             conn.send(('board', {'bSize':'8',
                                  'board':''.join(board),
-                                 'black': name_strings[core.BLACK],
-                                 'white': name_strings[core.WHITE],
-                                 'tomove': player if player else core.BLACK
+                                 'black': name_strings[oc.BLACK],
+                                 'white': name_strings[oc.WHITE],
+                                 'tomove': player if player else oc.BLACK
                                  }
             ))
             log.debug('Sent move out to parent')
+
+        winner = (oc.WHITE, oc.EMPTY, oc.BLACK)[(black_score>0)-(black_score<0)+1]
+        conn.send((
+            'gameend',
+            {
+                'winner': winner,
+                'forfeit': forfeit
+            }
+        ))
