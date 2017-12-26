@@ -7,11 +7,11 @@ from run_ai import AIBase, LocalAI
 import Othello_Core as oc
 
 class LocalAIServer:
-    def __init__(self, possible_names):
+    def __init__(self, possible_names, AI_class=LocalAI):
         self.strats = dict()
         self.possible_names = possible_names
         for name in possible_names:
-            self.strats[name] = LocalAI(name, possible_names)
+            self.strats[name] = AI_class(name, possible_names)
         
         self.should_continue = True
 
