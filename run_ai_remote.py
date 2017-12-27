@@ -15,15 +15,19 @@ class LocalAIServer:
         
         self.should_continue = True
 
-    def handle(self, client, sock):
+    def handle(self, client_in, client_out, sock):
         #####
         # Example: b"duv\n5\n@\n?????..??o@?????\n"
         #####
         
-        name = client.readline().strip()
-        timelimit = client.readline().strip()
-        player = client.readline().strip()
-        board = client.readline().strip()
+        name = client_in.readline().strip()
+        if name not in self.possible_names:
+            log.debug("Data not ok")
+            client_out.writeline("-1"+"\n")
+            return
+        timelimit = client_in.readline().strip()
+        player = client_in.readline().strip()
+        board = client_in.readline().strip()
         log.debug("Got data {} {} {} {}".format(name, timelimit, player, board))
 
         eventlet.sleep(0)
@@ -38,12 +42,16 @@ class LocalAIServer:
             log.debug("Data is ok")
             move = self.strats[name].get_move(board, player, timelimit)
             log.debug("Got move {}".format(move))
-            client.write(str(move)+"\n")
+            client_out.write(str(move)+"\n")
         else:
             log.debug("Data not ok")
-            client.writeline("-1"+"\n")
-        
-        client.close()
+            client_out.writeline("-1"+"\n")
+
+        self.cleanup(client_in, client_out, sock)
+
+    def cleanup(self, client_in, client_out, sock):
+        client_in.close()
+        client_out.close()
         sock.close()
 
     def run(self, host, family):
@@ -53,7 +61,7 @@ class LocalAIServer:
             client, address = server.accept()
             
             log.info("Accepted {}".format(address))
-            pool.spawn_n(self.handle, client.makefile('rw'), client)
+            pool.spawn_n(self.handle, client.makefile('r'), client.makefile('w'), client)
         
 
 class RemoteAI(AIBase):

@@ -1,18 +1,23 @@
 import os
 import sys
 import subprocess
-import argparse
 
 from run_ai import AIBase, LocalAI
+from run_ai_remote import LocalAIServer
 
-parser = argparse.ArgumentParser(description="Run an AI inside a jail, communicating only in stdin and stdout.")
-parser.add_argument('--jail_begin', type=str, default="",
-                    help="Command to run a process jailed.")
-parser.add_argument('ai', type=str,
-                    help="Name of AI to run jailed")
+# Turns out we don't really need this...
+# Having separate VM or LXC servers handling the
+# requests w/ the things in run_ai_remote is enough.
 
-class LocalAIWrapper:
-    pass
+class JailedAIServer(LocalAIServer):
+    def __init__(self, possible_names, AI_class=LocalAI):
+        super().__init__(possible_names, AI_class)
+
+    def cleanup(self, client_in, client_out, sock):
+        pass
+
+    def run(self):
+        self.handle(sys.stdin, sys.stdout, None)
 
 class JailedAI(AIBase):
     def __init__(self, *args, jail_begin='', **kw):
@@ -25,5 +30,12 @@ class JailedAI(AIBase):
         # b"duv\n5\n@\n?????..??o@?????\n"
         #####
         data = self.name+"\n"+str(timelimit)+"\n"player+"\n"+board+"\n"
+
+        # Open subprocess
+        # Send data to subprocess
+        # Get data from subprocess
+
+if __name__=="__main__":
+    JailedAIServer().run()
         
         
