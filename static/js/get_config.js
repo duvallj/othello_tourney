@@ -1,4 +1,4 @@
-LOCAL_COPY = false;
+LOCAL_COPY = true;
 
 function ajaxConfig(callback){
     var xmlhttp = new XMLHttpRequest();
@@ -12,7 +12,7 @@ function ajaxConfig(callback){
             }
         }
     };
-    xmlhttp.open("GET", "./ai_port_info.txt", true);
+    xmlhttp.open("GET", "./static/ai_port_info.txt", true);
     xmlhttp.send();
 };
 

@@ -5,6 +5,7 @@ BLACK_NM = 2;
 EMPTY_CH = '.';
 WHITE_CH = 'o';
 BLACK_CH = '@';
+OUTER_CH = '?';
 
 EMPTY_CO = '#117711';
 WHITE_CO = '#ffffff';
@@ -15,9 +16,9 @@ HIGHLIGHT_CO = '#fff700';
 GOODMOVE_CO  = '#33ccff';
 
 WHITE_IMG = new Image();
-WHITE_IMG.src = './images/white.png';
+WHITE_IMG.src = './static/images/white.png';
 BLACK_IMG = new Image();
-BLACK_IMG.src = './images/black.png';
+BLACK_IMG.src = './static/images/black.png';
 
 CH2NM = {};
 CH2NM[EMPTY_CH] = EMPTY_NM;
@@ -291,7 +292,43 @@ function init(socket, delay, port1, port2, timelimit){
     console.log('move requested');
     rCanvas.lastClicked = -1;
   });
-  window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
+  var refreshInterval = window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
+  
+  socket.on('gameend', function(data){
+    //Clean up tasks, end socket
+    window.clearInterval(refreshInterval);
+    document.removeEventListener('click', clickHandler);
+    socket.disconnect();
+    // Handle winner conditions
+    var black_text = "";
+    var white_text = "";
+    if (data.winner === BLACK_CH) {
+      black_text = "[Winner]\n" + black_text;
+      if (data.forfeit) {
+        white_text = "[Errored]\n" + white_text;
+      }
+    } else if (data.winner === WHITE_CH) {
+      white_text = "[Winner]\n" + white_text;
+      if (data.forfeit) {
+        black_text = "[Errored]\n" + black_text;
+      }
+    } else if (data.winner === EMPTY_CH) {
+      black_text = "[Tie]\n" + black_text;
+      white_text = "[Tie]\n" + white_text;
+    } else {
+      black_text = "[Server error]\n" + black_text;
+      white_text = "[Server error]\n" + white_text;
+    }
+    //Add text signifying that the game is over
+    rCanvas.black.y = rCanvas.rHeight - gap*1/5;
+    rCanvas.black.size = gap*3/10;
+    rCanvas.white.y = rCanvas.rHeight - gap*1/5;
+    rCanvas.white.size = gap*3/10;
+    drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
+    rCanvas.add(new RText(0,rCanvas.rHeight-gap*3/5,black_text,gap*3/10,'Roboto Mono',BLACK_CO));
+    rCanvas.add(new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*3/5,white_text,gap*3/10,'Roboto Mono',WHITE_CO));
+    rCanvas.draw();
+  });
 }
 
 function makeSocketFromPage(addr, port, port1, port2, delay, timelimit){

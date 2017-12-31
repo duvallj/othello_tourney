@@ -4,8 +4,8 @@ import time
 inf = float('inf')
 from multiprocessing import Process, Value
 
-import my_core as my_core
 import Othello_Core as oc
+import my_core
 
 sq = oc.OthelloCore().squares()
 
@@ -28,6 +28,7 @@ def write_matrix(matrix, filename):
 # tDict = loadMatrix('C:/Users/Me/Documents/AI/othello/lookupdict.pkl')
 class Strategy(my_core.MyCore):
     def __init__(self):
+        super().__init__()
         self.tMatrix = load_matrix('./nmatrix.pkl')
         self.players = oc.BLACK+oc.WHITE
 
