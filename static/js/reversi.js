@@ -16,9 +16,9 @@ HIGHLIGHT_CO = '#fff700';
 GOODMOVE_CO  = '#33ccff';
 
 WHITE_IMG = new Image();
-WHITE_IMG.src = './images/white.png';
+WHITE_IMG.src = './static/images/white.png';
 BLACK_IMG = new Image();
-BLACK_IMG.src = './images/black.png';
+BLACK_IMG.src = './static/images/black.png';
 
 CH2NM = {};
 CH2NM[EMPTY_CH] = EMPTY_NM;

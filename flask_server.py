@@ -4,7 +4,8 @@ import socketio
 import eventlet
 import os
 import socket
-from flask import Flask
+import flask
+from flask_login import LoginManager, login_required
 import argparse
 
 from socketio_server import *
@@ -24,23 +25,42 @@ parser.add_argument('--serve_ai_only', action='store_true',
 
 
 args = parser.parse_args()
-app = Flask(__name__)
+app = flask.Flask(__name__)
+
+#Using flask-login
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 @app.route('/')
 def index():
-    return app.send_static_file('index.html')
+    return flask.render_template('index.html')
 
-@app.route('/<string:path>')
-def serve(path):
-    return app.send_static_file(path)
+@app.route('/index')
+def index2():
+    return flask.render_template('index.html')
 
-@app.route('/js/<string:file>')
-def serve_js(file):
-    return app.send_static_file('js/'+file)
+@app.route('/about')
+def about():
+    return flask.render_template('about.html')
 
-@app.route('/images/<string:file>')
-def serve_img(file):
-    return app.send_static_file('images/'+file)
+@app.route('/play')
+def play():
+    return flask.render_template('othello.html')
+
+@app.route('/login')
+def login():
+    # Use Ion Oauth stuff
+    pass
+
+@app.route('/upload')
+@login_required
+def upload():
+    pass
+
+@app.route('/logout')
+@login_required
+def logout():
+    pass
 
 if __name__=='__main__':
     addr = socket.getaddrinfo(args.hostname, args.port)

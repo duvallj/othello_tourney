@@ -12,7 +12,7 @@ function ajaxConfig(callback){
             }
         }
     };
-    xmlhttp.open("GET", "./ai_port_info.txt", true);
+    xmlhttp.open("GET", "./static/ai_port_info.txt", true);
     xmlhttp.send();
 };
 
