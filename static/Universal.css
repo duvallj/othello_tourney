@@ -65,6 +65,19 @@ div.title{
   justify-content: center;
 }
 
+canvas{
+  cursor: pointer;
+}
+
+#canvas{
+  /* ratio of 100:89
+   * multiplied by .95 to not touch screen edges */
+  width: 95vw;
+  height: 106.74vw;
+  max-height: 95vh;
+  max-width: 84.55vh;
+}
+
 a{
   font-size: 16px;
 }

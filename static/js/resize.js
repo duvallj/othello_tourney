@@ -9,11 +9,15 @@ function RCanvas(canvasObj, rWidth, rHeight){
   this.draw = function(){
     for(var obj in this.objects){
       if (this.objects.hasOwnProperty(obj)){
-        this.objects[obj].draw(this.ctx,this.wFactor,this.hFactor);
+        this.objects[obj].draw(this.ctx, this.wFactor, this.hFactor);
       }
     }
   };
   this.resize = function(){
+    var nWidth = this.canvas.offsetWidth * window.devicePixelRatio;
+    var nHeight = this.canvas.offsetHeight * window.devicePixelRatio;
+    this.canvas.width = Math.min(nWidth, nHeight * this.rWidth / this.rHeight);
+    this.canvas.height = Math.min(nHeight, nWidth * this.rHeight / this.rWidth);
     this.wFactor = this.canvas.width / this.rWidth;
     this.hFactor = this.canvas.height / this.rHeight;
     this.draw();
@@ -23,53 +27,26 @@ function RCanvas(canvasObj, rWidth, rHeight){
   };
   this.mx = 0;
   this.my = 0;
-  this.handleMouseMove = function(event) {
-    // "stolen" from stackoverflow
-
-    var dot, eventDoc, doc, body, pageX, pageY;
-
-    event = event || window.event; // IE-ism
-
-    // If pageX/Y aren't available and clientX/Y are,
-    // calculate pageX/Y - logic taken from jQuery.
-    // (This is to support old IE)
-    if (event.pageX == null && event.clientX != null) {
-        eventDoc = (event.target && event.target.ownerDocument) || document;
-        doc = eventDoc.documentElement;
-        body = eventDoc.body;
-        event.pageX = event.clientX +
-            (doc && doc.scrollLeft || body && body.scrollLeft || 0) -
-            (doc && doc.clientLeft || body && body.clientLeft || 0);
-        event.pageY = event.clientY +
-            (doc && doc.scrollTop  || body && body.scrollTop  || 0) -
-            (doc && doc.clientTop  || body && body.clientTop  || 0 );
-    }
-    this.mx = (event.pageX - this.canvas.getBoundingClientRect().left) / this.wFactor;
-    this.my = (event.pageY - this.canvas.getBoundingClientRect().top) / this.hFactor;
-  }
-  this.clickEvent = function(){;};
-  this.md = false;
-  this.handleMouseDown = function() {
-    if (!this.md){
-      this.clickEvent();
-    }
-    this.md = true;
-  }
-  this.handleMouseUp = function() {
-    this.md = false;
+  this.getMousePos = function(event) {
+    var rect = this.canvas.getBoundingClientRect();
+    this.mx = (event.clientX - rect.left) * this.rWidth / rect.width;
+    this.my = (event.clientY - rect.top) * this.rHeight / rect.height;
   }
   this.lBSize = 1;
 }
 
-function RRect(x,y,width,height,fill){
+function RRect(x,y,width,height,fill,alpha){
   this.x = x;
   this.y = y;
   this.width = width;
   this.height = height;
   this.fill = fill;
+  this.alpha = alpha;
   this.draw = function(ctx, wFactor, hFactor){
     ctx.fillStyle = this.fill;
+    ctx.globalAlpha = this.alpha;
     ctx.fillRect(this.x*wFactor, this.y*hFactor, this.width*wFactor, this.height*hFactor);
+    ctx.globalAlpha = 1.0;
   };
 }
 

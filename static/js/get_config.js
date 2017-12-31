@@ -1,3 +1,5 @@
+LOCAL_COPY = false;
+
 function ajaxConfig(callback){
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
@@ -15,9 +17,9 @@ function ajaxConfig(callback){
 };
 
 function putConfigToPage(output){
-  output += '\nyou'
+  output += '\nYourself'
   pdict = output.split('\n');
-  console.log(output);
+  //console.log(output);
   buf = '<p>Black: <select id="ai1">';
   for (var i=0; i<pdict.length; i++){
     buf += '<option value="'+pdict[i]+'">'+pdict[i]+'</option>'
@@ -36,5 +38,9 @@ function actuallyDoSocket(){
   var port1 = document.getElementById('ai1').value;
   var port2 = document.getElementById('ai2').value;
   var timelimit = document.getElementById('tml').value;
-  makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
+  if (LOCAL_COPY) {
+    makeSocketFromPage('localhost','10770',port1,port2,'1000',timelimit);
+  } else {
+    makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
+  }
 };
