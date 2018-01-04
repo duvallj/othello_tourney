@@ -53,3 +53,6 @@ __pycache__
 
 # Don't back up venv
 venv
+
+# Don't expose oauth keys
+ion_secret.py

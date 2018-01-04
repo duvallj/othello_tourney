@@ -10,16 +10,17 @@ fi
 if [ $1 == "web" ]
 then
 	sudo apt-get install python3 python3-virtualenv python3-pip
-	pip3 install --upgrade python-socketio socketIO_client
+	pip3 install --upgrade python-socketio
 	virtualenv --python python3 venv
 	source venv/bin/activate
-	pip install eventlet flask
+	pip install --upgrade eventlet flask flask_security flask_sqlalchemy
+    pip install --upgrade https://github.com/italomaia/flask-social/archive/develop.zip
+    pip install --upgrade flask_oauthlib
 fi
 
 if [ $1 == "vm" ]
 then
 	sudo apt-get install python3 python3-pip python3-eventlet python3-flask
-	pip3 install --upgrade python-socketio socketIO_client
 fi
 
 

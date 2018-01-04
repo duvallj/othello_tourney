@@ -3,15 +3,23 @@
 import socketio
 import eventlet
 import os
+import sys
 import socket
 import flask
-from flask_login import LoginManager, login_required
+
+eventlet.monkey_patch()
+
+from flask_social import Social, SQLAlchemyConnectionDatastore
+from flask_sqlalchemy import SQLAlchemy
+from flask_security import SQLAlchemyUserDatastore, UserMixin, \
+     RoleMixin, Security, login_required
 import argparse
 
 from socketio_server import *
 from run_ai_remote import LocalAIServer
+import ion_secret
 
-eventlet.monkey_patch()
+
 
 parser = argparse.ArgumentParser(description='Run the othello server, either on the vm part or the web part.')
 parser.add_argument('--port', type=int, default=10770,
@@ -27,9 +35,48 @@ parser.add_argument('--serve_ai_only', action='store_true',
 args = parser.parse_args()
 app = flask.Flask(__name__)
 
-#Using flask-login
-login_manager = LoginManager()
-login_manager.init_app(app)
+app.config['SOCIAL_ION'] = {
+    'id': 'ion',
+    'module': 'ion_provider',
+    'consumer_key': ion_secret.ION_OAUTH_KEY,
+    'consumer_secret': ion_secret.ION_OAUTH_SECRET
+}
+
+db = SQLAlchemy(app)
+
+roles_users = db.Table('roles_users',
+        db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+        db.Column('role_id', db.Integer(), db.ForeignKey('role.id')))
+
+class Role(db.Model, RoleMixin):
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True)
+    password = db.Column(db.String(255))
+    active = db.Column(db.Boolean())
+    confirmed_at = db.Column(db.DateTime())
+    roles = db.relationship('Role', secondary=roles_users,
+                            backref=db.backref('users', lazy='dynamic'))
+    
+
+class Connection(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    provider_id = db.Column(db.String(255))
+    provider_user_id = db.Column(db.String(255))
+    access_token = db.Column(db.String(255))
+    secret = db.Column(db.String(255))
+    display_name = db.Column(db.String(255))
+    profile_url = db.Column(db.String(512))
+    image_url = db.Column(db.String(512))
+    rank = db.Column(db.Integer)
+
+security = Security(app, SQLAlchemyUserDatastore(db, User, Role))
+social = Social(app, SQLAlchemyConnectionDatastore(db, Connection))
 
 @app.route('/')
 def index():
@@ -49,13 +96,12 @@ def play():
 
 @app.route('/login')
 def login():
-    # Use Ion Oauth stuff
-    pass
+    return flask.render_template('login.html')
 
 @app.route('/upload')
 @login_required
 def upload():
-    pass
+    return flask.render_template('upload.html')
 
 @app.route('/logout')
 @login_required
