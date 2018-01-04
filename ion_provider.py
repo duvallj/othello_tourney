@@ -1,6 +1,6 @@
 # This file will provide backend/config stuff for
 # loggin in with ion + flask_social
-from requests import request
+import requests
 
 config = {
     'id': 'ion',
@@ -13,16 +13,16 @@ config = {
     'request_token_url': None,
     'access_token_method': 'POST',
     'request_token_params': {
-        'scope': 'https://ion.tjhsst.edu/api/profile'
+        'scope': 'read'
     }
 }
 
-def get_api(connection, **kwargs):
-    print('ga', connection)
+def get_api(response, **kwargs):
+    print('ga', response)
     if response:
-        profile = request(
-            'https://ion.tjhsst.edu/api/profile',
-            params={'access_token', response.get('access_token', None)}
+        profile = requests.get(
+            "http://ion.tjhsst.edu/api/profile",
+            params={'access_token': response.get('access_token', None)}
         ).json()
         return profile
     return None
@@ -31,9 +31,9 @@ def get_api(connection, **kwargs):
 def get_provider_user_id(response, **kwargs):
     print('gpui', response)
     if response:
-        profile = request(
-            'https://ion.tjhsst.edu/api/profile',
-            params={'access_token', response.get('access_token', None)}
+        profile = requests.get(
+            "http://ion.tjhsst.edu/api/profile",
+            params={'access_token': response.get('access_token', None)}
         ).json()
         return profile['id']
     return None
@@ -44,9 +44,9 @@ def get_connection_values(response, **kwargs):
 
     print('gcv', response)
 
-    profile = request(
-        'https://ion.tjhsst.edu/api/profile',
-        params={'access_token', response.get('access_token', None)}
+    profile = requests.get(
+        "http://ion.tjhsst.edu/api/profile",
+        params={'access_token': response.get('access_token', None)}
     ).json()
 
     return dict(

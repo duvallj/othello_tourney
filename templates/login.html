@@ -3,7 +3,9 @@
 {% block header %}Login{% endblock %}
 
 {% block content %}
-  <form action="{{ url_for('social.login', provider_id='ion') }}" method="POST">
-    <input type="submit" value="Login with Ion" />
-  </form>
+  <div class="centered">
+    <form action="{{ url_for('social.login', provider_id='ion') }}" method="POST">
+      <input type="submit" value="Login with Ion" />
+    </form>
+  </div>
 {% endblock %}

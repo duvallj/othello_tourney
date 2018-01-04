@@ -9,14 +9,18 @@ import flask
 
 eventlet.monkey_patch()
 
-from flask_social import Social, SQLAlchemyConnectionDatastore
+from flask_social import Social, SQLAlchemyConnectionDatastore, \
+     login_failed
+from flask_social.utils import get_connection_values_from_oauth_response
+from flask_social.views import connect_handler
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import SQLAlchemyUserDatastore, UserMixin, \
-     RoleMixin, Security, login_required
+     RoleMixin, Security, login_required, current_user, login_user
 import argparse
 
 from socketio_server import *
 from run_ai_remote import LocalAIServer
+import ion_provider
 import ion_secret
 
 
@@ -42,6 +46,11 @@ app.config['SOCIAL_ION'] = {
     'consumer_secret': ion_secret.ION_OAUTH_SECRET
 }
 
+
+app.config['DEBUG'] = True
+app.config['SECRET_KEY'] = ion_secret.FLASK_SECRET
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+
 db = SQLAlchemy(app)
 
 roles_users = db.Table('roles_users',
@@ -56,6 +65,7 @@ class Role(db.Model, RoleMixin):
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True)
+    name = db.Column(db.String(255))
     password = db.Column(db.String(255))
     active = db.Column(db.Boolean())
     confirmed_at = db.Column(db.DateTime())
@@ -94,9 +104,40 @@ def about():
 def play():
     return flask.render_template('othello.html')
 
-@app.route('/login')
+@app.route('/ion-login')
 def login():
+    if current_user.is_authenticated:
+        return flask.redirect(flask.url_for('upload'))
     return flask.render_template('login.html')
+
+security.login_manager.login_view = 'login'
+
+# Code below taken from flask-social-example
+
+@login_failed.connect_via(app)
+def on_login_failed(sender, provider, oauth_response):
+    app.logger.debug('Social Login did a thing via %s; '
+                     '&oauth_response=%s' % (provider.name, oauth_response))
+
+    # I know the above stuff says failed but they did manage to log in with their ion account
+    # The user here gets assigned a password of the oauth access token, making flask_security happy
+    # This way there is no way to log in w/o using ion, which is the intention
+    ds = security.datastore
+    user_info = ion_provider.get_api(oauth_response)
+    user = ds.find_user(email=user_info['tj_email'])
+    if user:
+        user.password = oauth_response['access_token']
+    else:
+        user = ds.create_user(email=user_info['tj_email'], \
+                              password=oauth_response['access_token'], \
+                              name=user_info['ion_username'])
+
+    ds.commit()
+    login_user(user)
+
+    return flask.redirect(flask.url_for('upload'))
+
+# End borrowed code
 
 @app.route('/upload')
 @login_required
@@ -107,6 +148,11 @@ def upload():
 @login_required
 def logout():
     pass
+
+@app.before_first_request
+def create_db():
+    db.create_all()
+    db.session.commit()
 
 if __name__=='__main__':
     addr = socket.getaddrinfo(args.hostname, args.port)

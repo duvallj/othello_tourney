@@ -13,9 +13,10 @@ then
 	pip3 install --upgrade python-socketio
 	virtualenv --python python3 venv
 	source venv/bin/activate
-	pip install --upgrade eventlet flask flask_security flask_sqlalchemy
+	pip install --upgrade flask flask_security flask_sqlalchemy
     pip install --upgrade https://github.com/italomaia/flask-social/archive/develop.zip
     pip install --upgrade flask_oauthlib
+    pip install eventlet==0.17.4
 fi
 
 if [ $1 == "vm" ]
