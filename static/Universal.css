@@ -80,14 +80,17 @@ canvas{
 
 a{
   font-size: 16px;
-}
-a:link{
   color: #a68b07;
 }
 
-a:visited{
-  color: #917a07;
+a:hover{
+  color: #fffff0;
+  background-color: #a68b07;
 }
+
+/*a:visited{
+  color: #917a07;
+}*/
 
 div.linkbar {
   background-color: #917a07;

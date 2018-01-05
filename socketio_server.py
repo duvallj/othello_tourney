@@ -52,9 +52,9 @@ class GameManagerTemplate(socketio.Server):
             
         log.info('All strategies read')
         
-        pfile = open(ailist_filename, 'w')
-        pfile.write(buf[:-1])
-        pfile.close()
+        #pfile = open(ailist_filename, 'w')
+        #pfile.write(buf[:-1])
+        #pfile.close()
         
         log.info('Wrote names to webserver file')
         log.debug('Filename: '+ailist_filename)
@@ -109,11 +109,13 @@ class GameManager(GameManagerTemplate):
         self.games = dict()
         self.pipes = dict()
         self.procs = dict()
+        self.dsent = dict()
         self.remotes = remotes
         
     def create_game(self, sid, environ):
         log.info('Client '+sid+' connected')
         self.games[sid] = GameRunner(self.possible_names, self.remotes)
+        self.dsent[sid] = (('', None), set())
 
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
@@ -139,6 +141,7 @@ class GameManager(GameManagerTemplate):
         except:
             pass
         del self.games[sid]
+        del self.dsent[sid]
 
     def refresh_game(self, osid, data):
         if 'watching' in data:
@@ -156,20 +159,35 @@ class GameManager(GameManagerTemplate):
             if not closed:
                 try:
                     log.debug('Can poll: '+str(self.pipes[sid].poll()))
+                    packet, sidset = self.dsent[sid]
+                    
+                    if osid not in sidset:
+                        self.act_on_message(sid, osid, packet)
+                        sidset.add(osid)
+                        
                     while self.pipes[sid].poll():
-                        mtype, data = self.pipes[sid].recv()
-                        if mtype == 'board':
-                            self.emit('reply', data=data, room=osid)
-                        elif mtype == 'getmove' and sid == osid:
-                            self.emit('moverequest', data=dict(), room=osid)
-                        elif mtype == 'gameend':
-                            self.emit('gameend', data=data, room=osid)
+                        packet = self.pipes[sid].recv()
+                        self.act_on_message(sid, osid, packet)
+                        # ALWAYS notify original board
+                        # We don't want any race conditions
+                        self.act_on_message(sid, sid, packet)
+                        self.dsent[sid] = (packet, {osid, sid})
+                        
                 except BrokenPipeError:
                     log.debug('Pipe is broken, closing...')
                     self.pipes[sid].close()
             else:
                 log.debug('Telling client the game has ended...')
                 self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':False}, room=osid)
+                
+    def act_on_message(self, sid, osid, packet):
+        mtype, data = packet
+        if mtype == 'board':
+            self.emit('reply', data=data, room=osid)
+        elif mtype == 'getmove' and sid == osid:
+            self.emit('moverequest', data=dict(), room=osid)
+        elif mtype == 'gameend':
+            self.emit('gameend', data=data, room=osid)
 
     def send_move(self, sid, data):
         move = int(data['move'])
@@ -186,6 +204,9 @@ class GameRunner:
         else:
             self.AI = LocalAI
         self.timelimit = 5
+        self.BLACK = None
+        self.WHITE = None
+        self.playing = False
         
 
     def post_init(self, nameA, nameB, timelimit):
@@ -194,6 +215,7 @@ class GameRunner:
         self.BLACK_STRAT = self.AI(self.BLACK, self.possible_names, self.remotes)
         self.WHITE_STRAT = self.AI(self.WHITE, self.possible_names, self.remotes)
         self.timelimit = timelimit
+        self.playing = True
         log.debug('Set names to '+str(self.BLACK)+' '+str(self.WHITE))
 
     def run_game(self, conn):

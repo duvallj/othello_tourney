@@ -1,0 +1,15 @@
+{% extends "template.html" %}
+{% block title %}Othello{% endblock %}
+{% block header %}Watch Othello{% endblock %}
+{% block content %}
+      <div id="canvasContainer" class="centered">
+        <p>
+          Loading game list...
+        </p>
+      </div>
+      <script src="./static/js/socket.io.js"></script>
+      <script src="./static/js/get_config.js"></script>
+      <script src="./static/js/get_games.js"></script>
+      <script src="./static/js/resize.js"></script>
+      <script src="./static/js/reversi.js" onload="ajaxConfig('./list/games', putGamesToPage);"></script>
+{% endblock %}

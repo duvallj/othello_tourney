@@ -1,6 +1,7 @@
-LOCAL_COPY = true;
+HOST = "localhost"; //"activities.tjhsst.edu"
+PORT = "10770"; //"443"
 
-function ajaxConfig(callback){
+function ajaxConfig(path, callback){
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
         if (xmlhttp.readyState === XMLHttpRequest.DONE ) {
@@ -12,7 +13,7 @@ function ajaxConfig(callback){
             }
         }
     };
-    xmlhttp.open("GET", "./static/ai_port_info.txt", true);
+    xmlhttp.open("GET", path, true);
     xmlhttp.send();
 };
 
@@ -38,9 +39,5 @@ function actuallyDoSocket(){
   var port1 = document.getElementById('ai1').value;
   var port2 = document.getElementById('ai2').value;
   var timelimit = document.getElementById('tml').value;
-  if (LOCAL_COPY) {
-    makeSocketFromPage('localhost','10770',port1,port2,'1000',timelimit);
-  } else {
-    makeSocketFromPage('activities.tjhsst.edu','443',port1,port2,'1000',timelimit);
-  }
+  makeSocketFromPage(HOST,PORT,port1,port2,'1000',timelimit,false);
 };

@@ -2,6 +2,9 @@
 # loggin in with ion + flask_social
 import requests
 
+#import eventlet.debug # rem
+#eventlet.debug.hub_listener_stacks(True)
+
 config = {
     'id': 'ion',
     'name': 'ion',
@@ -21,7 +24,7 @@ def get_api(response, **kwargs):
     print('ga', response)
     if response:
         profile = requests.get(
-            "http://ion.tjhsst.edu/api/profile",
+            "https://ion.tjhsst.edu/api/profile",
             params={'access_token': response.get('access_token', None)}
         ).json()
         return profile
@@ -32,7 +35,7 @@ def get_provider_user_id(response, **kwargs):
     print('gpui', response)
     if response:
         profile = requests.get(
-            "http://ion.tjhsst.edu/api/profile",
+            "https://ion.tjhsst.edu/api/profile",
             params={'access_token': response.get('access_token', None)}
         ).json()
         return profile['id']
@@ -45,7 +48,7 @@ def get_connection_values(response, **kwargs):
     print('gcv', response)
 
     profile = requests.get(
-        "http://ion.tjhsst.edu/api/profile",
+        "https://ion.tjhsst.edu/api/profile",
         params={'access_token': response.get('access_token', None)}
     ).json()
 
@@ -56,7 +59,7 @@ def get_connection_values(response, **kwargs):
         secret=None,
         display_name=profile['ion_username'],
         full_name=profile['full_name'],
-        profile_url='http://ion.tjhsst.edu/profile/%s' % profile['id'],
+        profile_url='https://ion.tjhsst.edu/profile/%s' % profile['id'],
         image_url=profile['picture'],
         email=profile['tj_email']
     )

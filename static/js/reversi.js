@@ -207,7 +207,7 @@ function resize(canvas, gWidth, gHeight){
   }
 }
 
-function init(socket, delay, port1, port2, timelimit){
+function init(socket, delay, port1, port2, timelimit, watching){
   document.getElementById('canvasContainer').innerHTML =
     '<canvas id="canvas" onClick=""></canvas>';
 
@@ -279,8 +279,7 @@ function init(socket, delay, port1, port2, timelimit){
     }
   };
   document.addEventListener('click', clickHandler);
-  
-  socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
+  if (!watching) {socket.emit('prequest',{black:port1,white:port2,tml:timelimit});}
   socket.on('reply', function(data){
     rCanvas.black_name = data.black;
     rCanvas.white_name = data.white;
@@ -292,7 +291,12 @@ function init(socket, delay, port1, port2, timelimit){
     console.log('move requested');
     rCanvas.lastClicked = -1;
   });
-  var refreshInterval = window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
+  var refreshInterval;
+  if (watching) {
+    refreshInterval = window.setInterval(function(){socket.emit('refresh',{"watching": watching});console.log('refreshed');}, delay);
+  } else {
+    refreshInterval = window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
+  }
   
   socket.on('gameend', function(data){
     //Clean up tasks, end socket
@@ -331,15 +335,15 @@ function init(socket, delay, port1, port2, timelimit){
   });
 }
 
-function makeSocketFromPage(addr, port, port1, port2, delay, timelimit){
+function makeSocketFromPage(addr, port, port1, port2, delay, timelimit, watching){
   var socket;
-  if (LOCAL_COPY) {
+  if (port !== "443") {
     socket = io('http://'+addr+':'+port);
   } else {
     socket = io('https://'+addr+':'+port,{path:'/othello/socket.io/'});
   }
   console.log('made socket');
   var delay = parseInt(delay);
-  init(socket, delay, port1, port2, timelimit);
+  init(socket, delay, port1, port2, timelimit, watching);
   console.log('finished initing socket');
 }

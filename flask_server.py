@@ -1,43 +1,22 @@
-#!/usr/bin/python3
+from functools import wraps, update_wrapper
+from datetime import datetime
 
-import socketio
-import eventlet
-import os
-import sys
-import socket
 import flask
-
-eventlet.monkey_patch()
-
 from flask_social import Social, SQLAlchemyConnectionDatastore, \
      login_failed
 from flask_social.utils import get_connection_values_from_oauth_response
 from flask_social.views import connect_handler
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import SQLAlchemyUserDatastore, UserMixin, \
-     RoleMixin, Security, login_required, current_user, login_user
-import argparse
+     RoleMixin, Security, login_required, current_user, \
+     login_user, logout_user
 
-from socketio_server import *
-from run_ai_remote import LocalAIServer
+
 import ion_provider
 import ion_secret
 
-
-
-parser = argparse.ArgumentParser(description='Run the othello server, either on the vm part or the web part.')
-parser.add_argument('--port', type=int, default=10770,
-                    help='Port to listen on')
-parser.add_argument('--hostname', type=str, default='127.0.0.1',
-                    help='Hostname to listen on')
-parser.add_argument('--remotes', type=str, nargs='*',
-                    help='List of remote hosts to forward to')
-parser.add_argument('--serve_ai_only', action='store_true',
-                    help='If no remotes provided, tells whether or not this should include the web interface as well.')
-
-
-args = parser.parse_args()
 app = flask.Flask(__name__)
+app.gm = None
 
 app.config['SOCIAL_ION'] = {
     'id': 'ion',
@@ -45,7 +24,6 @@ app.config['SOCIAL_ION'] = {
     'consumer_key': ion_secret.ION_OAUTH_KEY,
     'consumer_secret': ion_secret.ION_OAUTH_SECRET
 }
-
 
 app.config['DEBUG'] = True
 app.config['SECRET_KEY'] = ion_secret.FLASK_SECRET
@@ -103,6 +81,33 @@ def about():
 @app.route('/play')
 def play():
     return flask.render_template('othello.html')
+    
+@app.route('/watch')
+def watch():
+    return flask.render_template('watch.html')
+
+def nocache(view):
+    @wraps(view)
+    def no_cache(*args, **kwargs):
+        response = flask.make_response(view(*args, **kwargs))
+        response.headers['Last-Modified'] = datetime.now()
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
+        
+    return update_wrapper(no_cache, view)
+    
+@app.route('/list/ais')
+@nocache
+def ailist():
+    return "\n".join(app.gm.possible_names)
+    
+@app.route('/list/games')
+@nocache
+def gamelist():
+    print(app.gm.games.items())
+    return "\n".join(','.join(map(str,(sid, game.BLACK, game.WHITE, game.timelimit))) for sid, game in app.gm.games.items() if game.playing)
 
 @app.route('/ion-login')
 def login():
@@ -110,9 +115,8 @@ def login():
         return flask.redirect(flask.url_for('upload'))
     return flask.render_template('login.html')
 
+# Apparently the name of the method???
 security.login_manager.login_view = 'login'
-
-# Code below taken from flask-social-example
 
 @login_failed.connect_via(app)
 def on_login_failed(sender, provider, oauth_response):
@@ -137,8 +141,6 @@ def on_login_failed(sender, provider, oauth_response):
 
     return flask.redirect(flask.url_for('upload'))
 
-# End borrowed code
-
 @app.route('/upload')
 @login_required
 def upload():
@@ -147,28 +149,10 @@ def upload():
 @app.route('/logout')
 @login_required
 def logout():
-    pass
+    logout_user(current_user)
+    return flask.redirect(flask.url_for('/'))
 
 @app.before_first_request
 def create_db():
     db.create_all()
     db.session.commit()
-
-if __name__=='__main__':
-    addr = socket.getaddrinfo(args.hostname, args.port)
-    host, family = addr[0][4], addr[0][0]
-    print('Listening on {} {}'.format(host, family))
-    
-    if args.remotes:
-        args.remotes = list(map(lambda x:tuple(x.split("=")), args.remotes))
-        #gm = GameForwarder(args.remotes)
-        gm = GameManager(remotes=args.remotes)
-    else:
-        gm = GameManager(remotes=None)
-
-    if args.serve_ai_only:
-        srv = LocalAIServer(gm.possible_names)
-        srv.run(host, family)
-    else:
-        srv = socketio.Middleware(gm, app)
-        eventlet.wsgi.server(eventlet.listen(host, family), srv)
