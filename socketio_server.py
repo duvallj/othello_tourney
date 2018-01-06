@@ -1,6 +1,7 @@
 import socketio
 from socketIO_client import SocketIO, LoggingNamespace
 from multiprocessing import Process, Value, Pipe
+from collections import deque
 import eventlet
 import os
 import sys
@@ -10,7 +11,7 @@ import time
 import random
 import ctypes
 
-from othello_admin import *
+from othello_admin import Strategy
 import Othello_Core as oc
 from run_ai import LocalAI
 from run_ai_remote import RemoteAI
@@ -115,7 +116,7 @@ class GameManager(GameManagerTemplate):
     def create_game(self, sid, environ):
         log.info('Client '+sid+' connected')
         self.games[sid] = GameRunner(self.possible_names, self.remotes)
-        self.dsent[sid] = (('', None), set())
+        self.dsent[sid] = dict()
 
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
@@ -152,33 +153,39 @@ class GameManager(GameManagerTemplate):
         log.debug('Have pipes: '+str(self.pipes))
         exists = sid in self.pipes
         log.debug('Exists: '+str(exists))
+        
         if exists:
             log.debug('What is: '+str(self.pipes[sid]))
             closed = self.pipes[sid].closed
             log.debug('Closed: '+str(closed))
+            
+            msgq = self.dsent[sid].get(osid, None)
+            if msgq is None:
+                msgq = deque()
+                self.dsent[sid][osid] = msgq
+            
             if not closed:
                 try:
                     log.debug('Can poll: '+str(self.pipes[sid].poll()))
-                    packet, sidset = self.dsent[sid]
-                    
-                    if osid not in sidset:
-                        self.act_on_message(sid, osid, packet)
-                        sidset.add(osid)
                         
                     while self.pipes[sid].poll():
                         packet = self.pipes[sid].recv()
-                        self.act_on_message(sid, osid, packet)
-                        # ALWAYS notify original board
-                        # We don't want any race conditions
-                        self.act_on_message(sid, sid, packet)
-                        self.dsent[sid] = (packet, {osid, sid})
+                        for queue in self.dsent[sid].values():
+                            queue.append(packet)
                         
                 except BrokenPipeError:
                     log.debug('Pipe is broken, closing...')
                     self.pipes[sid].close()
-            else:
+                    
+            elif not msgq:
                 log.debug('Telling client the game has ended...')
                 self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':False}, room=osid)
+                
+            while msgq:
+                self.act_on_message(sid, osid, msgq.popleft())
+        else:
+            log.debug('Telling client the game is no longer going on...')
+            self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True}, room=osid)
                 
     def act_on_message(self, sid, osid, packet):
         mtype, data = packet
@@ -212,8 +219,6 @@ class GameRunner:
     def post_init(self, nameA, nameB, timelimit):
         self.BLACK = nameA if nameA in self.possible_names else None
         self.WHITE = nameB if nameB in self.possible_names else None
-        self.BLACK_STRAT = self.AI(self.BLACK, self.possible_names, self.remotes)
-        self.WHITE_STRAT = self.AI(self.WHITE, self.possible_names, self.remotes)
         self.timelimit = timelimit
         self.playing = True
         log.debug('Set names to '+str(self.BLACK)+' '+str(self.WHITE))
@@ -222,6 +227,9 @@ class GameRunner:
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
         player = oc.BLACK
+        
+        self.BLACK_STRAT = self.AI(self.BLACK, self.possible_names, self.remotes)
+        self.WHITE_STRAT = self.AI(self.WHITE, self.possible_names, self.remotes)
         
         strategy = {oc.BLACK: self.BLACK_STRAT, oc.WHITE: self.WHITE_STRAT}
         names = {oc.BLACK: self.BLACK, oc.WHITE: self.WHITE}

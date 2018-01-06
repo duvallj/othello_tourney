@@ -3,11 +3,11 @@ import sys
 if sys.platform == 'win32' or sys.platform == 'cygwin':
     import ctypes
 import importlib
-from multiprocessing import Process, Value
+from multiprocessing import Process, Value, set_start_method
 import time
 import socket
 
-from othello_admin import *
+from othello_admin import Strategy, shared_dir
 
 ORIGINAL_SYS = sys.path[:]
 
@@ -27,14 +27,14 @@ def get_strat(name):
     new_path = path
     os.chdir(path)
 
-    sys.path = [os.getcwd()] + ORIGINAL_SYS
+    sys.path = [os.getcwd(), shared_dir] + ORIGINAL_SYS
     new_sys = sys.path[:]
     
     strat = importlib.import_module('private.Students.'+name+'.strategy').\
             Strategy().best_strategy
 
     os.chdir(old_path)
-    #sys.path = old_sys
+    sys.path = ORIGINAL_SYS
 
     return strat, new_path, new_sys
 
@@ -60,10 +60,15 @@ class LocalAI(AIBase):
         best_shared.value = 11
 
         running = Value("i", 1)
-
+        
+        # Double wrapping for EXTRA ASSURANCE
+        os.chdir(self.new_path)
+        sys.path = self.new_sys
         p = Process(target=self.strat_wrapper, args=(list(board), player, best_shared, running))
         p.start()
-
+        os.chdir(self.old_path)
+        sys.path = self.old_sys
+        
         t1 = time.time()
 
         p.join(timelimit)

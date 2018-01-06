@@ -5,10 +5,10 @@ eventlet.monkey_patch()
 
 import socket
 import os
+import argparse
+import multiprocessing
 
 import socketio
-
-import argparse
 
 from socketio_server import *
 from run_ai_remote import LocalAIServer
@@ -26,6 +26,7 @@ parser.add_argument('--serve_ai_only', action='store_true',
 args = parser.parse_args()
 
 if __name__=='__main__':
+    multiprocessing.set_start_method('spawn')
     addr = socket.getaddrinfo(args.hostname, args.port)
     host, family = addr[0][4], addr[0][0]
     print('Listening on {} {}'.format(host, family))

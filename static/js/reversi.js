@@ -320,8 +320,13 @@ function init(socket, delay, port1, port2, timelimit, watching){
       black_text = "[Tie]\n" + black_text;
       white_text = "[Tie]\n" + white_text;
     } else {
-      black_text = "[Server error]\n" + black_text;
-      white_text = "[Server error]\n" + white_text;
+      if (data.forfeit) {
+        black_text = "[Game Over]\n" + black_text;
+        white_text = "[Game Over]\n" + white_text;
+      } else {
+        black_text = "[Server error]\n" + black_text;
+        white_text = "[Server error]\n" + white_text;
+      }
     }
     //Add text signifying that the game is over
     rCanvas.black.y = rCanvas.rHeight - gap*1/5;
