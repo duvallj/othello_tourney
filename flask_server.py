@@ -85,6 +85,10 @@ def index2():
 @app.route('/about')
 def about():
     return flask.render_template('about.html')
+    
+@app.route('/about_uploading')
+def about_uploading():
+    return flask.render_template('about_uploading.html')
 
 @app.route('/play')
 def play():

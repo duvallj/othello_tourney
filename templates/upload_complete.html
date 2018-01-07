@@ -4,5 +4,5 @@
 
 {% block content %}
   <p>{{ current_user.name }}, you have uploaded your AI successfully! </p>
-  <p>To edit your file, simply reupload or copy into and edit files in remote.tjhsst.edu:/web/activities/othello/private/Students/{{ current_user.name }}. Your code will work as if that were its base directory when importing code or reading from files.</p>
+  <p>To edit your file, simply reupload or copy into and edit files in <span class='output'>remote.tjhsst.edu:/web/activities/othello/private/Students/{{ current_user.name }}</span>. Your code will work as if that were its base directory when importing code or reading from files. For more information see <a href="./about_uploading">About Uploading</a></p>
 {% endblock %}
