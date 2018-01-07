@@ -1,0 +1,8 @@
+{% extends "template.html" %}
+{% block title %}Upload{% endblock %}
+{% block header %}Upload{% endblock %}
+
+{% block content %}
+  <p>{{ current_user.name }}, you have uploaded your AI successfully! </p>
+  <p>To edit your file, simply reupload or copy into and edit files in remote.tjhsst.edu:/web/activities/othello/private/Students/{{ current_user.name }}. Your code will work as if that were its base directory when importing code or reading from files.</p>
+{% endblock %}

@@ -4,5 +4,9 @@
 
 {% block content %}
   <p>You are logged in as {{ current_user.name }}.</p>
-  <p>There is no upload functionality currently.</p>
+  <form action="" method="post" enctype="multipart/form-data">
+    Select file to upload:
+    <input type="file" name="code" id="code">
+    <input type="submit" value="Upload File" name="submit">
+  </form>
 {% endblock %}

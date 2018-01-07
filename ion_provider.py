@@ -2,9 +2,6 @@
 # loggin in with ion + flask_social
 import requests
 
-#import eventlet.debug # rem
-#eventlet.debug.hub_listener_stacks(True)
-
 config = {
     'id': 'ion',
     'name': 'ion',

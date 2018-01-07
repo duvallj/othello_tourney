@@ -1,7 +1,13 @@
 from functools import wraps, update_wrapper
 from datetime import datetime
+import logging as log
+import os
+import sys
+if not sys.platform.startswith('win'):
+    from pwd import getpwnam
 
 import flask
+from flask import request
 from flask_social import Social, SQLAlchemyConnectionDatastore, \
      login_failed
 from flask_social.utils import get_connection_values_from_oauth_response
@@ -17,6 +23,7 @@ import ion_secret
 
 app = flask.Flask(__name__)
 app.gm = None
+app.args = None
 
 app.config['SOCIAL_ION'] = {
     'id': 'ion',
@@ -101,12 +108,14 @@ def nocache(view):
 @app.route('/list/ais')
 @nocache
 def ailist():
-    return "\n".join(app.gm.possible_names)
+    pn = sorted(app.gm.possible_names)
+    log.debug(pn)
+    return "\n".join(pn)
     
 @app.route('/list/games')
 @nocache
 def gamelist():
-    print(app.gm.games.items())
+    log.debug(app.gm.games.items())
     return "\n".join(','.join(map(str,(sid, game.BLACK, game.WHITE, game.timelimit))) for sid, game in app.gm.games.items() if game.playing)
 
 @app.route('/ion-login')
@@ -138,13 +147,39 @@ def on_login_failed(sender, provider, oauth_response):
 
     ds.commit()
     login_user(user)
-
+    log.debug("{} logged in".format(user.name))
     return flask.redirect(flask.url_for('upload'))
 
-@app.route('/upload')
+@app.route('/upload', methods=['GET', 'POST'])
 @login_required
 def upload():
-    return flask.render_template('upload.html')
+    if request.method == 'POST':
+        name = current_user.name
+        
+        fdir = os.path.join(app.args.base_folder, 'private/Students', name)
+        os.makedirs(fdir, mode=0o750, exist_ok=True)
+        if 'code' not in request.files:
+            flask.flash('You submitted without code')
+            return flask.redirect(request.url)
+        
+        f = request.files['code']
+        if f.filename == '':
+            flask.flash('You did not select a file')
+            return flask.redirect(request.url)
+            
+        fname = os.path.join(fdir, 'strategy.py')
+        f.save(fname)
+        if not sys.platform.startswith('win'):
+            # Make the files owned by the user so only they can edit them
+            #os.chown(fdir,)
+            #os.chown(fname,)
+            #os.chmod(fdir,0o750)
+            #os.chmod(fname,0o750)
+            pass
+        app.gm.write_ai()
+        return flask.render_template('upload_complete.html')
+    else:
+        return flask.render_template('upload.html')
 
 @app.route('/logout')
 @login_required

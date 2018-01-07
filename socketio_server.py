@@ -16,12 +16,11 @@ import Othello_Core as oc
 from run_ai import LocalAI
 from run_ai_remote import RemoteAI
 
-ailist_filename = os.getcwd() + '/static/ai_port_info.txt'
 human_player_name = 'Yourself'
 log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
 
 class GameManagerTemplate(socketio.Server):
-    def __init__(self, *args, **kw):
+    def __init__(self, base_folder, *args, **kw):
         super().__init__(*args, **kw)
         self.possible_names = set()
         self.on('connect', self.create_game)
@@ -29,6 +28,7 @@ class GameManagerTemplate(socketio.Server):
         self.on('disconnect', self.delete_game)
         self.on('refresh', self.refresh_game)
         self.on('movereply', self.send_move)
+        self.base_folder = base_folder
         self.write_ai()
 
     def create_game(self, sid, environ): pass
@@ -38,11 +38,14 @@ class GameManagerTemplate(socketio.Server):
     def send_move(self, sid, data): pass
 
     def get_possible_files(self):
-        folders = os.listdir(os.getcwd()+'/private/Students')
+        folders = os.listdir(os.path.join(self.base_folder, 'private/Students'))
         log.debug('Listed Student folders successfully')
-        return ['private.Students.'+x+'.strategy' for x in folders if x != '__pycache__']
+        return ['private.Students.'+x+'.strategy' for x in folders if \
+        x != '__pycache__' and \
+        os.path.isdir(os.path.join(self.base_folder, 'private/Students', x))]
 
     def write_ai(self):
+        self.possible_names = set()
         files = self.get_possible_files()
         buf = ''
         
@@ -52,13 +55,6 @@ class GameManagerTemplate(socketio.Server):
             buf += name +'\n'
             
         log.info('All strategies read')
-        
-        #pfile = open(ailist_filename, 'w')
-        #pfile.write(buf[:-1])
-        #pfile.close()
-        
-        log.info('Wrote names to webserver file')
-        log.debug('Filename: '+ailist_filename)
 
 
 class GameForwarder(GameManagerTemplate):

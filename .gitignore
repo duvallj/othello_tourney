@@ -56,3 +56,4 @@ venv
 
 # Don't expose oauth keys
 ion_secret.py
+private/Students/20*/*

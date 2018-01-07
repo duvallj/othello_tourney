@@ -22,6 +22,8 @@ parser.add_argument('--remotes', type=str, nargs='*',
                     help='List of remote hosts to forward to')
 parser.add_argument('--serve_ai_only', action='store_true',
                     help='If no remotes provided, tells whether or not this should include the web interface as well.')
+parser.add_argument('--base_folder', type=str, default=os.getcwd(),
+                    help='Base folder to serve out of. (DONT USE)')
                     
 args = parser.parse_args()
 
@@ -34,15 +36,16 @@ if __name__=='__main__':
     if args.remotes:
         args.remotes = list(map(lambda x:tuple(x.split("=")), args.remotes))
         #gm = GameForwarder(args.remotes)
-        gm = GameManager(remotes=args.remotes)
+        gm = GameManager(args.base_folder, remotes=args.remotes)
     else:
-        gm = GameManager(remotes=None)
+        gm = GameManager(args.base_folder, remotes=None)
 
     if args.serve_ai_only:
-        srv = LocalAIServer(gm.possible_names)
+        srv = LocalAIServer(gm.possible_names, args.base_folder)
         srv.run(host, family)
     else:
         from flask_server import app
         app.gm = gm
+        app.args = args
         srv = socketio.Middleware(gm, app)
         eventlet.wsgi.server(eventlet.listen(host, family), srv)
