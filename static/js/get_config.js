@@ -1,5 +1,5 @@
-HOST = "localhost"; //"activities.tjhsst.edu"
-PORT = "10770"; //"443"
+HOST = "activities.tjhsst.edu";
+PORT = "443";
 
 function ajaxConfig(path, callback){
     var xmlhttp = new XMLHttpRequest();
