@@ -161,7 +161,7 @@ def upload():
     if request.method == 'POST':
         name = current_user.name
         
-        fdir = os.path.join(app.args.base_folder, 'private/Students', name)
+        fdir = os.path.join(app.args.base_folder, 'students', name)
         os.makedirs(fdir, mode=0o750, exist_ok=True)
         if 'code' not in request.files:
             flask.flash('You submitted without code')

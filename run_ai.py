@@ -23,14 +23,14 @@ class AIBase:
 def get_strat(name):
     old_path = os.getcwd()
 
-    path = old_path + '/private/Students/'+name
+    path = os.path.join(old_path, 'students/', name)
     new_path = path
     os.chdir(path)
 
     sys.path = [os.getcwd(), shared_dir] + ORIGINAL_SYS
     new_sys = sys.path[:]
     
-    strat = importlib.import_module('private.Students.'+name+'.strategy').\
+    strat = importlib.import_module('students.'+name+'.strategy').\
             Strategy().best_strategy
 
     os.chdir(old_path)

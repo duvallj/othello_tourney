@@ -57,4 +57,4 @@ anaconda3
 
 # Don't expose oauth keys
 ion_secret.py
-private/Students/20*/*
+students/20*/*

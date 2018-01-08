@@ -38,11 +38,11 @@ class GameManagerTemplate(socketio.Server):
     def send_move(self, sid, data): pass
 
     def get_possible_files(self):
-        folders = os.listdir(os.path.join(self.base_folder, 'private/Students'))
+        folders = os.listdir(os.path.join(self.base_folder, 'students'))
         log.debug('Listed Student folders successfully')
-        return ['private.Students.'+x+'.strategy' for x in folders if \
+        return ['students.'+x+'.strategy' for x in folders if \
         x != '__pycache__' and \
-        os.path.isdir(os.path.join(self.base_folder, 'private/Students', x))]
+        os.path.isdir(os.path.join(self.base_folder, 'students', x))]
 
     def write_ai(self):
         self.possible_names = set()
@@ -50,7 +50,7 @@ class GameManagerTemplate(socketio.Server):
         buf = ''
         
         for x in range(len(files)):
-            name = files[x].split('.')[2]
+            name = files[x].split('.')[1]
             self.possible_names.add(name)
             buf += name +'\n'
             
