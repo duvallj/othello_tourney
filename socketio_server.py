@@ -169,7 +169,7 @@ class GameManager(GameManagerTemplate):
                         for queue in self.dsent[sid].values():
                             queue.append(packet)
                         
-                except BrokenPipeError:
+                except (BrokenPipeError, EOFError):
                     log.debug('Pipe is broken, closing...')
                     self.pipes[sid].close()
                     
