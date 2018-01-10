@@ -125,6 +125,7 @@ class GameManager(GameManagerTemplate):
         self.pipes[sid] = parent_conn
         self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
         self.procs[sid].start()
+        
         log.debug('Started game for '+sid)
 
     def delete_game(self, sid):
@@ -223,9 +224,29 @@ class GameRunner:
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
         player = oc.BLACK
+        black_score = 0
         
-        self.BLACK_STRAT = self.AI(self.BLACK, self.possible_names, self.remotes)
-        self.WHITE_STRAT = self.AI(self.WHITE, self.possible_names, self.remotes)
+        try:
+            self.BLACK_STRAT = self.AI(self.BLACK, self.possible_names, self.remotes)
+        except:
+            self.BLACK_STRAT = None
+            black_score -= 100
+        try:
+            self.WHITE_STRAT = self.AI(self.WHITE, self.possible_names, self.remotes)
+        except:
+            self.WHITE_STRAT = None
+            black_score += 100
+
+        if self.BLACK_STRAT is None or self.WHITE_STRAT is None:
+            winner = (oc.WHITE, oc.EMPTY, oc.BLACK)[(black_score>0)-(black_score<0)+1]
+            conn.send((
+                'gameend',
+                {
+                    'winner': winner,
+                    'forfeit': True
+                }
+            ))
+            return
         
         strategy = {oc.BLACK: self.BLACK_STRAT, oc.WHITE: self.WHITE_STRAT}
         names = {oc.BLACK: self.BLACK, oc.WHITE: self.WHITE}
@@ -268,7 +289,7 @@ class GameRunner:
             log.debug('Actually got move')
             if not self.core.is_legal(move, player, board):
                 forfeit = True
-                if player == core.BLACK:
+                if player == oc.BLACK:
                     black_score = -100
                 else:
                     black_score = 100
