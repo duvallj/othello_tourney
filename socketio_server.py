@@ -25,6 +25,7 @@ class GameManagerTemplate(socketio.Server):
         self.possible_names = set()
         self.on('connect', self.create_game)
         self.on('prequest', self.start_game)
+        self.on('wrequest', self.watch_game)
         self.on('disconnect', self.delete_game)
         self.on('refresh', self.refresh_game)
         self.on('movereply', self.send_move)
@@ -33,6 +34,7 @@ class GameManagerTemplate(socketio.Server):
 
     def create_game(self, sid, environ): pass
     def start_game(self, sid, data): pass
+    def watch_game(self, sid, data): pass
     def delete_game(self, sid): pass
     def refresh_game(self, sid, data): pass
     def send_move(self, sid, data): pass
@@ -58,7 +60,7 @@ class GameManagerTemplate(socketio.Server):
 
 
 class GameForwarder(GameManagerTemplate):
-    incoming = ['prequest', 'refresh', 'movereply']
+    incoming = ['prequest', 'wrequest', 'refresh', 'movereply']
     outgoing = ['reply', 'moverequest', 'gameend']
     
     def __init__(self, host_list, *args, **kw):
@@ -106,27 +108,39 @@ class GameManager(GameManagerTemplate):
         self.games = dict()
         self.pipes = dict()
         self.procs = dict()
-        self.dsent = dict()
+        self.bgprocs = dict()
         self.remotes = remotes
         
     def create_game(self, sid, environ):
         log.info('Client '+sid+' connected')
         self.games[sid] = GameRunner(self.possible_names, self.remotes)
-        self.dsent[sid] = dict()
 
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
-        parent_conn, child_conn = Pipe()
+        
         try:
             timelimit = float(data['tml'])
         except ValueError:
             timelimit = 5
+        
         self.games[sid].post_init(data['black'].strip(), data['white'].strip(), timelimit)
+        
+        parent_conn, child_conn = Pipe()
         self.pipes[sid] = parent_conn
+        
         self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
         self.procs[sid].start()
         
+        def _bg_refresh():
+            while True:
+                self.refresh_game(sid)
+                eventlet.sleep(0)
+        self.bgprocs[sid] = eventlet.spawn(_bg_refresh)
+        
         log.debug('Started game for '+sid)
+        
+    def watch_game(self, sid, data):
+        self.enter_room(sid, data.get('watching', sid))
 
     def delete_game(self, sid):
         log.info('Client '+sid+' disconnected')
@@ -138,14 +152,21 @@ class GameManager(GameManagerTemplate):
             del self.pipes[sid]
         except:
             pass
+        
         del self.games[sid]
-        del self.dsent[sid]
+        
+        try:
+            self.bgprocs[sid].kill()
+            del self.bgprocs[sid]
+        except:
+            pass
 
-    def refresh_game(self, osid, data):
-        if 'watching' in data:
-            sid = data['watching']
-        else:
-            sid = osid
+    def refresh_game(self, sid):
+        # no logging
+        old_debug = log.debug
+        log.debug = lambda *_: None
+        # no logging
+        
         log.debug('sid: '+str(sid))
         log.debug('Have pipes: '+str(self.pipes))
         exists = sid in self.pipes
@@ -156,10 +177,7 @@ class GameManager(GameManagerTemplate):
             closed = self.pipes[sid].closed
             log.debug('Closed: '+str(closed))
             
-            msgq = self.dsent[sid].get(osid, None)
-            if msgq is None:
-                msgq = deque()
-                self.dsent[sid][osid] = msgq
+            msgq = deque()
             
             if not closed:
                 try:
@@ -167,31 +185,28 @@ class GameManager(GameManagerTemplate):
                         
                     while self.pipes[sid].poll():
                         packet = self.pipes[sid].recv()
-                        for queue in self.dsent[sid].values():
-                            queue.append(packet)
+                        msgq.append(packet)
                         
                 except (BrokenPipeError, EOFError):
                     log.debug('Pipe is broken, closing...')
                     self.pipes[sid].close()
-                    
-            elif not msgq:
-                log.debug('Telling client the game has ended...')
-                self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':False}, room=osid)
                 
             while msgq:
-                self.act_on_message(sid, osid, msgq.popleft())
+                self.act_on_message(sid, msgq.popleft())
         else:
             log.debug('Telling client the game is no longer going on...')
             self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True}, room=osid)
+            
+        log.debug = old_debug
                 
-    def act_on_message(self, sid, osid, packet):
+    def act_on_message(self, sid, packet):
         mtype, data = packet
         if mtype == 'board':
-            self.emit('reply', data=data, room=osid)
-        elif mtype == 'getmove' and sid == osid:
-            self.emit('moverequest', data=dict(), room=osid)
+            self.emit('reply', data=data, room=sid)
+        elif mtype == 'getmove':
+            self.emit('moverequest', data=dict(), room=sid)
         elif mtype == 'gameend':
-            self.emit('gameend', data=data, room=osid)
+            self.emit('gameend', data=data, room=sid)
 
     def send_move(self, sid, data):
         move = int(data['move'])

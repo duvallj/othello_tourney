@@ -268,7 +268,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
     }
     if (olc === -1){
       console.log('touched spot '+rCanvas.lastClicked);
-      var resultGood = makeFlips(cx, cy, rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
+      var resultGood = rCanvas.board[cy*rCanvas.lBSize+cx]===EMPTY_NM && makeFlips(cx, cy, rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
       if (resultGood) {
         drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove);
         console.log('sending move');
@@ -280,6 +280,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
   };
   document.addEventListener('click', clickHandler);
   if (!watching) {socket.emit('prequest',{black:port1,white:port2,tml:timelimit});}
+  else {socket.emit('wrequest', {'watching': watching});}
   socket.on('reply', function(data){
     rCanvas.black_name = data.black;
     rCanvas.white_name = data.white;
@@ -291,16 +292,16 @@ function init(socket, delay, port1, port2, timelimit, watching){
     console.log('move requested');
     rCanvas.lastClicked = -1;
   });
-  var refreshInterval;
+  /* var refreshInterval;
   if (watching) {
     refreshInterval = window.setInterval(function(){socket.emit('refresh',{"watching": watching});console.log('refreshed');}, delay);
   } else {
     refreshInterval = window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
-  }
+  } */
   
   socket.on('gameend', function(data){
     //Clean up tasks, end socket
-    window.clearInterval(refreshInterval);
+    //window.clearInterval(refreshInterval);
     document.removeEventListener('click', clickHandler);
     socket.disconnect();
     // Handle winner conditions
