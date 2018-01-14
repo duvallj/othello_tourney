@@ -5,11 +5,11 @@
   <h3>
     File specification
   </h3>
-  <p>
+  <!--p>
     <span class='output'>Othello_Core.py</span> is the template file that all students will have access to. You can access it from you code using <span class='output'>import Othello_Core</span>. It lays out the basic constants and a class that all student submissions must inherit from, and methods that must be overwritten. 
-   </p>
+   </p!-->
    <p>
-    Students must create a file called <span class='output'>strategy.py</span> with a class called <span class='output'>Strategy</span> (optionally inheriting from <span class='output'>Othello_Core.OthelloCore</span>) and containing a method called <span class='output'>best_strategy</span> taking the arguments <span class='output'>board, player, best_move, still_running</span> in that order. <span class='output'>best_move</span> and <span class='output'>still_running</span> are <span class='output'>multiprocessing.Value</span> objects, and can be changed using <span class='output'>best_move.value=34</span> for example. <span class='output'>still_running</span> is another <span class='output'>multiprocessing.Value</span> flag turned to 0 by the server when the code is about to be killed.
+    Students must create a file called <span class='output'>strategy.py</span> with a class called <span class='output'>Strategy</span> <!--(optionally inheriting from <span class='output'>Othello_Core.OthelloCore</span>) and !--> containing a method called <span class='output'>best_strategy</span> taking the arguments <span class='output'>board, player, best_move, still_running</span> in that order. <span class='output'>best_move</span> and <span class='output'>still_running</span> are <span class='output'>multiprocessing.Value</span> objects, and can be changed using <span class='output'>best_move.value=34</span> for example. <span class='output'>still_running</span> is another <span class='output'>multiprocessing.Value</span> flag turned to 0 by the server when the code is about to be killed.
   </p>
   <p>
     The board will be a length-100 list of chars from {'?', '.', '@', 'o'}, representing an 8x8 board of blanks '.' surrounded by a border '?'. The player strings are '@' for black and 'o' for white. The move is in integer representing the index in the board list of a blank space to be claimed by the current player.
