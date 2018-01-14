@@ -133,7 +133,7 @@ class GameManager(GameManagerTemplate):
         
         def _bg_refresh():
             while True:
-                self.refresh_game(sid)
+                self.refresh_game(sid, None)
                 eventlet.sleep(0)
         self.bgprocs[sid] = eventlet.spawn(_bg_refresh)
         
@@ -161,7 +161,7 @@ class GameManager(GameManagerTemplate):
         except:
             pass
 
-    def refresh_game(self, sid):
+    def refresh_game(self, sid, data):
         # no logging
         old_debug = log.debug
         log.debug = lambda *_: None

@@ -278,8 +278,10 @@ function init(socket, delay, port1, port2, timelimit, watching){
       }
     }
   };
-  document.addEventListener('click', clickHandler);
-  if (!watching) {socket.emit('prequest',{black:port1,white:port2,tml:timelimit});}
+  if (!watching) {
+    socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
+    document.addEventListener('click', clickHandler);
+  }
   else {socket.emit('wrequest', {'watching': watching});}
   socket.on('reply', function(data){
     rCanvas.black_name = data.black;
