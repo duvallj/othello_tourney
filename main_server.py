@@ -24,6 +24,8 @@ parser.add_argument('--serve_ai_only', action='store_true',
                     help='If no remotes provided, tells whether or not this should include the web interface as well.')
 parser.add_argument('--base_folder', type=str, default=os.getcwd(),
                     help='Base folder to serve out of. (DONT USE)')
+parser.add_argument('--jail_begin', type=str, default='',
+                    help='Command to jail local AIs. "{NAME}" replaced with the name of the AI when run. If not specified, AIs are not jailed.')
                     
 args = parser.parse_args()
 
@@ -36,12 +38,12 @@ if __name__=='__main__':
     if args.remotes:
         args.remotes = list(map(lambda x:tuple(x.split("=")), args.remotes))
         #gm = GameForwarder(args.remotes)
-        gm = GameManager(args.base_folder, remotes=args.remotes)
+        gm = GameManager(args.base_folder, remotes=args.remotes, jail_begin=None)
     else:
-        gm = GameManager(args.base_folder, remotes=None)
+        gm = GameManager(args.base_folder, remotes=None, jail_begin=args.jail_begin)
 
     if args.serve_ai_only:
-        srv = LocalAIServer(gm.possible_names, args.base_folder)
+        srv = LocalAIServer(gm.possible_names, args.base_folder, args.jail_begin)
         srv.run(host, family)
     else:
         from flask_server import app

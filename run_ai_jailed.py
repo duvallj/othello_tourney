@@ -1,20 +1,68 @@
-import os
-import sys
-import subprocess
+import os, sys
+import logging as log
+import io
+import shlex, subprocess
+from multiprocessing import Event
+import eventlet
 
 from run_ai import AIBase, LocalAI
-from run_ai_remote import LocalAIServer
+import Othello_Core as oc
 
-# Turns out we don't really need this...
-# Having separate VM or LXC servers handling the
-# requests w/ the things in run_ai_remote is enough.
+# You'd think running a separate AI server in
+# a VM locally would be enough, but we want to
+# separate the AIs from each other when they run
+# too, not allowing students to access other's code.
 
-class JailedAIServer(LocalAIServer):
-    def __init__(self, possible_names, AI_class=LocalAI):
-        super().__init__(possible_names, AI_class)
+NAME_REPLACE = "{NAME}"
 
-    def cleanup(self, client_in, client_out, sock):
-        pass
+class JailedAIServer:
+    AIClass = LocalAI
+    def __init__(self, possible_names, *args, **kw):
+        self.possible_names = possible_names
+        
+    def handle(self, client_in, client_out, sock):
+        #####
+        # Example: b"duv\n5\n@\n?????..??o@?????\n"
+        #####
+        
+        name = client_in.readline().strip()
+        if name not in self.possible_names:
+            log.debug("Data not ok")
+            client_out.write("-1"+"\n")
+            return
+        timelimit = client_in.readline().strip()
+        player = client_in.readline().strip()
+        board = client_in.readline().strip()
+        log.debug("Got data {} {} {} {}".format(name, timelimit, player, board))
+
+        eventlet.sleep(0)
+        
+        if name in self.possible_names and \
+           (player == oc.BLACK or player == oc.WHITE):
+
+            try:
+                timelimit = float(timelimit)
+            except ValueError:
+                timelimit = 5
+            log.debug("Data is ok")
+            # Now, we don't want any debug statements
+            # messing up the output. So, we replace
+            # sys.stdout temporarily
+            save_stdout = sys.stdout
+            sys.stdout = io.BytesIO()
+            
+            strat = self.AIClass(name, possible_names)
+            kill_event = Event()
+            move = strat.get_move(board, player, timelimit, kill_event)
+            # And then put it back where we found it
+            sys.stdout = save_stdout
+            
+            log.debug("Got move {}".format(move))
+            client_out.write(str(move)+"\n")
+        else:
+            log.debug("Data not ok")
+            client_out.write("-1"+"\n")
+        client_out.flush()
 
     def run(self):
         self.handle(sys.stdin, sys.stdout, None)
@@ -24,18 +72,40 @@ class JailedAI(AIBase):
         super().__init__(*args, **kw)
         self.jail_begin = jail_begin
 
-    def get_move(self, board, player, timelimit):
+    def get_move(self, board, player, timelimit, kill_event):
         #####
         # Data format same as in RemoteAI,
         # b"duv\n5\n@\n?????..??o@?????\n"
         #####
-        data = self.name+"\n"+str(timelimit)+"\n"player+"\n"+board+"\n"
+        data = self.name+"\n"+str(timelimit)+"\n"+player+"\n"+str(board)+"\n"
 
         # Open subprocess
+        command = self.jail_begin.replace(NAME_REPLACE, player)
+        command_args = shlex.split(command)
+        proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        log.debug('Started subprocess with command '+str(command_args))
         # Send data to subprocess
+        proc.stdin.write(bytes(data, 'utf-8'))
+        proc.stdin.flush()
+        log.debug('Writing data '+data+' to subprocess stdin')
         # Get data from subprocess
+        move_str = proc.stdout.readline()
+        log.debug('Got move from subprocess')
+        try:
+            move = int(move_str.strip())
+        except:
+            move = -1
+        return move
 
 if __name__=="__main__":
-    JailedAIServer().run()
+    log.basicConfig(format='%(asctime)s:%(levelname)s:[JAILED]:%(message)s', level=log.DEBUG)
+    student_folder = os.path.join(os.getcwd(), 'students')
+    folders = os.listdir(student_folder)
+    log.debug('Listed student folders successfully')
+    possible_names =  {x for x in folders if \
+        x != '__pycache__' and \
+        os.path.isdir(os.path.join(student_folder, x))
+    }
+    JailedAIServer(possible_names).run()
         
         

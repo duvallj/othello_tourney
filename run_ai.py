@@ -1,6 +1,6 @@
 import os
 import sys
-if sys.platform == 'win32' or sys.platform == 'cygwin':
+if 'win' in sys.platform:
     import ctypes
 import importlib
 from multiprocessing import Process, Value, set_start_method
@@ -12,7 +12,7 @@ from othello_admin import Strategy, shared_dir
 ORIGINAL_SYS = sys.path[:]
 
 class AIBase:
-    def __init__(self, name, possible_names, extra=None):
+    def __init__(self, name, possible_names, *args, extra=None, **kw):
         self.name = name
         self.possible_names = possible_names
         self.extra = extra
@@ -37,6 +37,14 @@ def get_strat(name):
     sys.path = ORIGINAL_SYS
 
     return strat, new_path, new_sys
+    
+def multiplatform_kill(p):
+    if 'win' in sys.platform:
+        handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
+        ctypes.windll.kernel32.TerminateProcess(handle, -1)
+        ctypes.windll.kernel32.CloseHandle(handle)
+    else:
+        os.kill(p.pid, 9)
 
 class LocalAI(AIBase):
     def __init__(self, *args, **kw):
@@ -55,7 +63,7 @@ class LocalAI(AIBase):
         sys.path = self.old_sys
         return move
 
-    def get_move(self, board, player, timelimit):
+    def get_move(self, board, player, timelimit, kill_event):
         best_shared = Value("i", -1)
         best_shared.value = 11
 
@@ -71,20 +79,14 @@ class LocalAI(AIBase):
         
         t1 = time.time()
 
-        p.join(timelimit)
-
-        running.value = 0
-        time.sleep(0.01)
-
-        p.terminate()
-        time.sleep(0.01)
-
-        if sys.platform == 'win32' or sys.platform == 'cygwin':
-            handle = ctypes.windll.kernel32.OpenProcess(1, False, p.pid)
-            ctypes.windll.kernel32.TerminateProcess(handle, -1)
-            ctypes.windll.kernel32.CloseHandle(handle)
-        else:
-            if p.is_alive(): os.kill(p.pid, 9)
-
+        kill_event.wait(timelimit)
+        p.join(0.01)
+        
+        if p.is_alive():
+            running.value = 0
+            p.join(0.01)
+            if p.is_alive(): 
+                p.terminate()
+                
         move = best_shared.value
         return move

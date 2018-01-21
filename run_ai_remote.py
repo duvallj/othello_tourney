@@ -7,11 +7,15 @@ from run_ai import AIBase, LocalAI
 import Othello_Core as oc
 
 class LocalAIServer:
-    def __init__(self, possible_names, AI_class=LocalAI):
+    AIClass = LocalAI
+    def __init__(self, possible_names, jail_begin=None):
         self.strats = dict()
         self.possible_names = possible_names
+        if jail_begin:
+            from run_ai_jailed import JailedAI
+            self.AIClass = JailedAI
         for name in possible_names:
-            self.strats[name] = AI_class(name, possible_names)
+            self.strats[name] = self.AIClass(name, possible_names, jail_begin=jail_begin)
         
         self.should_continue = True
 
@@ -45,7 +49,7 @@ class LocalAIServer:
             client_out.write(str(move)+"\n")
         else:
             log.debug("Data not ok")
-            client_out.writeline("-1"+"\n")
+            client_out.write("-1"+"\n")
 
         self.cleanup(client_in, client_out, sock)
 
@@ -70,7 +74,7 @@ class RemoteAI(AIBase):
         self.remotes = self.extra
         assert bool(self.remotes)
 
-    def get_move(self, board, player, timelimit):
+    def get_move(self, board, player, timelimit, kill_event):
         hostname, port = random.choice(self.remotes)
         addr = socket.getaddrinfo(hostname, port)
         host, family = addr[0][4], addr[0][0]
@@ -89,6 +93,8 @@ class RemoteAI(AIBase):
             move = int(move)
         except ValueError:
             move = -1
+            
+        sock.close()
         return move
         
         

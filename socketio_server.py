@@ -1,6 +1,6 @@
 import socketio
 from socketIO_client import SocketIO, LoggingNamespace
-from multiprocessing import Process, Value, Pipe
+from multiprocessing import Process, Value, Pipe, Event
 from collections import deque
 import eventlet
 import os
@@ -13,8 +13,7 @@ import ctypes
 
 from othello_admin import Strategy
 import Othello_Core as oc
-from run_ai import LocalAI
-from run_ai_remote import RemoteAI
+from run_ai import LocalAI, multiplatform_kill
 
 human_player_name = 'Yourself'
 log.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=log.DEBUG)
@@ -101,41 +100,54 @@ class GameForwarder(GameManagerTemplate):
             self.sessions[sid].disconnect()
             del self.sessions[sid]
             del self.sprocs[sid]
+            
+            
+class GameData:
+    def __init__(self, game=None, pipe=None, proc=None, bgproc=None, kill_event=None, done_event=None):
+        self.game = game
+        self.pipe = pipe
+        self.proc = proc
+        self.bgproc = bgproc
+        self.kill_event = kill_event
+        self.done_event = done_event
+        
 
 class GameManager(GameManagerTemplate):
-    def __init__(self, *args, remotes=None, **kw):
+    def __init__(self, *args, remotes=None, jail_begin=None, **kw):
         super().__init__(*args, **kw)
-        self.games = dict()
-        self.pipes = dict()
-        self.procs = dict()
-        self.bgprocs = dict()
+        self.cdata = dict()
         self.remotes = remotes
+        self.jail_begin = jail_begin
         
     def create_game(self, sid, environ):
         log.info('Client '+sid+' connected')
-        self.games[sid] = GameRunner(self.possible_names, self.remotes)
+        self.cdata[sid] = GameData(game=GameRunner(self.possible_names, self.remotes, jail_begin=self.jail_begin))
 
     def start_game(self, sid, data):
         log.info('Client '+sid+' requests game '+str(data))
+        cdata = self.cdata[sid]
         
         try:
             timelimit = float(data['tml'])
         except ValueError:
             timelimit = 5
-        
-        self.games[sid].post_init(data['black'].strip(), data['white'].strip(), timelimit)
+            
+        cdata.game.post_init(data['black'].strip(), data['white'].strip(), timelimit)
         
         parent_conn, child_conn = Pipe()
-        self.pipes[sid] = parent_conn
+        cdata.pipe = parent_conn
         
-        self.procs[sid] = Process(target=self.games[sid].run_game, args=(child_conn,))
-        self.procs[sid].start()
+        cdata.kill_event = Event()
+        cdata.done_event = Event()
+        
+        cdata.proc = Process(target=cdata.game.run_game, args=(child_conn, cdata.kill_event, cdata.done_event))
+        cdata.proc.start()
         
         def _bg_refresh():
             while True:
                 self.refresh_game(sid, None)
                 eventlet.sleep(0)
-        self.bgprocs[sid] = eventlet.spawn(_bg_refresh)
+        cdata.bgproc = eventlet.spawn(_bg_refresh)
         
         log.debug('Started game for '+sid)
         
@@ -144,60 +156,51 @@ class GameManager(GameManagerTemplate):
 
     def delete_game(self, sid):
         log.info('Client '+sid+' disconnected')
-        try:
-            if self.procs[sid].is_alive():
-                self.procs[sid].terminate()
+        
+        cdata = None
+        if sid in self.cdata:
+            cdata = self.cdata[sid]
+        else:
+            return
             
-            del self.procs[sid]
-            del self.pipes[sid]
-        except:
-            pass
-        
-        del self.games[sid]
+        try:
+            if cdata.proc.is_alive():
+                cdata.kill_event.set()
+                cdata.done_event.wait(timeout=1)
+                if cdata.proc.is_alive(): cdata.proc.terminate()
+            del cdata.proc
+        except: pass
         
         try:
-            self.bgprocs[sid].kill()
-            del self.bgprocs[sid]
-        except:
-            pass
+            cdata.bgproc.kill()
+            del cdata.bgproc
+        except: pass
+        
+        del self.cdata[sid]
+        del cdata
 
     def refresh_game(self, sid, data):
-        # no logging
-        old_debug = log.debug
-        log.debug = lambda *_: None
-        # no logging
+        cdata = self.cdata.get(sid, False)
         
-        log.debug('sid: '+str(sid))
-        log.debug('Have pipes: '+str(self.pipes))
-        exists = sid in self.pipes
-        log.debug('Exists: '+str(exists))
-        
-        if exists:
-            log.debug('What is: '+str(self.pipes[sid]))
-            closed = self.pipes[sid].closed
-            log.debug('Closed: '+str(closed))
-            
+        if cdata:
+            closed = cdata.pipe.closed
             msgq = deque()
             
             if not closed:
-                try:
-                    log.debug('Can poll: '+str(self.pipes[sid].poll()))
-                        
-                    while self.pipes[sid].poll():
-                        packet = self.pipes[sid].recv()
+                try: 
+                    while cdata.pipe.poll():
+                        packet = cdata.pipe.recv()
                         msgq.append(packet)
                         
                 except (BrokenPipeError, EOFError):
                     log.debug('Pipe is broken, closing...')
-                    self.pipes[sid].close()
+                    cdata.pipe.close()
                 
             while msgq:
                 self.act_on_message(sid, msgq.popleft())
         else:
             log.debug('Telling client the game is no longer going on...')
-            self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True}, room=osid)
-            
-        log.debug = old_debug
+            self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True}, room=sid)
                 
     def act_on_message(self, sid, packet):
         mtype, data = packet
@@ -209,19 +212,24 @@ class GameManager(GameManagerTemplate):
             self.emit('gameend', data=data, room=sid)
 
     def send_move(self, sid, data):
-        move = int(data['move'])
-        self.pipes[sid].send(move)
-        log.info('Recieved move '+str(move)+' from '+sid)
+        if sid in cdata:
+            move = int(data['move'])
+            self.cdata[sid].pipe.send(move)
+            log.info('Recieved move '+str(move)+' from '+sid)
 
 class GameRunner:
-    def __init__(self, possible_names, remotes=None):
+    AIClass = LocalAI
+    def __init__(self, possible_names, remotes=None, jail_begin=None):
         self.core = Strategy()
         self.possible_names = possible_names
         self.remotes = remotes
+        self.jail_begin = jail_begin
         if self.remotes:
-            self.AI = RemoteAI
-        else:
-            self.AI = LocalAI
+            from run_ai_remote import RemoteAI
+            self.AIClass = RemoteAI
+        elif self.jail_begin:
+            from run_ai_jailed import JailedAI
+            self.AIClass = JailedAI
         self.timelimit = 5
         self.BLACK = None
         self.WHITE = None
@@ -231,23 +239,27 @@ class GameRunner:
     def post_init(self, nameA, nameB, timelimit):
         self.BLACK = nameA if nameA in self.possible_names else None
         self.WHITE = nameB if nameB in self.possible_names else None
+        self.BLACK_NAME = self.BLACK if self.BLACK else human_player_name
+        self.WHITE_NAME = self.WHITE if self.WHITE else human_player_name
         self.timelimit = timelimit
         self.playing = True
         log.debug('Set names to '+str(self.BLACK)+' '+str(self.WHITE))
 
-    def run_game(self, conn):
+    def run_game(self, conn, kill_event, done_event):
         log.debug('Game process creation sucessful')
         board = self.core.initial_board()
         player = oc.BLACK
         black_score = 0
         
         try:
-            self.BLACK_STRAT = self.AI(self.BLACK, self.possible_names, self.remotes)
+            self.BLACK_STRAT = self.AIClass(self.BLACK, self.possible_names, \
+            self.remotes, jail_begin=self.jail_begin)
         except:
             self.BLACK_STRAT = None
             black_score -= 100
         try:
-            self.WHITE_STRAT = self.AI(self.WHITE, self.possible_names, self.remotes)
+            self.WHITE_STRAT = self.AIClass(self.WHITE, self.possible_names, \
+            self.remotes, jail_begin=self.jail_begin)
         except:
             self.WHITE_STRAT = None
             black_score += 100
@@ -261,13 +273,14 @@ class GameRunner:
                     'forfeit': True
                 }
             ))
+            done_event.set()
             return
         
         strategy = {oc.BLACK: self.BLACK_STRAT, oc.WHITE: self.WHITE_STRAT}
         names = {oc.BLACK: self.BLACK, oc.WHITE: self.WHITE}
         name_strings = {
-            oc.BLACK: self.BLACK if self.BLACK else human_player_name,
-            oc.WHITE: self.WHITE if self.WHITE else human_player_name
+            oc.BLACK: self.BLACK_NAME,
+            oc.WHITE: self.WHITE_NAME
         }
         conn.send((
             'board',
@@ -283,7 +296,7 @@ class GameRunner:
         forfeit = False
         black_score = 0
 
-        while player is not None and not forfeit:
+        while not (player is None or forfeit or kill_event.is_set()):
             log.debug('Main loop!')
             if names[player] is None:
                 move = 0
@@ -298,7 +311,7 @@ class GameRunner:
 
                 log.debug('Move '+str(move)+' determined legal')
             else:
-                move = strategy[player].get_move(''.join(board), player, self.timelimit)
+                move = strategy[player].get_move(''.join(board), player, self.timelimit, kill_event)
                 log.debug('Strategy '+names[player]+' returned move '+str(move))
                 
             log.debug('Actually got move')
@@ -333,3 +346,4 @@ class GameRunner:
                 'forfeit': forfeit
             }
         ))
+        done_event.set()
