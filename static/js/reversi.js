@@ -20,6 +20,18 @@ WHITE_IMG.src = './static/images/white.png';
 BLACK_IMG = new Image();
 BLACK_IMG.src = './static/images/black.png';
 
+BORDER_IMG = new Image();
+BORDER_IMG.src = './static/images/board.png';
+
+TILE_IMG = new Image();
+TILE_IMG.src = './static/images/tile.png';
+
+STONE_IMAGES = [];
+for (var i = 0; i < 20; i++) {
+  STONE_IMAGES[i] = new Image();
+  STONE_IMAGES[i].src = './static/images/stones/'+i+'.png';
+}
+
 CH2NM = {};
 CH2NM[EMPTY_CH] = EMPTY_NM;
 CH2NM[WHITE_CH] = WHITE_NM;
@@ -37,8 +49,8 @@ function addBorders(rCanvas, bSize, un, bd, rc) {
   }
 }
 
-function addPieces(rCanvas, bSize, bArray, un, bd, sq) {
-  rCanvas.board = [];
+function addPieces(rCanvas, bSize, bArray, un, bd, sq, animArray) {
+  //rCanvas.board = [];
 
   for(var y=0; y<bSize; y++){
     for(var x=0; x<bSize; x++){
@@ -47,11 +59,12 @@ function addPieces(rCanvas, bSize, bArray, un, bd, sq) {
       //if (bArray[index]===EMPTY_NM){
       //  toAdd = new RRect(un*x+bd, un*y+bd, sq, sq, EMPTY_CO);
       //}
-      if (bArray[index] === WHITE_NM) {
-        toAdd = new RImg(un*x+bd, un*y+bd, sq, sq, WHITE_IMG);
+      if (rCanvas.board[index] === EMPTY_NM && bArray[index] === WHITE_NM) {
+        animArray[index] = 19; //set anim to full white if piece was just placed (otherwise it would defualt to 0 and flip)
       }
-      else if (bArray[index] === BLACK_NM) {
-        toAdd = new RImg(un*x+bd, un*y+bd, sq, sq, BLACK_IMG);
+
+      if (bArray[index] === WHITE_NM || bArray[index] === BLACK_NM) {
+        toAdd = new RImg(un*x+bd, un*y+bd, sq, sq, STONE_IMAGES[animArray[index]], true);
       }
       
       if (toAdd !== null) {
@@ -125,6 +138,14 @@ function addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq) {
   }
 }
 
+function addTiles(rCanvas, bSize, bArray, un, bd, sq) {
+  for (var y=0; y<bSize; y++) {
+    for (var x=0; x<bSize; x++) {
+      rCanvas.add(new RImg(un*x+bd/2, un*y+bd/2, sq+bd, sq+bd, TILE_IMG));
+    }
+  }
+}
+
 function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
   var cx = x;
   var cy = y;
@@ -149,7 +170,7 @@ function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
   return good;
 }
 
-function drawBoard(rCanvas, bSize, bArray, tomove){
+function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
   var rc = Math.min(rCanvas.rWidth, rCanvas.rHeight);
   var bd = rc/(11*bSize+1); //from sq*s+bd*(s+1)=w, sq=10*bd
   var sq = 10*bd;
@@ -161,10 +182,14 @@ function drawBoard(rCanvas, bSize, bArray, tomove){
 
   rCanvas.objects = [];
   
-  rCanvas.add(rCanvas.fullbg);
-  addBorders(rCanvas, bSize, un, bd, rc);
-  
-  addPieces(rCanvas, bSize, bArray, un, bd, sq);
+  //rCanvas.add(rCanvas.fullbg);
+  //addBorders(rCanvas, bSize, un, bd, rc);
+
+  rCanvas.add(new RImg(0, 0, rc, rc, BORDER_IMG));
+
+  addTiles(rCanvas, bSize, bArray, un, bd, sq);
+
+  addPieces(rCanvas, bSize, bArray, un, bd, sq, animArray);
   addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq);
   rCanvas.add(rCanvas.select);
   
@@ -225,7 +250,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
 
   var gap = rCanvas.rHeight - rCanvas.rWidth;
   rCanvas.fullbg = new RRect(0, 0, rCanvas.rWidth, rCanvas.rHeight, EMPTY_CO, 1.0);
-  rCanvas.textbg = new RRect(0, rCanvas.rWidth, rCanvas.rWidth, rCanvas.rHeight-rCanvas.rWidth, '#808080', 1.0);
+  rCanvas.textbg = new RRect(0, rCanvas.rWidth, rCanvas.rWidth, rCanvas.rHeight-rCanvas.rWidth, '#805229', 1.0);
   rCanvas.black = new RText(0, rCanvas.rHeight-gap*2/5,'Black',gap*2/5,'Roboto Mono',BLACK_CO);
   rCanvas.white = new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*2/5,'White',gap*2/5,'Roboto Mono',WHITE_CO);
 
@@ -238,9 +263,16 @@ function init(socket, delay, port1, port2, timelimit, watching){
     dBoard[i] = 0;
   }
 
+  rCanvas.board = dBoard.slice();
+
+  var animArray = [];
+  for (var i=0; i<dSize*dSize; i++) {
+    animArray[i] = 0;
+  }
+
   rCanvas.black_name = "Loading...";
   rCanvas.white_name = "Loading...";
-  drawBoard(rCanvas, dSize, dBoard, BLACK_NM);
+  drawBoard(rCanvas, dSize, dBoard, BLACK_NM, animArray);
   
   function augmentedMouseMove(event) {
     rCanvas.getMousePos(event);
@@ -270,7 +302,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
       console.log('touched spot '+rCanvas.lastClicked);
       var resultGood = rCanvas.board[cy*rCanvas.lBSize+cx]===EMPTY_NM && makeFlips(cx, cy, rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
       if (resultGood) {
-        drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove);
+        drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove, animArray);
         console.log('sending move');
         socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
       } else {
@@ -287,7 +319,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
     rCanvas.black_name = data.black;
     rCanvas.white_name = data.white;
     rCanvas.tomove = CH2NM[data.tomove];
-    drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board), CH2NM[data.tomove]);
+    drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board), CH2NM[data.tomove], animArray);
   });
 
   socket.on('moverequest', function(){
@@ -300,6 +332,23 @@ function init(socket, delay, port1, port2, timelimit, watching){
   } else {
     refreshInterval = window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
   } */
+
+  setInterval(function() {
+    for (var i=0; i<dSize*dSize; i++) {
+      if (rCanvas.board[i] === BLACK_NM && animArray[i] > 0) {
+        animArray[i] -= 1;
+      }
+      else if (rCanvas.board[i] === WHITE_NM && animArray[i] < 19) {
+        animArray[i] += 1;
+      }
+    }
+  },16);
+
+  function alwaysDraw() {
+    drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove, animArray);
+    requestAnimationFrame(alwaysDraw);
+  }
+  requestAnimationFrame(alwaysDraw);
   
   socket.on('gameend', function(data){
     //Clean up tasks, end socket
@@ -336,7 +385,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
     rCanvas.black.size = gap*3/10;
     rCanvas.white.y = rCanvas.rHeight - gap*1/5;
     rCanvas.white.size = gap*3/10;
-    drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
+    drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove, animArray);
     rCanvas.add(new RText(0,rCanvas.rHeight-gap*3/5,black_text,gap*3/10,'Roboto Mono',BLACK_CO));
     rCanvas.add(new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*3/5,white_text,gap*3/10,'Roboto Mono',WHITE_CO));
     rCanvas.draw();
