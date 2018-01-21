@@ -31,7 +31,7 @@ function RCanvas(canvasObj, rWidth, rHeight){
     var rect = this.canvas.getBoundingClientRect();
     this.mx = (event.clientX - rect.left) * this.rWidth / rect.width;
     this.my = (event.clientY - rect.top) * this.rHeight / rect.height;
-  }
+  };
   this.lBSize = 1;
 }
 
@@ -64,12 +64,21 @@ function RText(x,y,text,size,font,fill){
   };
 }
 
-function RImg(x,y,width,height,image){
+function RImg(x,y,width,height,image,shadow){
   this.x = x;
   this.y = y;
   this.width = width;
   this.height = height;
+  this.shadow = shadow || false;
   this.draw = function(ctx, wFactor, hFactor){
+    ctx.save();
+    if (shadow) {
+      ctx.shadowColor = "rgba(0,0,0,0.2)";
+      ctx.shadowBlur = 5*wFactor;
+      ctx.shadowOffsetX = 2*wFactor;
+      ctx.shadowOffsetY = 2*hFactor;
+    }
     ctx.drawImage(image,this.x*wFactor, this.y*hFactor, this.width*wFactor, this.height*hFactor);
+    ctx.restore();
   };
 }

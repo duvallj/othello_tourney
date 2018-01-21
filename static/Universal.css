@@ -6,6 +6,11 @@ body {
   font-family: 'Roboto Mono', monospace;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
 input {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
@@ -42,9 +47,7 @@ div.main {
   font-size: 16px;
   color:#33a122;
   width: 70%;
-  padding-left: 15%;
-  padding-right: 15%;
-  padding-top: 2%;
+  padding: 2% 15%;
 }
 
 div.top {
@@ -52,6 +55,7 @@ div.top {
   text-align: center;
   font-size: 30px;
   color: #fffff0;
+  padding-top: 1px; /* hack to stop margin from leaking outside container (theres probably a better way to do this) */
 }
 
 div.title{
@@ -79,7 +83,6 @@ canvas{
 }
 
 a{
-  font-size: 16px;
   color: #a68b07;
 }
 
@@ -93,8 +96,8 @@ a:hover{
 }*/
 
 div.linkbar {
-  background-color: #917a07;
-  font-size: 24px;
+  background-color: #805229;
+  font-size: 18px;
   width: 80%;
   color: #33a122;
   padding-left: 10%;
