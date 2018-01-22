@@ -2,7 +2,6 @@ import os, sys
 import logging as log
 import io
 import shlex, subprocess
-from multiprocessing import Event
 import eventlet
 
 from run_ai import AIBase, LocalAI
@@ -52,8 +51,7 @@ class JailedAIServer:
             sys.stdout = io.BytesIO()
             
             strat = self.AIClass(name, possible_names)
-            kill_event = Event()
-            move = strat.get_move(board, player, timelimit, kill_event)
+            move = strat.get_move(board, player, timelimit, False)
             # And then put it back where we found it
             sys.stdout = save_stdout
             
@@ -62,7 +60,7 @@ class JailedAIServer:
         else:
             log.debug("Data not ok")
             client_out.write("-1"+"\n")
-        client_out.flush()
+        #client_out.flush()
 
     def run(self):
         self.handle(sys.stdin, sys.stdout, None)

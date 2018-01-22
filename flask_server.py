@@ -120,8 +120,8 @@ def ailist():
 @app.route('/list/games')
 @nocache
 def gamelist():
-    log.debug(app.gm.games.items())
-    return "\n".join(','.join(map(str,(sid, game.BLACK, game.WHITE, game.timelimit))) for sid, game in app.gm.games.items() if game.playing)
+    log.debug(app.gm.cdata.items())
+    return "\n".join(','.join(map(str,(sid, cdata.game.BLACK_NAME, cdata.game.WHITE_NAME, cdata.game.timelimit))) for sid, cdata in app.gm.cdata.items() if cdata.game.playing)
 
 @app.route('/ion-login')
 def login():

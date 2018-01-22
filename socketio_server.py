@@ -212,7 +212,7 @@ class GameManager(GameManagerTemplate):
             self.emit('gameend', data=data, room=sid)
 
     def send_move(self, sid, data):
-        if sid in cdata:
+        if sid in self.cdata:
             move = int(data['move'])
             self.cdata[sid].pipe.send(move)
             log.info('Recieved move '+str(move)+' from '+sid)

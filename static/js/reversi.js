@@ -14,6 +14,7 @@ BLACK_CO = '#000000';
 BORDER_CO    = '#663300';
 HIGHLIGHT_CO = '#fff700';
 GOODMOVE_CO  = '#33ccff';
+LASTMOVE_CO  = '#ff9900';
 
 WHITE_IMG = new Image();
 WHITE_IMG.src = './static/images/white.png';
@@ -50,42 +51,42 @@ function addBorders(rCanvas, bSize, un, bd, rc) {
 }
 
 function addPieces(rCanvas, bSize, bArray, un, bd, sq, animArray) {
-  //rCanvas.board = [];
-
+  if (bSize !== rCanvas.lBSize) {
+    rCanvas.imgBoard = [];
+  }
   for(var y=0; y<bSize; y++){
     for(var x=0; x<bSize; x++){
       var index = bSize*y+x;
-      var toAdd = null;
-      //if (bArray[index]===EMPTY_NM){
-      //  toAdd = new RRect(un*x+bd, un*y+bd, sq, sq, EMPTY_CO);
-      //}
+      if (bSize !== rCanvas.lBSize) {
+        var new_image = new RImg(un*x+bd, un*y+bd, sq, sq, EMPTY_CO, false);
+        rCanvas.imgBoard[index] = new_image;
+      }
       if (rCanvas.board[index] === EMPTY_NM && bArray[index] === WHITE_NM) {
         animArray[index] = 19; //set anim to full white if piece was just placed (otherwise it would defualt to 0 and flip)
       }
 
       if (bArray[index] === WHITE_NM || bArray[index] === BLACK_NM) {
-        toAdd = new RImg(un*x+bd, un*y+bd, sq, sq, STONE_IMAGES[animArray[index]], true);
+        rCanvas.imgBoard[index].image = STONE_IMAGES[animArray[index]];
+        rCanvas.imgBoard[index].shadow =  true;
+      } else if (bArray[index] == EMPTY_NM) {
+        rCanvas.imgBoard[index].image = undefined; //TILE_IMG; //tile image doesn't match board
+        rCanvas.imgBoard[index].shadow =  false;
       }
       
-      if (toAdd !== null) {
-        rCanvas.add(toAdd);
-      }
       rCanvas.board[index] = bArray[index];
+      rCanvas.add(rCanvas.imgBoard[index]);
     }
   }
 }
 
 function countPieces(bSize, bArray) {
   var bCount = 0; var wCount = 0;
-  for(var y=0; y<bSize; y++){
-    for(var x=0; x<bSize; x++){
-      var index = bSize*y+x;
-      if (bArray[index] === WHITE_NM) {
-        wCount++;
-      }
-      else if (bArray[index] === BLACK_NM) {
-        bCount++;
-      }
+  for(var i=0; i<bSize*bSize; i++){
+    if (bArray[i] === WHITE_NM) {
+      wCount++;
+    }
+    else if (bArray[i] === BLACK_NM) {
+      bCount++;
     }
   }
   var counts = [];
@@ -147,8 +148,6 @@ function addTiles(rCanvas, bSize, bArray, un, bd, sq) {
 }
 
 function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
-  var cx = x;
-  var cy = y;
   var good = false;
   for (var dy=-1; dy<2; dy++) {
     for (var dx=-1; dx<2; dx++) {
@@ -170,7 +169,33 @@ function makeFlips(x, y, rCanvas, bSize, bArray, tomove) {
   return good;
 }
 
+function startAnimation(rCanvas, animArray) {
+  var interval = setInterval(function() {
+    var stable = true;
+    
+    for (var i=0; i<rCanvas.lBSize*rCanvas.lBSize; i++) {
+      if (rCanvas.board[i] === BLACK_NM && animArray[i] > 0) {
+        animArray[i] -= 1;
+        rCanvas.imgBoard[i].image = STONE_IMAGES[animArray[i]];
+        stable = false;
+      }
+      else if (rCanvas.board[i] === WHITE_NM && animArray[i] < 19) {
+        animArray[i] += 1;
+        rCanvas.imgBoard[i].image = STONE_IMAGES[animArray[i]];
+        stable = false;
+      }
+    }
+    
+    if (stable) {
+      clearInterval(interval);
+    } else {
+      rCanvas.draw();
+    }
+  },16);
+}
+
 function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
+  console.log('redrawing board');
   var rc = Math.min(rCanvas.rWidth, rCanvas.rHeight);
   var bd = rc/(11*bSize+1); //from sq*s+bd*(s+1)=w, sq=10*bd
   var sq = 10*bd;
@@ -182,16 +207,15 @@ function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
 
   rCanvas.objects = [];
   
-  //rCanvas.add(rCanvas.fullbg);
+  rCanvas.add(rCanvas.fullbg);
   //addBorders(rCanvas, bSize, un, bd, rc);
-
-  rCanvas.add(new RImg(0, 0, rc, rc, BORDER_IMG));
 
   addTiles(rCanvas, bSize, bArray, un, bd, sq);
 
   addPieces(rCanvas, bSize, bArray, un, bd, sq, animArray);
   addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq);
   rCanvas.add(rCanvas.select);
+  rCanvas.add(rCanvas.lastmove);
   
   rCanvas.add(rCanvas.textbg);
   rCanvas.add(rCanvas.black);
@@ -201,13 +225,14 @@ function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
   rCanvas.black.text = rCanvas.black_name+': '+counts[BLACK_NM].toString();
   rCanvas.white.text = rCanvas.white_name+': '+counts[WHITE_NM].toString();
   if(tomove === BLACK_NM){
-    rCanvas.black.text = '('+rCanvas.black.text+')';
+    rCanvas.black.text = rCanvas.black.text+' (*)';
   }
   else if(tomove === WHITE_NM){
-    rCanvas.white.text = '('+rCanvas.white.text+')';
+    rCanvas.white.text = '(*) '+rCanvas.white.text;
   }
   rCanvas.draw();
   rCanvas.lBSize = bSize;
+  startAnimation(rCanvas, animArray);
 }
 
 function bStringToBArray(bString){
@@ -249,30 +274,48 @@ function init(socket, delay, port1, port2, timelimit, watching){
   });
 
   var gap = rCanvas.rHeight - rCanvas.rWidth;
-  rCanvas.fullbg = new RRect(0, 0, rCanvas.rWidth, rCanvas.rHeight, EMPTY_CO, 1.0);
-  rCanvas.textbg = new RRect(0, rCanvas.rWidth, rCanvas.rWidth, rCanvas.rHeight-rCanvas.rWidth, '#805229', 1.0);
-  rCanvas.black = new RText(0, rCanvas.rHeight-gap*2/5,'Black',gap*2/5,'Roboto Mono',BLACK_CO);
-  rCanvas.white = new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*2/5,'White',gap*2/5,'Roboto Mono',WHITE_CO);
+  rCanvas.fullbg = new RImg(
+    0, 0, 
+    rCanvas.rWidth, rCanvas.rWidth, 
+    BORDER_IMG
+  );
+  rCanvas.textbg = new RRect(
+    0, rCanvas.rWidth, 
+    rCanvas.rWidth, gap, 
+    '#805229', 1.0
+  );
+  rCanvas.black = new RText(
+    0, rCanvas.rHeight-gap*2/5,
+    'Black',
+    gap*2/5, 'Roboto Mono',
+    BLACK_CO
+  );
+  rCanvas.white = new RText(
+    rCanvas.rWidth/2,rCanvas.rHeight-gap*2/5,
+    'White',
+    gap*2/5,'Roboto Mono',
+    WHITE_CO
+  );
 
   var selected = new RRect(0, 0, 1, 1, HIGHLIGHT_CO, 0.4);
   rCanvas.select = selected;
   
-  var dBoard = [];
+  var lastmove = new RRect(0, 0, 1, 1, LASTMOVE_CO, 0.4);
+  rCanvas.lastmove = lastmove;
+  
+  rCanvas.board = [];
+  rCanvas.imgBoard = [];
+  var animArray = []
   var dSize = 8;
   for (var i=0; i<dSize*dSize; i++) {
-    dBoard[i] = 0;
-  }
-
-  rCanvas.board = dBoard.slice();
-
-  var animArray = [];
-  for (var i=0; i<dSize*dSize; i++) {
+    rCanvas.board[i] = 0;
     animArray[i] = 0;
   }
+  rCanvas.lBSize = 0;
 
-  rCanvas.black_name = "Loading...";
-  rCanvas.white_name = "Loading...";
-  drawBoard(rCanvas, dSize, dBoard, BLACK_NM, animArray);
+  rCanvas.black_name = "Loading "+port1+"...";
+  rCanvas.white_name = "Loading "+port2+"...";
+  drawBoard(rCanvas, dSize, rCanvas.board, BLACK_NM, animArray);
   
   function augmentedMouseMove(event) {
     rCanvas.getMousePos(event);
@@ -302,6 +345,10 @@ function init(socket, delay, port1, port2, timelimit, watching){
       console.log('touched spot '+rCanvas.lastClicked);
       var resultGood = rCanvas.board[cy*rCanvas.lBSize+cx]===EMPTY_NM && makeFlips(cx, cy, rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove);
       if (resultGood) {
+        lastmove.x = rCanvas.un*cx+rCanvas.bd;
+        lastmove.y = rCanvas.un*cy+rCanvas.bd;
+        lastmove.width = rCanvas.sq;
+        lastmove.height = rCanvas.sq;
         drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove, animArray);
         console.log('sending move');
         socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
@@ -310,16 +357,35 @@ function init(socket, delay, port1, port2, timelimit, watching){
       }
     }
   };
+  
   if (!watching) {
     socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
     document.addEventListener('click', clickHandler);
   }
-  else {socket.emit('wrequest', {'watching': watching});}
+  else {
+    socket.emit('wrequest', {'watching': watching});
+  }
+  
   socket.on('reply', function(data){
     rCanvas.black_name = data.black;
     rCanvas.white_name = data.white;
     rCanvas.tomove = CH2NM[data.tomove];
-    drawBoard(rCanvas, parseInt(data.bSize), bStringToBArray(data.board), CH2NM[data.tomove], animArray);
+    var bArray = bStringToBArray(data.board);
+    var bSize = parseInt(data.bSize);
+    if (bSize === rCanvas.lBSize) {
+      for (var cx=0; cx<bSize; cx++) {
+        for (var cy=0; cy<bSize; cy++) {
+          var index = cy*bSize+cx;
+          if (rCanvas.board[index] === EMPTY_NM && bArray[index] !== EMPTY_NM) {
+            lastmove.x = rCanvas.un*cx+rCanvas.bd;
+            lastmove.y = rCanvas.un*cy+rCanvas.bd;
+            lastmove.width = rCanvas.sq;
+            lastmove.height = rCanvas.sq;
+          }
+        }
+      }
+    }
+    drawBoard(rCanvas, bSize, bArray, CH2NM[data.tomove], animArray);
   });
 
   socket.on('moverequest', function(){
@@ -333,22 +399,11 @@ function init(socket, delay, port1, port2, timelimit, watching){
     refreshInterval = window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
   } */
 
-  setInterval(function() {
-    for (var i=0; i<dSize*dSize; i++) {
-      if (rCanvas.board[i] === BLACK_NM && animArray[i] > 0) {
-        animArray[i] -= 1;
-      }
-      else if (rCanvas.board[i] === WHITE_NM && animArray[i] < 19) {
-        animArray[i] += 1;
-      }
-    }
-  },16);
-
-  function alwaysDraw() {
+  /* function alwaysDraw() {
     drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove, animArray);
     requestAnimationFrame(alwaysDraw);
   }
-  requestAnimationFrame(alwaysDraw);
+  requestAnimationFrame(alwaysDraw); */
   
   socket.on('gameend', function(data){
     //Clean up tasks, end socket
@@ -386,8 +441,16 @@ function init(socket, delay, port1, port2, timelimit, watching){
     rCanvas.white.y = rCanvas.rHeight - gap*1/5;
     rCanvas.white.size = gap*3/10;
     drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove, animArray);
-    rCanvas.add(new RText(0,rCanvas.rHeight-gap*3/5,black_text,gap*3/10,'Roboto Mono',BLACK_CO));
-    rCanvas.add(new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*3/5,white_text,gap*3/10,'Roboto Mono',WHITE_CO));
+    rCanvas.add(new RText(0,rCanvas.rHeight-gap*3/5, 
+      black_text,
+      gap*3/10,'Roboto Mono',
+      BLACK_CO
+    ));
+    rCanvas.add(new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*3/5,
+      white_text,
+      gap*3/10,'Roboto Mono',
+      WHITE_CO
+    ));
     rCanvas.draw();
   });
 }

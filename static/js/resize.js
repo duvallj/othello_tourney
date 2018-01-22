@@ -70,15 +70,18 @@ function RImg(x,y,width,height,image,shadow){
   this.width = width;
   this.height = height;
   this.shadow = shadow || false;
+  this.image = image;
   this.draw = function(ctx, wFactor, hFactor){
     ctx.save();
-    if (shadow) {
+    if (this.shadow) {
       ctx.shadowColor = "rgba(0,0,0,0.2)";
       ctx.shadowBlur = 5*wFactor;
       ctx.shadowOffsetX = 2*wFactor;
       ctx.shadowOffsetY = 2*hFactor;
     }
-    ctx.drawImage(image,this.x*wFactor, this.y*hFactor, this.width*wFactor, this.height*hFactor);
+    if (this.image !== undefined) {
+      ctx.drawImage(this.image, this.x*wFactor, this.y*hFactor, this.width*wFactor, this.height*hFactor);
+    }
     ctx.restore();
   };
 }

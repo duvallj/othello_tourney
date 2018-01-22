@@ -78,9 +78,12 @@ class LocalAI(AIBase):
         sys.path = self.old_sys
         
         t1 = time.time()
-
-        kill_event.wait(timelimit)
-        p.join(0.01)
+        
+        if kill_event:
+            kill_event.wait(timelimit)
+            p.join(0.01)
+        else:
+            p.join(timelimit)
         
         if p.is_alive():
             running.value = 0
