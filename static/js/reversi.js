@@ -212,10 +212,11 @@ function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
 
   addTiles(rCanvas, bSize, bArray, un, bd, sq);
 
+  rCanvas.add(rCanvas.lastmove);
+  
   addPieces(rCanvas, bSize, bArray, un, bd, sq, animArray);
   addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq);
   rCanvas.add(rCanvas.select);
-  rCanvas.add(rCanvas.lastmove);
   
   rCanvas.add(rCanvas.textbg);
   rCanvas.add(rCanvas.black);
@@ -349,6 +350,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
         lastmove.y = rCanvas.un*cy+rCanvas.bd;
         lastmove.width = rCanvas.sq;
         lastmove.height = rCanvas.sq;
+        if (rCanvas.tomove === WHITE_NM) { animArray[cy*rCanvas.lBSize+cx] = 19; }
         drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove, animArray);
         console.log('sending move');
         socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
@@ -457,11 +459,10 @@ function init(socket, delay, port1, port2, timelimit, watching){
 
 function makeSocketFromPage(addr, port, port1, port2, delay, timelimit, watching){
   var socket;
-  if (port !== "443") {
-    socket = io('http://'+addr+':'+port);
-  } else {
-    socket = io('https://'+addr+':'+port,{path:'/othello/socket.io/'});
-  }
+//  if (port !== "443") {
+    socket = io('https://'+addr+':'+port);
+ // } else {
+ //   socket = io('https://'+addr+':'+port,{path:'/othello/socket.io/'});
   console.log('made socket');
   var delay = parseInt(delay);
   init(socket, delay, port1, port2, timelimit, watching);

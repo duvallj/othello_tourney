@@ -1,4 +1,4 @@
-HOST = "activities.tjhsst.edu";
+HOST = "othello.tjhsst.edu";
 PORT = "443";
 
 function ajaxConfig(path, callback){

@@ -31,7 +31,7 @@ app.config['SOCIAL_ION'] = {
     'consumer_key': ion_secret.ION_OAUTH_KEY,
     'consumer_secret': ion_secret.ION_OAUTH_SECRET
 }
-app.config['SOCIAL_REDIRECT_URI_OVERRIDE'] = 'https://activities.tjhsst.edu/othello/login/ion'
+app.config['SOCIAL_REDIRECT_URI_OVERRIDE'] = 'https://othello.tjhsst.edu/login/ion'
 
 app.config['DEBUG'] = True
 app.config['SECRET_KEY'] = ion_secret.FLASK_SECRET

@@ -2,8 +2,8 @@ import Othello_Core as core
 import random
 import math
 
-shared_dir = "C:\\Users\\Me\\Documents\\GitHub\\othello_tourney\\public"
-#shared_dir = /web/activities/othello/public"
+#shared_dir = "C:\\Users\\Me\\Documents\\GitHub\\othello_tourney\\public"
+shared_dir = "/home/othello/www/public"
 class Strategy(core.OthelloCore):
 
     def __init__(self):

@@ -2,11 +2,9 @@
 
 # How to set up:
  * Clone this repository onto all machines/vms you will use
- * run `setup.sh web` on the server you want to host it from
- * run `setup.sh vm` on the servers you want the AIs to run on
- * Set `$PORT` to the port you want the server to listen on
- * Set `host_list` in `run_on_cluster.py` of all hostnames/IPs the AIs will run on
+ * Use a virtualenv, conda, or system pip to install `requirements.txt`
 
 # How to run:
- * run `run.sh` on the vm server
- * run `python3 run_ai.py` on the AI servers
+ * Entrypoint to code is `main_server.py`
+ * Example run commands included in `run.sh` and `run_vm.sh`, modify to your needs
+ * All options can be found by running `python main_server.py --help`

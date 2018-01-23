@@ -78,24 +78,21 @@ class JailedAI(AIBase):
         data = self.name+"\n"+str(timelimit)+"\n"+player+"\n"+str(board)+"\n"
 
         # Open subprocess
-        command = self.jail_begin.replace(NAME_REPLACE, player)
+        command = self.jail_begin.replace(NAME_REPLACE, self.name)
         command_args = shlex.split(command)
         proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         log.debug('Started subprocess with command '+str(command_args))
-        # Send data to subprocess
-        proc.stdin.write(bytes(data, 'utf-8'))
-        proc.stdin.flush()
-        log.debug('Writing data '+data+' to subprocess stdin')
-        # Get data from subprocess
-        move_str = proc.stdout.readline()
+        outs, errs = proc.communicate(input=bytes(data, 'utf-8'))
         log.debug('Got move from subprocess')
         try:
-            move = int(move_str.strip())
+            move = int(outs.decode('utf-8').split("\n")[0])
         except:
             move = -1
         return move
 
 if __name__=="__main__":
+    import multiprocessing
+    multiprocessing.set_start_method('spawn')
     log.basicConfig(format='%(asctime)s:%(levelname)s:[JAILED]:%(message)s', level=log.DEBUG)
     student_folder = os.path.join(os.getcwd(), 'students')
     folders = os.listdir(student_folder)

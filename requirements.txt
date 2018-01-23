@@ -1,0 +1,8 @@
+python-socketio
+socketIO_client
+flask
+flask_security
+flask_sqlalchemy
+https://github.com/duvallj/flask-social/archive/develop.zip
+flask_oauthlib>=0.9.4
+eventlet==0.17.4

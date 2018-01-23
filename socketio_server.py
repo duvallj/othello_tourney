@@ -128,7 +128,7 @@ class GameManager(GameManagerTemplate):
         cdata = self.cdata[sid]
         
         try:
-            timelimit = float(data['tml'])
+            timelimit = min(float(data['tml']), 60)
         except ValueError:
             timelimit = 5
             
@@ -166,14 +166,15 @@ class GameManager(GameManagerTemplate):
         try:
             if cdata.proc.is_alive():
                 cdata.kill_event.set()
-                cdata.done_event.wait(timeout=1)
+                cdata.done_event.wait()
+                eventlet.sleep(0.01)
                 if cdata.proc.is_alive(): cdata.proc.terminate()
-            del cdata.proc
+            #del cdata.proc
         except: pass
         
         try:
             cdata.bgproc.kill()
-            del cdata.bgproc
+            #del cdata.bgproc
         except: pass
         
         del self.cdata[sid]

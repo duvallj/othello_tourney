@@ -1,9 +1,9 @@
 #!/bin/bash
 
-cd /web/activities/othello
-python3 -c 'import os;os.chown("hey",33560943,10770)'
+home="/home/othello/www"
+
+cd $home
 echo "CHDIRED" > z.log
-#source venv/bin/activate
-echo "SOURCED" >> z.log
-anaconda3/bin/python3 main_server.py --port $PORT &> temp.log
+anaconda3/bin/python3 main_server.py --hostname 0.0.0.0 --port 10770 --jail_begin "firejail --profile=$home/python-custom.profile --whitelist=$home/students/{NAME} $home/anaconda3/bin/python $home/run_ai_jailed.py"
+# python3 main_server.py --remotes 127.0.0.1=12345 [::1]=23456
 echo "ENDED" >> z.log
