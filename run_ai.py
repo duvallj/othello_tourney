@@ -6,6 +6,7 @@ import importlib
 from multiprocessing import Process, Value, set_start_method
 import time
 import socket
+import io
 
 from othello_admin import Strategy, shared_dir
 
@@ -65,8 +66,6 @@ class LocalAI(AIBase):
 
     def get_move(self, board, player, timelimit, kill_event):
         best_shared = Value("i", -1)
-        best_shared.value = 11
-
         running = Value("i", 1)
         
         # Double wrapping for EXTRA ASSURANCE
@@ -90,6 +89,5 @@ class LocalAI(AIBase):
             p.join(0.01)
             if p.is_alive(): 
                 p.terminate()
-                
         move = best_shared.value
-        return move
+        return move, 'unknown'

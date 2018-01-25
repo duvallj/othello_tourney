@@ -19,7 +19,7 @@ class JailedAIServer:
     def __init__(self, possible_names, *args, **kw):
         self.possible_names = possible_names
         
-    def handle(self, client_in, client_out, sock):
+    def handle(self, client_in, client_out, client_err, sock):
         #####
         # Example: b"duv\n5\n@\n?????..??o@?????\n"
         #####
@@ -47,13 +47,17 @@ class JailedAIServer:
             # Now, we don't want any debug statements
             # messing up the output. So, we replace
             # sys.stdout temporarily
+            err = io.BytesIO()
+            save_err = sys.stderr
+            sys.stderr = err
             save_stdout = sys.stdout
             sys.stdout = io.BytesIO()
             
             strat = self.AIClass(name, possible_names)
-            move = strat.get_move(board, player, timelimit, False)
+            move, _ = strat.get_move(board, player, timelimit, False)
             # And then put it back where we found it
             sys.stdout = save_stdout
+            sys.stderr = save_err
             
             log.debug("Got move {}".format(move))
             client_out.write(str(move)+"\n")
@@ -63,7 +67,7 @@ class JailedAIServer:
         #client_out.flush()
 
     def run(self):
-        self.handle(sys.stdin, sys.stdout, None)
+        self.handle(sys.stdin, sys.stdout, sys.stderr, None)
 
 class JailedAI(AIBase):
     def __init__(self, *args, jail_begin='', **kw):
@@ -80,15 +84,16 @@ class JailedAI(AIBase):
         # Open subprocess
         command = self.jail_begin.replace(NAME_REPLACE, self.name)
         command_args = shlex.split(command)
-        proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         log.debug('Started subprocess with command '+str(command_args))
         outs, errs = proc.communicate(input=bytes(data, 'utf-8'))
+        log.debug(errs.decode())
         log.debug('Got move from subprocess')
         try:
             move = int(outs.decode('utf-8').split("\n")[0])
         except:
             move = -1
-        return move
+        return move, errs.decode()
 
 if __name__=="__main__":
     import multiprocessing

@@ -166,7 +166,9 @@ class GameManager(GameManagerTemplate):
         try:
             if cdata.proc.is_alive():
                 cdata.kill_event.set()
+                log.debug("{} kill event set".format(sid))
                 cdata.done_event.wait()
+                log.debug("{} should be done now".format(sid))
                 eventlet.sleep(0.01)
                 if cdata.proc.is_alive(): cdata.proc.terminate()
             #del cdata.proc
@@ -174,6 +176,7 @@ class GameManager(GameManagerTemplate):
         
         try:
             cdata.bgproc.kill()
+            self.refresh_game(sid, None)
             #del cdata.bgproc
         except: pass
         
@@ -188,7 +191,7 @@ class GameManager(GameManagerTemplate):
             msgq = deque()
             
             if not closed:
-                try: 
+                try:
                     while cdata.pipe.poll():
                         packet = cdata.pipe.recv()
                         msgq.append(packet)
@@ -201,7 +204,7 @@ class GameManager(GameManagerTemplate):
                 self.act_on_message(sid, msgq.popleft())
         else:
             log.debug('Telling client the game is no longer going on...')
-            self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True}, room=sid)
+            self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True, 'error_msg': None}, room=sid)
                 
     def act_on_message(self, sid, packet):
         mtype, data = packet
@@ -271,7 +274,8 @@ class GameRunner:
                 'gameend',
                 {
                     'winner': winner,
-                    'forfeit': True
+                    'forfeit': True,
+                    'err_msg': 'unknown'
                 }
             ))
             done_event.set()
@@ -295,6 +299,7 @@ class GameRunner:
         ))
 
         forfeit = False
+        err_msg = 'unknown'
         black_score = 0
 
         while not (player is None or forfeit or kill_event.is_set()):
@@ -312,9 +317,12 @@ class GameRunner:
 
                 log.debug('Move '+str(move)+' determined legal')
             else:
-                move = strategy[player].get_move(''.join(board), player, self.timelimit, kill_event)
-                log.debug('Strategy '+names[player]+' returned move '+str(move))
-                
+                dat = strategy[player].get_move(''.join(board), player, self.timelimit, kill_event)
+                if isinstance(dat, tuple):
+                    move, err_msg = dat
+                    log.debug(err_msg)
+                else:
+                    move = dat 
             log.debug('Actually got move')
             if not self.core.is_legal(move, player, board):
                 forfeit = True
@@ -344,7 +352,8 @@ class GameRunner:
             'gameend',
             {
                 'winner': winner,
-                'forfeit': forfeit
+                'forfeit': forfeit,
+                'err_msg': err_msg
             }
         ))
         done_event.set()

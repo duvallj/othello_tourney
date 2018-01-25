@@ -419,11 +419,15 @@ function init(socket, delay, port1, port2, timelimit, watching){
       black_text = "[Winner]\n" + black_text;
       if (data.forfeit) {
         white_text = "[Errored]\n" + white_text;
+        document.getElementById('text').innerHTML = '<pre>' + data.err_msg + '</pre>';
+        return;
       }
     } else if (data.winner === WHITE_CH) {
       white_text = "[Winner]\n" + white_text;
       if (data.forfeit) {
         black_text = "[Errored]\n" + black_text;
+        document.getElementById('text').innerHTML = '<pre>' + data.err_msg + '</pre>';
+        return;
       }
     } else if (data.winner === EMPTY_CH) {
       black_text = "[Tie]\n" + black_text;

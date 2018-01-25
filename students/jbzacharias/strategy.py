@@ -12,6 +12,9 @@ class Strategy():
       depth += 1
 
   def my_search_strategy(board, player, depth):
+    pathHome = "remote.tjhsst.edu:/web/activities/othello/private/Students/jbzacharias/msg.txt"
+    msgFile = open(pathHome, 'w')
+    msgFile.write("hello\n")
     myBoard = [[0 for c in range(8)] for r in range(8)] 
     for r in range(8):
         for c in range(8):
@@ -24,15 +27,29 @@ class Strategy():
     (r, c) = chooseMove(myBoard, maximizingPlayer, depth)
     return (r+1)*10+(c+1)
 
-  directions = [(0,+1), (0,-1), (+1,0), (-1,0), (+1, -1), (+1, +1), (-1, -1), (-1, +1)]
+  directions = [(0, +1), (0, -1), (+1, 0), (-1, 0), (+1, -1), (+1, +1), (-1, -1), (-1, +1)]
   infinity = float("Infinity")
+
+  def chooseMove(board, maximizingPlayer, depth):
+    legalMoves = moves(board, maximizingPlayer)
+    if maximizingPlayer: v = -infinity
+    else: v = +infinity
+    myMove = None
+    for move in legalMoves:
+      nextBoard = makeMove(copyIt(board), move, maximizingPlayer)
+      val = alphabeta(nextBoard, depth, -infinity, infinity, not maximizingPlayer)
+      if maximizingPlayer:
+        if val > v: myMove, v = move, val
+      else: 
+        if val < v: myMove, v = move, val
+    return myMove
 
   def copyIt(board):
     return [[board[r][c] for c in range(8)] for r in range(8)]
 
   def makeMove(board, move, maximizingPlayer):
     if move is None: return board
-    r = move[0]; c = move[1]
+    r, c = move[0], move[1]
     if maximizingPlayer: token = -1
     else: token = +1
     board[r][c] = token
@@ -51,7 +68,7 @@ class Strategy():
     return board
   
   def moves(board, maximizingPlayer):
-    returnList = [] # set of pairs (r,c)
+    returnList = [] # list of pairs (r,c)
     if maximizingPlayer: token = -1
     else: token = +1
     for r in range(8):
@@ -79,11 +96,7 @@ class Strategy():
     return 0
 
   def heuristicGameValue(board):
-    sum = 4*(len(moves(board,True))-len(moves(board,False)))
-    for r in [0, 7]:
-      for c in [0, 7]: 
-        if board[r][c] == -1: sum += 5
-        elif board[r][c] == +1: sum -= 5
+    sum = 10*(len(moves(board,True))-len(moves(board,False)))
     for r in [0, 7]:
       for c in [0, 7]:
         if board[r][c] == -1: sum += 75
@@ -124,19 +137,5 @@ class Strategy():
         beta = min(beta, v) 
         if beta <= alpha: break
       return v
-  
-  def chooseMove(board, maximizingPlayer, depth):
-    legalMoves = moves(board, maximizingPlayer)
-    if maximizingPlayer: v = -infinity
-    else: v = +infinity
-    myMove = None
-    for move in legalMoves:
-      val = alphabeta(makeMove(copyIt(board), move, maximizingPlayer), depth, -infinity, infinity, not maximizingPlayer)
-      if maximizingPlayer:
-        if val > v: myMove, v = move, val
-      else: 
-        if val < v: myMove, v = move, val
-    return myMove
-
 
 #end of python file

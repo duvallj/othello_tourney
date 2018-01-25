@@ -19,6 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import os
 import subprocess
 import re
 COLS = 'ABCDEFGH'
@@ -41,11 +42,12 @@ class Strategy:
         return ((i//8)+1)*10+(i%8)+1
 
     def best_strategy(self, board, player, best_move, still_running):
-        with open("/home/othello/www/students/edax/edax_files.obf", "w+") as f:
+        with open("/home/othello/www/students/edax/edax_files_{}.obf".format(hex(id(best_move))), "w+") as f:
             print(self.process_board(board), 'OX'[player == BLACK], file=f)
         out = subprocess.check_output(
-            "/home/othello/www/students/edax/edax -solve /home/othello/www/students/edax/edax_files.obf -move-time 2 -book-usage off", shell=True, stderr=subprocess.DEVNULL).decode()
+            "/home/othello/www/students/edax/edax -solve /home/othello/www/students/edax/edax_files_{}.obf -move-time 2 -book-usage off".format(hex(id(best_move))), shell=True, stderr=subprocess.DEVNULL).decode()
         lines = ' '.join(out.splitlines())
         matched = re.search(r"[a-zA-Z]{1}\d{1}", lines)
         loc = matched.group()
         best_move.value = self.real_location(LOCATIONS[loc.upper()])
+        os.remove("/home/othello/www/students/edax/edax_files_{}.obf".format(hex(id(best_move))))
