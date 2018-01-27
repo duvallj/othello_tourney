@@ -275,7 +275,7 @@ class GameRunner:
                 {
                     'winner': winner,
                     'forfeit': True,
-                    'err_msg': 'unknown'
+                    'err_msg': None
                 }
             ))
             done_event.set()
@@ -299,7 +299,7 @@ class GameRunner:
         ))
 
         forfeit = False
-        err_msg = 'unknown'
+        err_msg = None
         black_score = 0
 
         while not (player is None or forfeit or kill_event.is_set()):
@@ -326,6 +326,7 @@ class GameRunner:
             log.debug('Actually got move')
             if not self.core.is_legal(move, player, board):
                 forfeit = True
+                err_msg = "Invalid Move by {}: {}\nBoard: {}".format(name_strings[[oc.BLACK, oc.WHITE][player == 'o']], move, ''.join(board)) if not err_msg else err_msg
                 if player == oc.BLACK:
                     black_score = -100
                 else:

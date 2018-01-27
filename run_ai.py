@@ -3,9 +3,10 @@ import sys
 if 'win' in sys.platform:
     import ctypes
 import importlib
-from multiprocessing import Process, Value, set_start_method
+from multiprocessing import Process, Value, set_start_method, Pipe
 import time
 import socket
+import traceback
 import io
 
 from othello_admin import Strategy, shared_dir
@@ -57,12 +58,18 @@ class LocalAI(AIBase):
             self.strat, self.new_path, self.new_sys = get_strat(self.name)
 
     def strat_wrapper(self, board, player, best_shared, running):
-        os.chdir(self.new_path)
-        sys.path = self.new_sys
-        move = self.strat(board, player, best_shared, running)
-        os.chdir(self.old_path)
-        sys.path = self.old_sys
-        return move
+        try:
+            return self.strat(board, player, best_shared, running)
+        except:
+            raise Exception(traceback.format_exc())
+
+    
+    def strat_wrapper(self, board, player, best_shared, running, pipe_to_parent):
+        try:
+            self.strat(board, player, best_shared, running)
+            pipe_to_parent.send('')
+        except:
+            pipe_to_parent.send(traceback.format_exc())
 
     def get_move(self, board, player, timelimit, kill_event):
         best_shared = Value("i", -1)
@@ -71,23 +78,27 @@ class LocalAI(AIBase):
         # Double wrapping for EXTRA ASSURANCE
         os.chdir(self.new_path)
         sys.path = self.new_sys
-        p = Process(target=self.strat_wrapper, args=(list(board), player, best_shared, running))
-        p.start()
-        os.chdir(self.old_path)
-        sys.path = self.old_sys
-        
-        t1 = time.time()
-        
-        if kill_event:
-            kill_event.wait(timelimit)
-            p.join(0.01)
-        else:
-            p.join(timelimit)
-        
-        if p.is_alive():
-            running.value = 0
-            p.join(0.01)
-            if p.is_alive(): 
-                p.terminate()
-        move = best_shared.value
-        return move, 'unknown'
+        to_child, to_self = Pipe()
+        try:
+            p = Process(target=self.strat_wrapper, args=(list(board), player, best_shared, running, to_self))
+            p.start()
+            err = to_child.recv()
+            t1 = time.time() 
+            if kill_event:
+                kill_event.wait(timelimit)
+                p.join(0.01)
+            else:
+                p.join(timelimit)
+            
+            if p.is_alive():
+                running.value = 0
+                p.join(0.01)
+                if p.is_alive(): 
+                    p.terminate()
+            move = best_shared.value
+            return move, err
+        except:
+            return -1, 'exception'
+        finally:
+            os.chdir(self.old_path)
+            sys.path = self.old_sys
