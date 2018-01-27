@@ -1,8 +1,12 @@
 import os, sys
 import logging as log
 import io
-import shlex, subprocess
+import shlex
 import eventlet
+
+import subprocess as subprocess_orig
+setattr(subprocess_orig, "mswindows", subprocess_orig._mswindows)
+from eventlet.green import subprocess
 
 from run_ai import AIBase, LocalAI
 import Othello_Core as oc
@@ -23,7 +27,6 @@ class JailedAIServer:
         #####
         # Example: b"duv\n5\n@\n?????..??o@?????\n"
         #####
-        
         name = client_in.readline().strip()
         if name not in self.possible_names:
             log.debug("Data not ok")
@@ -96,8 +99,6 @@ class JailedAI(AIBase):
         return move, errs.decode()
 
 if __name__=="__main__":
-    import multiprocessing
-    multiprocessing.set_start_method('spawn')
     log.basicConfig(format='%(asctime)s:%(levelname)s:[JAILED]:%(message)s', level=log.DEBUG)
     student_folder = os.path.join(os.getcwd(), 'students')
     folders = os.listdir(student_folder)
@@ -107,5 +108,3 @@ if __name__=="__main__":
         os.path.isdir(os.path.join(student_folder, x))
     }
     JailedAIServer(possible_names).run()
-        
-        
