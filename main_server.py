@@ -1,8 +1,5 @@
 #!/usr/bin/python3
 
-import eventlet
-eventlet.monkey_patch()
-
 import socket
 import os
 import argparse
@@ -27,9 +24,20 @@ parser.add_argument('--base_folder', type=str, default=os.getcwd(),
 parser.add_argument('--jail_begin', type=str, default='',
                     help='Command to jail local AIs. "{NAME}" replaced with the name of the AI when run. If not specified, AIs are not jailed.')
                     
-args = parser.parse_args()
+#args = parser.parse_args()
+
+#gm = GameManager(".", async_mode='threading',
+#jail_begin="C:/Python36/python.exe C:/Users/Me/Documents/Github/othello_tourney/run_ai_jailed_twisted.py")
+#from flask_server import app
+#app.gm = gm
+#app.args = argparse.Namespace(base_folder=".")
+#srv = socketio.Middleware(gm, app)
 
 if __name__=='__main__':
+    import eventlet
+    eventlet.monkey_patch()
+
+    args = parser.parse_args()
     multiprocessing.set_start_method('spawn')
     addr = socket.getaddrinfo(args.hostname, args.port)
     host, family = addr[0][4], addr[0][0]
@@ -37,7 +45,6 @@ if __name__=='__main__':
     
     if args.remotes:
         args.remotes = list(map(lambda x:tuple(x.split("=")), args.remotes))
-        #gm = GameForwarder(args.remotes)
         gm = GameManager(args.base_folder, remotes=args.remotes, jail_begin=None)
     else:
         gm = GameManager(args.base_folder, remotes=None, jail_begin=args.jail_begin)
@@ -51,3 +58,5 @@ if __name__=='__main__':
         app.args = args
         srv = socketio.Middleware(gm, app)
         eventlet.wsgi.server(eventlet.listen(host, family), srv)
+        
+    

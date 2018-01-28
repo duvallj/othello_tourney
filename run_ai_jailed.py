@@ -2,11 +2,7 @@ import os, sys
 import logging as log
 import io
 import shlex
-import eventlet
-
-import subprocess as subprocess_orig
-setattr(subprocess_orig, "mswindows", subprocess_orig._mswindows)
-from eventlet.green import subprocess
+import subprocess
 
 from run_ai import AIBase, LocalAI
 import Othello_Core as oc
@@ -36,8 +32,6 @@ class JailedAIServer:
         player = client_in.readline().strip()
         board = client_in.readline().strip()
         log.debug("Got data {} {} {} {}".format(name, timelimit, player, board))
-
-        eventlet.sleep(0)
         
         if name in self.possible_names and \
            (player == oc.BLACK or player == oc.WHITE):
@@ -50,9 +44,9 @@ class JailedAIServer:
             # Now, we don't want any debug statements
             # messing up the output. So, we replace
             # sys.stdout temporarily
-            err = io.BytesIO()
-            save_err = sys.stderr
-            sys.stderr = err
+            
+            #save_err = sys.stderr
+            #sys.stderr = io.BytesIO()
             save_stdout = sys.stdout
             sys.stdout = io.BytesIO()
             
@@ -60,7 +54,7 @@ class JailedAIServer:
             move, _ = strat.get_move(board, player, timelimit, False)
             # And then put it back where we found it
             sys.stdout = save_stdout
-            sys.stderr = save_err
+            #sys.stderr = save_err
             
             log.debug("Got move {}".format(move))
             client_out.write(str(move)+"\n")
@@ -71,7 +65,8 @@ class JailedAIServer:
 
     def run(self):
         self.handle(sys.stdin, sys.stdout, sys.stderr, None)
-
+        
+        
 class JailedAI(AIBase):
     def __init__(self, *args, jail_begin='', **kw):
         super().__init__(*args, **kw)

@@ -8,6 +8,7 @@ import time
 import socket
 import traceback
 import io
+import logging as log
 
 from othello_admin import Strategy, shared_dir
 
@@ -57,17 +58,11 @@ class LocalAI(AIBase):
         if self.name in self.possible_names:
             self.strat, self.new_path, self.new_sys = get_strat(self.name)
 
-    def strat_wrapper(self, board, player, best_shared, running):
-        try:
-            return self.strat(board, player, best_shared, running)
-        except:
-            raise Exception(traceback.format_exc())
-
     
     def strat_wrapper(self, board, player, best_shared, running, pipe_to_parent):
         try:
             self.strat(board, player, best_shared, running)
-            pipe_to_parent.send('')
+            pipe_to_parent.send(None)
         except:
             pipe_to_parent.send(traceback.format_exc())
 
@@ -82,23 +77,26 @@ class LocalAI(AIBase):
         try:
             p = Process(target=self.strat_wrapper, args=(list(board), player, best_shared, running, to_self))
             p.start()
-            err = to_child.recv()
-            t1 = time.time() 
             if kill_event:
                 kill_event.wait(timelimit)
                 p.join(0.01)
             else:
                 p.join(timelimit)
-            
             if p.is_alive():
                 running.value = 0
                 p.join(0.01)
-                if p.is_alive(): 
+                if p.is_alive():
+                    #multiplatform_kill(p)
                     p.terminate()
             move = best_shared.value
+            if to_self.poll():
+                err = to_self.recv()
+            else:
+                err = None
             return move, err
         except:
-            return -1, 'exception'
+            traceback.print_exc()
+            return -1, 'Server Error'
         finally:
             os.chdir(self.old_path)
             sys.path = self.old_sys

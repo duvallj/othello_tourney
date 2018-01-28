@@ -1,15 +1,13 @@
 import socketio
-from socketIO_client import SocketIO, LoggingNamespace
 from multiprocessing import Process, Value, Pipe, Event
 from collections import deque
-import eventlet
 import os
 import sys
-import importlib
+#import threading, traceback
 import logging as log
 import time
-import random
 import ctypes
+import eventlet
 
 from othello_admin import Strategy
 import Othello_Core as oc
@@ -63,6 +61,8 @@ class GameForwarder(GameManagerTemplate):
     outgoing = ['reply', 'moverequest', 'gameend']
     
     def __init__(self, host_list, *args, **kw):
+        import random
+        from socketIO_client import SocketIO, LoggingNamespace
         super().__init__(*args, **kw)
         self.host_list = host_list
         self.sessions = dict()
@@ -103,11 +103,13 @@ class GameForwarder(GameManagerTemplate):
             
             
 class GameData:
-    def __init__(self, game=None, pipe=None, proc=None, bgproc=None, kill_event=None, done_event=None):
+    def __init__(self, game=None, pipe=None, proc=None, bgproc=None, bglock=None, bgrun=False, kill_event=None, done_event=None):
         self.game = game
         self.pipe = pipe
         self.proc = proc
         self.bgproc = bgproc
+        self.bglock = bglock
+        self.bgrun = bgrun
         self.kill_event = kill_event
         self.done_event = done_event
         
@@ -143,6 +145,22 @@ class GameManager(GameManagerTemplate):
         cdata.proc = Process(target=cdata.game.run_game, args=(child_conn, cdata.kill_event, cdata.done_event))
         cdata.proc.start()
         
+        """
+        cdata.bglock = threading.Lock()
+        cdata.bgrun = True
+        
+        def _bg_refresh():
+            cdata.bglock.acquire()
+            while cdata.bgrun:
+                cdata.bglock.release()
+                self.refresh_game(sid, None)
+                cdata.bglock.acquire()
+            cdata.bglock.release()
+        
+        cdata.bgproc = threading.Thread(target=_bg_refresh)
+        cdata.bgproc.start()
+        """
+        
         def _bg_refresh():
             while True:
                 self.refresh_game(sid, None)
@@ -169,12 +187,14 @@ class GameManager(GameManagerTemplate):
                 log.debug("{} kill event set".format(sid))
                 cdata.done_event.wait()
                 log.debug("{} should be done now".format(sid))
-                eventlet.sleep(0.01)
                 if cdata.proc.is_alive(): cdata.proc.terminate()
             #del cdata.proc
         except: pass
         
         try:
+            #with cdata.bglock:
+            #    cdata.bgrun = False
+            #self.bgproc.join()
             cdata.bgproc.kill()
             self.refresh_game(sid, None)
             #del cdata.bgproc
@@ -305,13 +325,21 @@ class GameRunner:
         while not (player is None or forfeit or kill_event.is_set()):
             log.debug('Main loop!')
             if names[player] is None:
-                move = 0
+                move = -1
                 
                 # clear out queue from moves sent by rouge client
                 while conn.poll(): temp=conn.recv()
                 
                 while not self.core.is_legal(move, player, board):
                     conn.send(('getmove', 0))
+                    should_break = False
+                    
+                    while not conn.poll():
+                        if kill_event.is_set():
+                            should_break = True
+                            break
+                    
+                    if should_break: break
                     move = conn.recv()
                     log.debug('Game recieved move '+str(move))
 
@@ -322,7 +350,7 @@ class GameRunner:
                     move, err_msg = dat
                     log.debug(err_msg)
                 else:
-                    move = dat 
+                    move = dat
             log.debug('Actually got move')
             if not self.core.is_legal(move, player, board):
                 forfeit = True

@@ -1,6 +1,7 @@
 # This file will provide backend/config stuff for
 # loggin in with ion + flask_social
-import requests
+
+import requests # has trouble with eventlet
 
 config = {
     'id': 'ion',
@@ -31,11 +32,7 @@ def get_api(response, **kwargs):
 def get_provider_user_id(response, **kwargs):
     print('gpui', response)
     if response:
-        profile = requests.get(
-            "https://ion.tjhsst.edu/api/profile",
-            params={'access_token': response.get('access_token', None)}
-        ).json()
-        return profile['id']
+        return get_api(response)['id']
     return None
 
 def get_connection_values(response, **kwargs):
@@ -44,10 +41,7 @@ def get_connection_values(response, **kwargs):
 
     print('gcv', response)
 
-    profile = requests.get(
-        "https://ion.tjhsst.edu/api/profile",
-        params={'access_token': response.get('access_token', None)}
-    ).json()
+    profile = get_api(response)
 
     return dict(
         provider_id=config['id'],
