@@ -218,18 +218,18 @@ function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
   addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq);
   rCanvas.add(rCanvas.select);
   
-  rCanvas.add(rCanvas.textbg);
+  /*rCanvas.add(rCanvas.textbg);
   rCanvas.add(rCanvas.black);
-  rCanvas.add(rCanvas.white);
+  rCanvas.add(rCanvas.white);*/
     
   var counts = countPieces(bSize, bArray);
-  rCanvas.black.text = rCanvas.black_name+': '+counts[BLACK_NM].toString();
-  rCanvas.white.text = rCanvas.white_name+': '+counts[WHITE_NM].toString();
+  rCanvas.black.innerHTML = rCanvas.black_name+': '+counts[BLACK_NM].toString();
+  rCanvas.white.innerHTML = rCanvas.white_name+': '+counts[WHITE_NM].toString();
   if(tomove === BLACK_NM){
-    rCanvas.black.text = rCanvas.black.text+' (*)';
+    rCanvas.black.innerHTML = ' (*) '+rCanvas.black.innerHTML;
   }
   else if(tomove === WHITE_NM){
-    rCanvas.white.text = '(*) '+rCanvas.white.text;
+    rCanvas.white.innerHTML = rCanvas.white.innerHTML+' (*) ';
   }
   rCanvas.draw();
   rCanvas.lBSize = bSize;
@@ -259,11 +259,11 @@ function resize(canvas, gWidth, gHeight){
 }
 
 function init(socket, delay, port1, port2, timelimit, watching){
-  document.getElementById('canvasContainer').innerHTML =
-    '<canvas id="canvas" onClick=""></canvas>';
+  document.getElementById('canvasContainer').style.display = "";
+  document.getElementById('player-selection-text').style.display = "none";
 
   var canvas = document.getElementById('canvas');
-  var gWidth = 890;
+  var gWidth = 1000;
   var gHeight = 1000;
 
   //resize(canvas, gWidth, gHeight);
@@ -274,13 +274,13 @@ function init(socket, delay, port1, port2, timelimit, watching){
     rCanvas.resize();
   });
 
-  var gap = rCanvas.rHeight - rCanvas.rWidth;
+  //var gap = rCanvas.rHeight - rCanvas.rWidth;
   rCanvas.fullbg = new RImg(
     0, 0, 
     rCanvas.rWidth, rCanvas.rWidth, 
     BORDER_IMG
   );
-  rCanvas.textbg = new RRect(
+  /*rCanvas.textbg = new RRect(
     0, rCanvas.rWidth, 
     rCanvas.rWidth, gap, 
     '#805229', 1.0
@@ -296,8 +296,10 @@ function init(socket, delay, port1, port2, timelimit, watching){
     'White',
     gap*2/5,'Roboto Mono',
     WHITE_CO
-  );
-
+  );*/
+  rCanvas.black = document.getElementById("player-black");
+  rCanvas.white = document.getElementById("player-white");
+  
   var selected = new RRect(0, 0, 1, 1, HIGHLIGHT_CO, 0.4);
   rCanvas.select = selected;
   
@@ -420,7 +422,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
       if (data.forfeit) {
         white_text = "[Errored]\n" + white_text;
         if(data.err_msg){
-            document.getElementById('text').innerHTML = '<pre>' + data.err_msg + '</pre>';
+            document.getElementById('canvasContainer').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
             return;
         }
       }
@@ -429,7 +431,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
       if (data.forfeit) {
         black_text = "[Errored]\n" + black_text;
         if(data.err_msg){
-            document.getElementById('text').innerHTML = '<pre>' + data.err_msg + '</pre>';
+            document.getElementById('canvasContainer').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
             return;
         }
       }
@@ -467,10 +469,11 @@ function init(socket, delay, port1, port2, timelimit, watching){
 
 function makeSocketFromPage(addr, port, port1, port2, delay, timelimit, watching){
   var socket;
-//  if (port !== "443") {
+  if (port !== "443") {
+    socket = io('http://'+addr+':'+port);
+  } else {
     socket = io('https://'+addr+':'+port);
- // } else {
- //   socket = io('https://'+addr+':'+port,{path:'/othello/socket.io/'});
+  }
   console.log('made socket');
   var delay = parseInt(delay);
   init(socket, delay, port1, port2, timelimit, watching);

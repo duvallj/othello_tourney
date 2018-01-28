@@ -1,0 +1,12 @@
+div#player-score-box {
+  background-color: #805229;
+}
+p.player-score {
+  font-size: 32px;
+}
+p#player-white {
+  color: #ffffff;
+}
+p#player-black {
+  color: #000000;
+}

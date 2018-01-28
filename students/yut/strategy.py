@@ -41,6 +41,8 @@ SQUARES = core.OthelloCore().squares()  # instead of calling this many times per
 INF = 10 ** 10
 LATE_GAME = 54  # used in heuristic
 
+print_old = print
+print = lambda *args: None
 
 class Strategy(core.OthelloCore):
     def __init__(self):

@@ -22,30 +22,36 @@ input {
 button {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color:#917a07;
-  border:#c79200 2px solid;
+  color: #917a07;
+  border: #c79200 2px solid;
   padding: 4px;
 }
 
 select {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color:#917a07;
-  border:#c79200 2px solid;
+  color: #917a07;
+  border: #c79200 2px solid;
   padding: 4px;
 }
 
 option {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color:#917a07;
-  border:#c79200 2px solid;
+  color: #917a07;
+  border: #c79200 2px solid;
   padding: 4px;
+}
+
+code{
+  font-family: 'Roboto Mono', monospace;
+  font-size: 16px;
+  color: #917a07;
 }
 
 div.main {
   font-size: 16px;
-  color:#33a122;
+  color: #33a122;
   width: 70%;
   padding: 2% 15%;
 }
@@ -113,8 +119,4 @@ div.linkbar a:link{
 
 div.linkbar a:visited{
   color: #fffff0;
-}
-
-.output{
-  color:#917a07;
 }

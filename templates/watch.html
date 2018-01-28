@@ -1,10 +1,23 @@
 {% extends "template.html" %}
 {% block title %}Othello{% endblock %}
 {% block header %}Watch Othello{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="./static/css/playerscorebox.css"/>
+{% endblock %}
 {% block content %}
-      <div id="canvasContainer" class="centered">
-        <p>
-          Loading game list...
+      <div id="canvasContainer" style="display:none" class="centered">
+        <div>
+          <canvas id="canvas" onClick=""></canvas>
+          <div id="player-score-box" class="centered">
+            <p id="player-black" class="player-score">Player 1</p>
+            <p style="visibility: hidden">WWW</p>
+            <p id="player-white" class="player-score">Player 2</p>
+          </div>
+        </div>
+      </div>
+      <div class="centered">
+        <p id="player-selection-text">
+          Loading port list...
         </p>
       </div>
       <script src="./static/js/socket.io.js"></script>

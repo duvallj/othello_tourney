@@ -13,7 +13,7 @@ function putGamesToPage(output) {
   } else {
     buf += "<p>There are no games running currently.</p>";
   }
-  document.getElementById('canvasContainer').innerHTML = buf;
+  document.getElementById('player-selection-text').innerHTML = buf;
 }
 
 function actuallyDoSocket2(data) {

@@ -21,7 +21,7 @@ function putConfigToPage(output){
   output += '\nYourself'
   pdict = output.split('\n');
   //console.log(output);
-  buf = '<p>Black: <select id="ai1" placeholder="Player 1">';
+  buf = 'Black: <select id="ai1" placeholder="Player 1">';
   buf += '<option value="">Player 1</option>'
   for (var i=0; i<pdict.length; i++){
     buf += '<option value="'+pdict[i]+'">'+pdict[i]+'</option>'
@@ -33,8 +33,8 @@ function putConfigToPage(output){
   }
   buf += '</select><br><br>';
   buf += 'Time limit (secs): <input type="number" id="tml" value="5"/><br><br>'
-  buf += '<button onclick="actuallyDoSocket();">Start Match!</button></p>'
-  document.getElementById('canvasContainer').innerHTML = buf;
+  buf += '<button onclick="actuallyDoSocket();">Start Match!</button>'
+  document.getElementById('player-selection-text').innerHTML = buf;
   $("#ai1").selectize();
   $("#ai2").selectize();
 };
