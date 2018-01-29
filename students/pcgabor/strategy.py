@@ -4,7 +4,7 @@
 # 15 Jan 2018
 # Minimal corner strategy
 #
-import sys, time, math, random
+import sys, time, math, random, multiprocessing
 
 # Debugging info
 from os import path
@@ -15,9 +15,10 @@ import re
 
 
 def legalMoves(othelloBoard, token):
+  dot = '.'
   moves = {}
   for idx in [idx for idx,tkn in enumerate(othelloBoard) if tkn==dot]:
-    for dir, lim in dirrng[idx]:
+    for dir, lim in legalMoves.dirrng[idx]:
       for p in range(idx+dir,lim,dir):
         if othelloBoard[p]==".": break
         if othelloBoard[p]==token:
@@ -64,34 +65,31 @@ class Strategy():
   def best_strategy(self, board, player, best_move, still_running):
     brd = "".join(board).replace("?", "").replace("@", "X").replace("o", "O")
     token = "X" if player=="@" else "O"
-    mv = findBestMove(brd, token)
+
+    sL = int(len(brd)**.5+.5)
+    dirs = [{h+v for h in [-1,0,1] for v in [-sL,0,sL] for b in [c+h+v+h+v] \
+                   if (b>=0)*(b<sL*sL)*((b%sL-c%sL)*h>=0)}-{0} for c in range(sL*sL)]
+    # the direction together with the boundary of where one must check for bracketing
+    legalMoves.dirrng = [[(dir,idx+rngLim(idx,dir,sL)*dir) for dir in setOfDirs] for idx,setOfDirs in enumerate(dirs)]
+
+
+    mv = bestMoveHeuristic(brd, token)
     mv1 = 11 + (mv//8)*10 + (mv % 8)
     best_move.value = mv1
 
+    global levelCt, leafCtr
+    if board.count('.') <= levelCt:
+      for lvl in range(1, levelCt+3, 2):
+#        mm = negmaxAB(board, token, lvl, -maxNega*len(board), maxNega*len(board))
+        mm = negmaxAB(brd, token, lvl, -len(brd), len(brd))
+        print ("Negamax analysis shows: {}".format(mm))
+        mv = mm[-1]
+        mv1 = 11 + (mv//8)*10 + (mv % 8)
+        print ("Move submission at lvl {} is {} => {}".format(lvl, mv, mv1))
+        best_move.value = mv1
 
 
 
-
-
-sL       = 8    # side length of board
-# the set of directions in which one can go for making moves
-dirs = [{h+v for h in [-1,0,1] for v in [-sL,0,sL] for b in [c+h+v+h+v] \
-                   if (b>=0)*(b<sL*sL)*((b%sL-c%sL)*h>=0)}-{0} for c in range(sL*sL)]
-# the direction together with the boundary of where one must check for bracketing
-dirrng = [[(dir,idx+rngLim(idx,dir,sL)*dir) for dir in setOfDirs] for idx,setOfDirs in enumerate(dirs)]
-
-corners = {0, sL*sL-1, sL-1, sL*sL-sL}
-
-dctE = {i:{0,sL-1} for i in range(1,sL-1)}
-# improvement 2: safe play to: edge position that connects to a safe corner
-for i in range(sL,sL*sL-sL,sL): dctE[i] = {0, sL*sL-sL}
-for i in range(sL*sL-sL+1,sL*sL-1): dctE[i] = {sL*sL-sL, sL*sL-1}
-for i in range(sL-1+sL, sL*sL-1, sL): dctE[i] = {sL-1, sL*sL-1}
-
-EandC = {*dctE.keys()} | corners
-
-dctcx =     {0: {1, sL, sL+1}, sL-1:{sL-2, sL+sL-1, sL+sL-2}, sL*sL-1:{sL*sL-2, sL*sL-sL-1, sL*sL-sL-2},
-      sL*sL-sL: {sL*sL-sL+1, sL*sL-sL-sL, sL*sL-sL-sL+1}}
 
 
 
@@ -111,11 +109,12 @@ def main():
   # For example, the regular expressions for finding moves is not reconciled
   # against sL, nor is there currently any way to specify sL from the command line
 
-  theX, theO, dot = "X", "O", "."
   board = args[brdIdx] if brdIdx>=0 else \
           dot * ((sL*sL-sL)//2-1) + theO + theX + dot * (sL-2) + theX + theO + dot * ((sL*sL-sL)//2-1)
   sL = int(len(board)**.5 + .5)     # in case of a board of a different size
+  board = board.upper()
   token = args[tknIdx].upper() if tknIdx>=0 else (theO if board.count(dot)%2 else theX)
+  print ("dot ct: {}, tknIdx: {}, token: {}".format(board.count(dot), tknIdx, token))
 
   lm = legalMoves(board, token)
   if not lm: token = theO if token==theX else theX
@@ -155,8 +154,59 @@ def main():
     exit()
   print ("The legal moves for {} are {}".format(token, lm.keys()))
 
-  mv = findBestMove(board, token)
-  print ("My move choice is {}".format(mv))
+  mv = bestMoveHeuristic(board, token)
+  print ("My heuristic choice is {}".format(mv))
+
+  global levelCt, leafCtr
+  if board.count('.') <= levelCt:
+    for lvl in range(1, levelCt+3, 2):
+#      print("\nRunning negamax at level {}".format(lvl))
+      mm = negmaxAB(board, token, lvl, -len(board), len(board))
+#      mm = negmaxAB(board, token, lvl, -maxNega*len(board), maxNega*len(board))
+      mv = mm[-1]
+      print ("At level {}, after {} leafs and negamax {}, my choice is {}".format(lvl, leafCtr, mm, mv), flush=True)
+
+
+
+def negmaxAB(brd, token, levels, improvableBound, hardBound):
+  # evaluate the best move from token's point of view
+  # returns a list where the first element is the evaluation of the board
+  # and the remaining elements are the moves in reverse order leading to that evaluation
+  enemy = "O" if token=="X" else "X"
+  global leafCtr
+  if not levels: leafCtr += 1; return [boardEval(brd, token)]
+  
+#  print ("lm check in Negamax with {} {}".format(brd, token))
+  lm = legalMoves(brd, token)
+  if not lm:
+    lm2 = legalMoves(brd, enemy)
+    # -2 signifies end of game.  It will dominate non end of game values
+#    if not lm2: leafCtr += 1; return [maxNega * (brd.count(token) - brd.count(enemy)), -2]
+    if not lm2: leafCtr += 1; return [brd.count(token) - brd.count(enemy), -3]          # -3 means game end
+    mm = negmaxAB(brd, enemy, levels-1, -hardBound, -improvableBound) + [-1]  # else it's a pass
+#    print ("level {}, improvableBound {}, hardBound {}, negamax => {}".format(levels, improvableBound, hardBound, mm))
+    return [-mm[0]] + mm[1:]
+
+  mmSave = []
+  for mv in lm:
+    mm = negmaxAB(makeMove(brd, token, mv, lm[mv]), enemy, levels-1, -hardBound, -improvableBound) + [mv]
+#    if levels: print ("mustBeAtLeast: {}, noMoreThan: {}\nalphaBeta: {}\n".format(mustBeAtLeast, noMoreThan, mm))
+    mmscore = -mm[0]
+#    print ("Level {}, improvableBound {}, hardBound {}, score: {}, nm moves => {}".format(levels, improvableBound, hardBound, mmscore, mm[1:]))
+    if (mmscore != hardBound) and ((hardBound==improvableBound) or (mmscore>hardBound)==(hardBound>improvableBound)):
+#      print ("Pruning remaining branches")
+      return [mmscore] + mm[1:]                # nothing more to do
+    if (mmscore==improvableBound) or (mmscore==hardBound) or (mmscore > improvableBound)==(mmscore < hardBound):
+#      print ("Improvable-Hard bounds of {}-{} met with {}, best updated to {}".format(improvableBound, hardBound, mmscore, mm[1:]))
+      improvableBound = mmscore
+      mmSave = [mmscore] + mm[1:]              # an improvement
+#    else: print("Branch with score of {} did not meet improveable bound of {} - marked for obsolesence".format(mmscore, improvableBound))
+  if not mmSave:
+#    print ("Lower bound of {} unmet - returning most recent negamax {}: {}".format(improvableBound, mmscore, mm[1:]))
+    mmSave = [mmscore] + mm[1:]                             # just in case nothing is satisfactory
+  return mmSave
+
+
 
 
 
@@ -165,7 +215,8 @@ def boardEval(brd, token):
   myTokens = {pos for pos, tkn in enumerate(brd) if tkn==token}
   enemy = "O" if token=="X" else "X"
   enemyTokens = {pos for pos, tkn in enumerate(brd) if tkn==enemy}
-  return len(myTokens) - len(eneymTokens)
+  return len(myTokens) - len(enemyTokens)
+
   cxMine = {cx for c in corners for cx in dctcx[c] if brd[c]!=token and brd[cx]==token}
   cxEnemy = {cx for c in corners for cx in dctcx[c] if brd[c]!=enemy and brd[cx]==enemy}
   return +     len(myTokens)            - len(enemyTokens) \
@@ -173,6 +224,7 @@ def boardEval(brd, token):
          - 4 * (len(cxMine)             + len(cxEnemy))
 
 
+'''
 def negmaxAB(brd, token, levels, mustBeAtLeast, noMoreThan):
   # evaluate the best move from token's point of view
   # returns a list where the first element is the evaluation of the board
@@ -185,8 +237,10 @@ def negmaxAB(brd, token, levels, mustBeAtLeast, noMoreThan):
   if not lm:
     lm2 = legalMoves(brd, enemy)
     # -2 signifies end of game.  It will dominate non end of game values
-    if not lm2: leafCtr += 1; return [maxNega * (brd.count(token) - brd.count(enemy)), -2]
+#    if not lm2: leafCtr += 1; return [maxNega * (brd.count(token) - brd.count(enemy)), -2]
+    if not lm2: leafCtr += 1; return [brd.count(token) - brd.count(enemy), -3]          # -3 means game end
     mm = negmaxAB(brd, enemy, levels-1, -noMoreThan, -mustBeAtLeast) + [-1]  # else it's a pass
+    print ("level {}, mustBeAtLeast {}, noMoreThan {}, negamax => {}".format(levels, mustBeAtLeast, noMoreThan, mm))
     return [-mm[0]] + mm[1:]
 
   mmSave = []
@@ -194,20 +248,25 @@ def negmaxAB(brd, token, levels, mustBeAtLeast, noMoreThan):
     mm = negmaxAB(makeMove(brd, token, mv, lm[mv]), enemy, levels-1, -noMoreThan, -mustBeAtLeast) + [mv]
 #    if levels: print ("mustBeAtLeast: {}, noMoreThan: {}\nalphaBeta: {}\n".format(mustBeAtLeast, noMoreThan, mm))
     mmscore = -mm[0]
-    if mmscore >= noMoreThan: return [mmscore] + mm[1:]     # nothing more to do
+    print ("Level {}, mustBeAtLeast {}, noMoreThan {}, score: {}, nm moves => {}".format(levels, mustBeAtLeast, noMoreThan, mmscore, mm[1:]))
+    if mmscore >= noMoreThan: print("Pruning remaining branches"); return [mmscore] + mm[1:]     # nothing more to do
     if mmscore >= mustBeAtLeast:
       mustBeAtLeast = mmscore
+      print ("Bounds met, best updated")
       mmSave = [mmscore] + mm[1:]
-  if not mmSave: mmSave = [mmscore] + mm[1:]                             # just in case nothing is satisfactory
+  if not mmSave:
+    print ("Lower bound unmet - returning most recent negamax")
+    mmSave = [mmscore] + mm[1:]                             # just in case nothing is satisfactory
   return mmSave
-
-
-
-
 '''
-maxNega = len(board) + 10 * 4 # len(board) + (6+4) * cornersCt
+
+
+
+
+# maxNega = len(board) + 10 * 4 # len(board) + (6+4) * cornersCt
 leafCtr = 0
-levelCt = 3
+# levelCt = 3
+'''
 for lvl in range(1,2*levelCt,2):
   mm = negmaxAB(board, token, lvl, -maxNega*len(board), maxNega*len(board))
   print ("After {} leafs, and negamax {}, my choice is {}".format(leafCtr, mm, mm[-1]), flush=True)
@@ -215,7 +274,8 @@ exit()
 '''
 
 
-def findBestMove(board, token):
+def bestMoveHeuristic(board, token):
+
   lm = legalMoves(board, token)
   lms = {*lm.keys()}
 
@@ -269,5 +329,33 @@ def findBestMove(board, token):
 # print ("My choice is {}".format(random.choice([*lms])))
 
 
+
+sL       = 8    # side length of board
+theX, theO, dot = "X", "O", "."
+levelCt = 13
+# the set of directions in which one can go for making moves
+dirs = [{h+v for h in [-1,0,1] for v in [-sL,0,sL] for b in [c+h+v+h+v] \
+                   if (b>=0)*(b<sL*sL)*((b%sL-c%sL)*h>=0)}-{0} for c in range(sL*sL)]
+# the direction together with the boundary of where one must check for bracketing
+legalMoves.dirrng = [[(dir,idx+rngLim(idx,dir,sL)*dir) for dir in setOfDirs] for idx,setOfDirs in enumerate(dirs)]
+
+corners = {0, sL*sL-1, sL-1, sL*sL-sL}
+
+dctE = {i:{0,sL-1} for i in range(1,sL-1)}
+# improvement 2: safe play to: edge position that connects to a safe corner
+for i in range(sL,sL*sL-sL,sL): dctE[i] = {0, sL*sL-sL}
+for i in range(sL*sL-sL+1,sL*sL-1): dctE[i] = {sL*sL-sL, sL*sL-1}
+for i in range(sL-1+sL, sL*sL-1, sL): dctE[i] = {sL-1, sL*sL-1}
+
+EandC = {*dctE.keys()} | corners
+
+dctcx =     {0: {1, sL, sL+1}, sL-1:{sL-2, sL+sL-1, sL+sL-2}, sL*sL-1:{sL*sL-2, sL*sL-sL-1, sL*sL-sL-2},
+      sL*sL-sL: {sL*sL-sL+1, sL*sL-sL-sL, sL*sL-sL-sL+1}}
+
+
+
+
+
 if __name__ == "__main__":
+  multiprocessing.freeze_support()
   main()
