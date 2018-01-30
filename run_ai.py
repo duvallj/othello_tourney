@@ -75,7 +75,7 @@ class LocalAI(AIBase):
         sys.path = self.new_sys
         to_child, to_self = Pipe()
         try:
-            p = Process(target=self.strat_wrapper, args=(list(board), player, best_shared, running, to_self))
+            p = Process(target=self.strat_wrapper, args=(list(board), player, best_shared, running, to_child))
             p.start()
             if kill_event:
                 kill_event.wait(timelimit)
@@ -90,8 +90,10 @@ class LocalAI(AIBase):
                     p.terminate()
             move = best_shared.value
             if to_self.poll():
+                log.info("There is an error")
                 err = to_self.recv()
             else:
+                log.info("There was no error")
                 err = None
             return move, err
         except:

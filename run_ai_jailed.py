@@ -48,13 +48,14 @@ class JailedAIServer:
             #save_err = sys.stderr
             #sys.stderr = io.BytesIO()
             save_stdout = sys.stdout
-            sys.stdout = io.BytesIO()
+            sys.stdout = io.TextIOWrapper(io.BytesIO())
             
             strat = self.AIClass(name, possible_names)
-            move, _ = strat.get_move(board, player, timelimit, False)
+            move, err = strat.get_move(board, player, timelimit, False)
             # And then put it back where we found it
             sys.stdout = save_stdout
             #sys.stderr = save_err
+            if err is not None: client_err.write(err)
             
             log.debug("Got move {}".format(move))
             client_out.write(str(move)+"\n")
@@ -85,7 +86,7 @@ class JailedAI(AIBase):
         proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         log.debug('Started subprocess with command '+str(command_args))
         outs, errs = proc.communicate(input=bytes(data, 'utf-8'))
-        log.debug(errs.decode())
+        log.debug("Process stderr is "+errs.decode())
         log.debug('Got move from subprocess')
         try:
             move = int(outs.decode('utf-8').split("\n")[0])
