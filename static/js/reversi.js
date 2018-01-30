@@ -259,7 +259,7 @@ function resize(canvas, gWidth, gHeight){
 }
 
 function init(socket, delay, port1, port2, timelimit, watching){
-  document.getElementById('canvasContainer').style.display = "";
+  document.getElementById('canvasContainer').style.display = "flex";
   document.getElementById('player-selection-text').style.display = "none";
 
   var canvas = document.getElementById('canvas');
@@ -422,7 +422,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
       if (data.forfeit) {
         white_text = "[Errored]\n" + white_text;
         if(data.err_msg){
-            document.getElementById('canvasContainer').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
+            document.getElementById('text').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
             return;
         }
       }
@@ -431,7 +431,7 @@ function init(socket, delay, port1, port2, timelimit, watching){
       if (data.forfeit) {
         black_text = "[Errored]\n" + black_text;
         if(data.err_msg){
-            document.getElementById('canvasContainer').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
+            document.getElementById('text').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
             return;
         }
       }

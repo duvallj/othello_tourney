@@ -59,7 +59,7 @@ div.main {
 div.top {
   background-color: #33a122;
   text-align: center;
-  font-size: 30px;
+  font-size: 4vh;
   color: #fffff0;
   padding-top: 1px; /* hack to stop margin from leaking outside container (theres probably a better way to do this) */
 }
@@ -103,7 +103,7 @@ a:hover{
 
 div.linkbar {
   background-color: #805229;
-  font-size: 18px;
+  font-size: 2.5vh;
   width: 80%;
   color: #33a122;
   padding-left: 10%;

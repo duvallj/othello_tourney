@@ -89,12 +89,9 @@ class LocalAI(AIBase):
                     #multiplatform_kill(p)
                     p.terminate()
             move = best_shared.value
-            if to_self.poll():
+            err = to_self.recv()
+            if err:
                 log.info("There is an error")
-                err = to_self.recv()
-            else:
-                log.info("There was no error")
-                err = None
             return move, err
         except:
             traceback.print_exc()
