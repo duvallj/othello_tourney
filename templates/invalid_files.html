@@ -1,0 +1,8 @@
+{% extends "template.html" %}
+{% block title %}Upload Error{% endblock %}
+{% block header %}Upload Error{% endblock %}
+
+{% block content %}
+  <p>Hi {{ current_user.name }},</p>
+  <p>There was an error when uploading your files. Make sure you have a valid extension for all your files. For more information see <a href="./about_uploading">About Uploading</a></p>
+{% endblock %}
