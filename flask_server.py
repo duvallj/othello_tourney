@@ -17,16 +17,9 @@ from flask_security import SQLAlchemyUserDatastore, UserMixin, \
      RoleMixin, Security, login_required, current_user, \
      login_user, logout_user
 
-from werkzeug.utils import secure_filename
-
 
 import ion_provider
 import ion_secret
-
-ALLOWED_EXTENSIONS = {'txt', 'py', 'pkl'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 app = flask.Flask(__name__)
 app.gm = None
@@ -43,7 +36,6 @@ app.config['SOCIAL_REDIRECT_URI_OVERRIDE'] = 'https://othello.tjhsst.edu/login/i
 app.config['DEBUG'] = True
 app.config['SECRET_KEY'] = ion_secret.FLASK_SECRET
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
-app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 
 db = SQLAlchemy(app)
 
@@ -175,20 +167,21 @@ def upload():
             flask.flash('You submitted without code')
             return flask.redirect(request.url)
         
-        for f in request.files.getlist('code'):
-            if f.filename == '' or not allowed_file(f.filename):
-                return flask.render_template('invalid_files.html') 
-        for f in request.files.getlist('code'):
-            fname = os.path.join(fdir, secure_filename(f.filename))
-            f.save(fname)
-            if not sys.platform.startswith('win'):
-                # Make the files owned by the user so only they can edit them
-                #os.chown(fdir,)
-                #os.chown(fname,)
-                #os.chmod(fdir,0o750)
-                #os.chmod(fname,0o750)
-                pass
-            app.gm.write_ai()
+        f = request.files['code']
+        if f.filename == '':
+            flask.flash('You did not select a file')
+            return flask.redirect(request.url)
+            
+        fname = os.path.join(fdir, 'strategy.py')
+        f.save(fname)
+        if not sys.platform.startswith('win'):
+            # Make the files owned by the user so only they can edit them
+            #os.chown(fdir,)
+            #os.chown(fname,)
+            #os.chmod(fdir,0o750)
+            #os.chmod(fname,0o750)
+            pass
+        app.gm.write_ai()
         return flask.render_template('upload_complete.html')
     else:
         return flask.render_template('upload.html')

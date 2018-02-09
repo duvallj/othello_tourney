@@ -4,7 +4,6 @@ from collections import deque
 import os
 import sys
 #import threading, traceback
-import traceback
 import logging as log
 import time
 import ctypes
@@ -40,15 +39,9 @@ class GameManagerTemplate(socketio.Server):
     def get_possible_files(self):
         folders = os.listdir(os.path.join(self.base_folder, 'students'))
         log.debug('Listed Student folders successfully')
-        possibles = []
-        for x in folders:
-            try:
-                if x != "__pycache__" and os.path.isfile(os.path.join(self.base_folder, 'students', x, 'strategy.py')):
-                    possibles.append('students.{}.strategy'.format(x))
-            except:
-                traceback.print_exc()
-                pass
-        return possibles
+        return ['students.'+x+'.strategy' for x in folders if \
+        x != '__pycache__' and \
+        os.path.isdir(os.path.join(self.base_folder, 'students', x))]
 
     def write_ai(self):
         self.possible_names = set()
