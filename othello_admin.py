@@ -36,7 +36,7 @@ class Strategy(core.OthelloCore):
     def is_legal(self, move, player, board):
         """Is this a legal move for the player?"""
         hasbracket = lambda direction: self.find_bracket(move, player, board, direction)
-        return board[move] == core.EMPTY and any(map(hasbracket, core.DIRECTIONS))
+        return 0<=move<100 and board[move] == core.EMPTY and any(map(hasbracket, core.DIRECTIONS))
 
 
     ### Making moves

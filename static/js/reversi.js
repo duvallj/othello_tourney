@@ -418,37 +418,37 @@ function init(socket, delay, port1, port2, timelimit, watching){
     var black_text = "";
     var white_text = "";
     if (data.winner === BLACK_CH) {
-      black_text = "[Winner]\n" + black_text;
+      black_text = " [Winner] " + black_text;
       if (data.forfeit) {
-        white_text = "[Errored]\n" + white_text;
+        white_text = " [Errored] " + white_text;
         if(data.err_msg){
             document.getElementById('text').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
             return;
         }
       }
     } else if (data.winner === WHITE_CH) {
-      white_text = "[Winner]\n" + white_text;
+      white_text = " [Winner] " + white_text;
       if (data.forfeit) {
-        black_text = "[Errored]\n" + black_text;
+        black_text = " [Errored] " + black_text;
         if(data.err_msg){
             document.getElementById('text').innerHTML = '<pre><code>' + data.err_msg + '</code></pre>';
             return;
         }
       }
     } else if (data.winner === EMPTY_CH) {
-      black_text = "[Tie]\n" + black_text;
-      white_text = "[Tie]\n" + white_text;
+      black_text = "[Tie] " + black_text;
+      white_text = "[Tie] " + white_text;
     } else {
       if (data.forfeit) {
-        black_text = "[Game Over]\n" + black_text;
-        white_text = "[Game Over]\n" + white_text;
+        black_text = " [Game Over] " + black_text;
+        white_text = " [Game Over] " + white_text;
       } else {
-        black_text = "[Server error]\n" + black_text;
-        white_text = "[Server error]\n" + white_text;
+        black_text = " [Server error] " + black_text;
+        white_text = " [Server error] " + white_text;
       }
     }
     //Add text signifying that the game is over
-    rCanvas.black.y = rCanvas.rHeight - gap*1/5;
+    /*rCanvas.black.y = rCanvas.rHeight - gap*1/5;
     rCanvas.black.size = gap*3/10;
     rCanvas.white.y = rCanvas.rHeight - gap*1/5;
     rCanvas.white.size = gap*3/10;
@@ -463,7 +463,9 @@ function init(socket, delay, port1, port2, timelimit, watching){
       gap*3/10,'Roboto Mono',
       WHITE_CO
     ));
-    rCanvas.draw();
+    rCanvas.draw();*/
+    rCanvas.black.innerHTML = black_text + rCanvas.black.innerHTML;
+    rCanvas.white.innerHTML = rCanvas.white.innerHTML + white_text;
   });
 }
 

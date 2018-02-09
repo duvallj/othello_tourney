@@ -203,3 +203,9 @@ def logout():
 def create_db():
     db.create_all()
     db.session.commit()
+
+"""@app.after_request
+def add_header(response):
+    response.cache_control.private = True
+    response.cache_control.public = False
+    return response"""

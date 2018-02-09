@@ -23,7 +23,7 @@
     <div class="main" id="text">
       {% block content %}{% endblock %}
       {% if current_user.is_authenticated %}
-        <p style="font-size: 0.6em;">You are logged in as {{ current_user.name }}. <a style="font-size: 1em;" href="./logout">Logout</a></p>
+        <p style="font-size: 2em;">You are logged in as {{ current_user.name }}. <a style="font-size: 1em;" href="./logout">Logout</a></p>
       {% endif %}
     </div>
   </body>

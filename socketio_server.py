@@ -171,7 +171,7 @@ class GameManager(GameManagerTemplate):
         def _bg_refresh():
             while True:
                 self.refresh_game(sid, None)
-                eventlet.sleep(0)
+                eventlet.sleep(0.1)
         cdata.bgproc = eventlet.spawn(_bg_refresh)
         
         log.debug('Started game for '+sid)
