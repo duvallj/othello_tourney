@@ -1,6 +1,6 @@
 function putGamesToPage(output) {
   var gdict = output.split("\n");
-  var buf = "";
+  var buf = "<button onclick=\"ajaxConfig('./list/games', putGamesToPage);\">Refresh list</button>";
   if (gdict[0] !== "") {
     buf += "<p>Choose a game from the list below to start watching<br><br>";
     for (var i=0; i<gdict.length; i++) {

@@ -182,6 +182,7 @@ def upload():
             #os.chmod(fname,0o750)
             pass
         app.gm.write_ai()
+        logout_user(current_user)
         return flask.render_template('upload_complete.html')
     else:
         return flask.render_template('upload.html')

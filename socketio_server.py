@@ -3,7 +3,7 @@ from multiprocessing import Process, Value, Pipe, Event
 from collections import deque
 import os
 import sys
-#import threading, traceback
+import threading, traceback
 import logging as log
 import time
 import ctypes
@@ -37,11 +37,15 @@ class GameManagerTemplate(socketio.Server):
     def send_move(self, sid, data): pass
 
     def get_possible_files(self):
-        folders = os.listdir(os.path.join(self.base_folder, 'students'))
-        log.debug('Listed Student folders successfully')
-        return ['students.'+x+'.strategy' for x in folders if \
-        x != '__pycache__' and \
-        os.path.isdir(os.path.join(self.base_folder, 'students', x))]
+        possible = []
+        for x in os.listdir(os.path.join(self.base_folder, 'students')):
+            try:
+                if x != "__pycache__" and os.path.isfile(os.path.join(self.base_folder, 'students', x, 'strategy.py')):
+                    possible.append('students.{}.strategy'.format(x))
+            except:
+                traceback.print_exc()
+                pass
+        return possible
 
     def write_ai(self):
         self.possible_names = set()
@@ -163,13 +167,17 @@ class GameManager(GameManagerTemplate):
         
         def _bg_refresh():
             while True:
-                self.refresh_game(sid, None)
+                try:
+                    self.refresh_game(sid, None)
+                except:
+                    log.debug(traceback.format_exc())
                 eventlet.sleep(0.1)
         cdata.bgproc = eventlet.spawn(_bg_refresh)
         
         log.debug('Started game for '+sid)
         
     def watch_game(self, sid, data):
+        log.debug("Client "+sid+" requests to watch a game "+data.get('watching', sid))
         self.enter_room(sid, data.get('watching', sid))
 
     def delete_game(self, sid):
@@ -185,7 +193,7 @@ class GameManager(GameManagerTemplate):
             if cdata.proc.is_alive():
                 cdata.kill_event.set()
                 log.debug("{} kill event set".format(sid))
-                cdata.done_event.wait()
+                cdata.done_event.wait(timeout=60)
                 log.debug("{} should be done now".format(sid))
                 if cdata.proc.is_alive(): cdata.proc.terminate()
             #del cdata.proc
@@ -223,11 +231,12 @@ class GameManager(GameManagerTemplate):
             while msgq:
                 self.act_on_message(sid, msgq.popleft())
         else:
-            log.debug('Telling client the game is no longer going on...')
+            log.debug('Telling client '+sid+' the game is no longer going on...')
             self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True, 'error_msg': None}, room=sid)
-                
+
     def act_on_message(self, sid, packet):
         mtype, data = packet
+        log.debug("{} got packet ({}, {})".format(sid, mtype, data))
         if mtype == 'board':
             self.emit('reply', data=data, room=sid)
         elif mtype == 'getmove':
@@ -377,6 +386,7 @@ class GameRunner:
             log.debug('Sent move out to parent')
 
         winner = (oc.WHITE, oc.EMPTY, oc.BLACK)[(black_score>0)-(black_score<0)+1]
+        log.debug("Winner determined, sending results to parent.")
         conn.send((
             'gameend',
             {
