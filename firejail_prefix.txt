@@ -1,0 +1,1 @@
+firejail --overlay-tmpfs --caps.drop=all --net=none --private --private-dev --private-tmp --seccomp --shell=none {prog}
