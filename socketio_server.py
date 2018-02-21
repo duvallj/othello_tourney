@@ -202,7 +202,7 @@ class GameManager(GameManagerTemplate):
         try:
             #with cdata.bglock:
             #    cdata.bgrun = False
-            #self.bgproc.join()
+            #cdata.bgproc.join()
             cdata.bgproc.kill()
             self.refresh_game(sid, None)
             #del cdata.bgproc
@@ -232,7 +232,7 @@ class GameManager(GameManagerTemplate):
                 self.act_on_message(sid, msgq.popleft())
         else:
             log.debug('Telling client '+sid+' the game is no longer going on...')
-            self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True, 'error_msg': None}, room=sid)
+            self.emit('gameend', data={'winner':oc.OUTER, 'forfeit':True, 'error_msg': None, 'black_score': 0}, room=sid)
 
     def act_on_message(self, sid, packet):
         mtype, data = packet
@@ -304,7 +304,10 @@ class GameRunner:
                 {
                     'winner': winner,
                     'forfeit': True,
-                    'err_msg': None
+                    'err_msg': None,
+                    'black': name_strings[oc.BLACK],
+                    'white': name_strings[oc.WHITE],
+                    'black_score': black_score
                 }
             ))
             done_event.set()
@@ -392,7 +395,10 @@ class GameRunner:
             {
                 'winner': winner,
                 'forfeit': forfeit,
-                'err_msg': err_msg
+                'err_msg': err_msg,
+                'black': name_strings[oc.BLACK],
+                'white': name_strings[oc.WHITE],
+                'black_score': black_score
             }
         ))
         done_event.set()

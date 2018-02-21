@@ -1,3 +1,4 @@
+noblacklist /tmp
 include /etc/firejail/disable-mgmt.inc
 include /etc/firejail/disable-secret.inc
 include /etc/firejail/disable-common.inc
@@ -12,3 +13,4 @@ whitelist /home/othello/www-old/run_ai_jailed.py
 whitelist /home/othello/www-old/run_ai.py
 whitelist /home/othello/www-old/Othello_Core.py
 whitelist /home/othello/www-old/othello_admin.py
+whitelist /tmp
