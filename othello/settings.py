@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     'social_django',
+    'channels',
     
     'othello',
     'othello.apps.auth',
@@ -81,6 +82,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'othello.wsgi.application'
+ASGI_APPLICATION = 'othello.routing.application'
 
 
 # Database
