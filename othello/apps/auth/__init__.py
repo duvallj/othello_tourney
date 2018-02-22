@@ -1,0 +1,1 @@
+default_app_config = 'othello.apps.auth.apps.AuthConfig'

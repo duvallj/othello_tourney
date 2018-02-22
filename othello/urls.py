@@ -16,10 +16,18 @@ Including another URLconf
 from django.conf.urls import url, include
 from django.contrib import admin
 
-from 
+from .apps.auth import views as auth_views
+from .apps.games import views as game_views
 
 
 urlpatterns = [
-    url('', include('social_django.urls', namespace='social'),
-    url(r'^admin/', admin.site.urls),
+    url('', include('social_django.urls', namespace='social')),
+    url(r'^$', auth_views.index_view, name='index'),
+    url(r'^upload$', auth_views.upload_view, name='upload'),
+    url(r'^play$', game_views.play_view, name='play'),
+    url(r'^watch$', game_views.watch_view, name='watch'),
+    url(r'^about$', game_views.about_view, name='about'),
+    url(r'^about_uploading$', game_views.about_uploading_view, name='about_uploading'),
+    url(r'^auth/', include('othello.apps.auth.urls')),
+    url(r'^admin/', admin.site.urls)
 ]
