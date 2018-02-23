@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
 import os
+from .ion_secret import *
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -125,7 +126,7 @@ SOCIAL_AUTH_USER_FIELDS = ['username', 'full_name', 'email', 'id', 'is_superuser
 SOCIAL_AUTH_URL_NAMESPACE = 'social'
 
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/upload'
 LOGIN_ERROR_URL = '/login/'
 
 # Internationalization

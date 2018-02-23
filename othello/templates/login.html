@@ -4,7 +4,8 @@
 
 {% block content %}
   <div class="centered">
-    <form action="./login/ion" method="POST">
+    <form action="{% url 'social:begin' 'ion' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}" method="POST">
+      {% csrf_token %}
       <input type="submit" value="Login with Ion" />
     </form>
   </div>

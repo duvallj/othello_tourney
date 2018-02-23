@@ -5,6 +5,12 @@ def get_username(strategy, details, user=None, *args, **kwargs):
     result = social_get_username(strategy, details, user=user, *args, **kwargs)
     return result
     
+def username_to_id(username):
+    if not username.isalnum():
+        return -1
+    id = int(username, 36)
+    return id
+    
     
 class IonOauth2(BaseOAuth2):
     name = 'ion'
@@ -27,7 +33,7 @@ class IonOauth2(BaseOAuth2):
         return {
             'username': profile['ion_username'],
             'full_name': profile['full_name'],
-            'id': get_uid(profile['ion_username']),
+            'id': username_to_id(profile['ion_username']),
             'email': profile['tj_email'],
             'service': False,
             'is_superuser': False,

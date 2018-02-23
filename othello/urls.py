@@ -28,6 +28,7 @@ urlpatterns = [
     url(r'^watch$', game_views.watch_view, name='watch'),
     url(r'^about$', game_views.about_view, name='about'),
     url(r'^about_uploading$', game_views.about_uploading_view, name='about_uploading'),
-    url(r'^auth/', include('othello.apps.auth.urls')),
-    url(r'^admin/', admin.site.urls)
+    url(r'^login/$', auth_views.login_view, name='login'),
+    url(r'^logout/$', auth_views.login_view, name='logout'),
+    url(r'^admin/', admin.site.urls),
 ]
