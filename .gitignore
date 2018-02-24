@@ -54,6 +54,7 @@ __pycache__
 # Don't back up venv
 venv
 anaconda3
+db.sqlite3
 
 # Don't expose oauth keys
 ion_secret.py

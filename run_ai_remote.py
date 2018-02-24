@@ -20,9 +20,9 @@ class LocalAIServer:
         self.should_continue = True
 
     def handle(self, client_in, client_out, sock):
-        #####
+        # ####
         # Example: b"duv\n5\n@\n?????..??o@?????\n"
-        #####
+        # ####
         
         name = client_in.readline().strip()
         if name not in self.possible_names:
