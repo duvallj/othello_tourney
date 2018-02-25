@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.decorators import login_required
 from django.utils.crypto import get_random_string
@@ -41,7 +41,7 @@ def grant_access_token(sender, user, request, **kwargs):
 user_logged_in.connect(grant_access_token)
     
 def logout_view(request):
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         request.user.access_token = None
         request.user.save()
     logout(request)

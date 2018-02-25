@@ -1,8 +1,9 @@
 {% extends "template.html" %}
+{% load static %}
 {% block title %}Othello{% endblock %}
 {% block header %}Watch Othello{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="./static/css/playerscorebox.css"/>
+<link rel="stylesheet" href="{% static 'css/playerscorebox.css' %}"/>
 {% endblock %}
 {% block content %}
       <div id="canvasContainer" style="display:none" class="centered">
@@ -20,9 +21,9 @@
           Loading port list...
         </p>
       </div>
-      <script src="./static/js/socket.io.js"></script>
-      <script src="./static/js/get_config.js"></script>
-      <script src="./static/js/get_games.js"></script>
-      <script src="./static/js/resize.js"></script>
-      <script src="./static/js/reversi.js" onload="ajaxConfig('./list/games', putGamesToPage);"></script>
+      <script src="{% static 'js/websocketbridge.js' %}"></script>
+      <script src="{% static 'js/get_config.js' %}"></script>
+      <script src="{% static 'js/get_games.js' %}"></script>
+      <script src="{% static 'js/resize.js' %}"></script>
+      <script src="{% static 'js/reversi.js' %}" onload="ajaxConfig('{% url 'game_list' %}', putGamesToPage);"></script>
 {% endblock %}

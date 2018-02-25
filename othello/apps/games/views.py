@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.http import HttpResponse
 
 # Create your views here.
 
@@ -13,3 +14,9 @@ def about_view(request):
     
 def about_uploading_view(request):
     return render(request, "about_uploading.html")
+    
+def ai_list_view(request):
+    return HttpResponse("random", content_type="text/plain")
+    
+def game_list_view(request):
+    return HttpResponse("null,null,null,5", content_type="text/plain")
