@@ -6,7 +6,7 @@ class GameServingConsumer(WebsocketConsumer):
     def connect(self):
         pass
         
-    def recieve(self, text_data=None, bytes_data=None):
+    def receive(self, text_data=None, bytes_data=None):
         pass
         
     def disconnect(self, close_data):
