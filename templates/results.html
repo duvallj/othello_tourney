@@ -1,0 +1,18 @@
+{% extends "template.html" %}
+{% block title %}Results{% endblock %}
+{% block header %}Current Round{% endblock %}
+
+{% block content %}
+  <h2>Scores of games played in current round</h2>
+  <ol>
+    {% for item in results %}
+    {% if item.score > 0 %}
+    <li> <b>{{ item.black }}</b>, {{ item.white }}, {{ item.score }}: <a href="games/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    {% elif item.score < 0 %}
+    <li> {{ item.black }}, <b>{{ item.white }}</b>, {{ item.score }}  <a href="games/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    {% else %}
+    <li> <i>{{ item.black }}, {{ item.white }}</i>, {{ item.score }}  <a href="games/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    {% endif %}
+  {% endfor %}
+  </ol>
+{% endblock %}

@@ -131,7 +131,7 @@ def modified_act_on_message(sid, packet):
         outfile = open(os.path.join(app.args.game_output, 'results.txt'), 'a')
         outfile.write("{},{},{},{}\n".format(black, white, black_score, repr(err_msg)))
         outfile.close()
-        outfile = open(os.path.join(app.args.game_output, "{0}_{1}.txt"), 'a')
+        outfile = open(os.path.join(app.args.game_output, "{0}_{1}.txt".format(black, white)), 'a')
         outfile.write("winner:{},{}".format(
             [
                 black + " and " + white + " tied",

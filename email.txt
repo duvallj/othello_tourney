@@ -1,0 +1,12 @@
+Hello {PLAYER},
+
+Your match against {OPPONENT} in Round 1 of the TJHSST
+Othello tournament will begin in approximately {TIME} minutes.
+
+You may view the game at http://tournament.tjhsst.edu
+
+Good luck!
+
+Sincerely,
+The TJOthello Team
+
