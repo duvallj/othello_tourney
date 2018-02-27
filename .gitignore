@@ -50,6 +50,7 @@ Temporary Items
 __pycache__
 *.pyc
 *.log
+*.swp
 
 # Don't back up venv
 venv
@@ -59,3 +60,7 @@ anaconda3
 ion_secret.py
 students/20*/*
 students/
+game_output/
+game_list.txt
+game_test.txt
+game_output.txt

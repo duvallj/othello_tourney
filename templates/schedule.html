@@ -6,7 +6,9 @@
   <h2>
     Please note that this is the schedule for all the games, not just upcoming ones
   </h2>
+  <ol>
   {% for item in schedule %}
-    <p> {{ item }} </p>
+    <li> {{ item }} </li>
   {% endfor %}
+  </ol>
 {% endblock %}

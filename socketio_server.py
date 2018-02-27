@@ -347,6 +347,7 @@ class GameRunner:
                     should_break = False
                     
                     while not conn.poll():
+                        time.sleep(0.1)
                         if kill_event.is_set():
                             should_break = True
                             break

@@ -1,16 +1,14 @@
-noblacklist /tmp
 include /etc/firejail/disable-mgmt.inc
 include /etc/firejail/disable-secret.inc
 include /etc/firejail/disable-common.inc
 include /etc/firejail/disable-devel.inc
 caps.drop all
-net none
-noroot
+#net none
+#noroot
 seccomp
-whitelist /home/othello/www-old/anaconda3
-whitelist /home/othello/www-old/public
-whitelist /home/othello/www-old/run_ai_jailed.py
-whitelist /home/othello/www-old/run_ai.py
-whitelist /home/othello/www-old/Othello_Core.py
-whitelist /home/othello/www-old/othello_admin.py
-whitelist /tmp
+whitelist /root/othello_tourney/anaconda3
+whitelist /root/othello_tourney/public
+whitelist /root/othello_tourney/run_ai_jailed.py
+whitelist /root/othello_tourney/run_ai.py
+whitelist /root/othello_tourney/Othello_Core.py
+whitelist /root/othello_tourney/othello_admin.py
