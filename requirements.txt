@@ -8,3 +8,4 @@ django
 social-auth-app-django
 social-auth-core
 channels
+Twisted[tls,http2]
