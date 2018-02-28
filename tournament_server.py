@@ -37,10 +37,12 @@ parser.add_argument('--game_output', type=str,
                     help="Dir to log the tournament results to")
 parser.add_argument('--game_delay', type=int, default=10,
                     help="Number of seconds the ais are allowed, AND the number of minutes each game will run")
+parser.add_argument('--start_at_game', type=int, default=0)
 
 app = flask.Flask(__name__)
 app.gm = None
 app.args = None
+app.cur_game = 0
 
 app.config['DEBUG'] = True
 
@@ -85,14 +87,48 @@ def nocache(view):
         
     return update_wrapper(no_cache, view)
     
+class ScheduleItem():
+    def __init__(self, b, w, i):
+        self.black, self.white, self.index = b, w, i
+
 @app.route('/schedule')
 @nocache
 def schedule():
     file = open(args.game_list, 'r')
     data = file.read()
     file.close()
-    return flask.render_template("schedule.html", schedule=data.split("\n"))
-    
+    schedule = []
+    index = 1
+    for line in data.split("\n"):
+        if line.strip():
+            black, white = line.strip().split(",")
+            the_item = ScheduleItem(black, white, index==app.cur_game)
+            schedule.append(the_item)
+            index += 1
+    return flask.render_template("schedule.html", schedule=schedule)
+
+class ResultItem():
+    def __init__(self,b,w,s,e):
+        self.black, self.white, self.score, self.err = b,w,int(s),e
+
+@app.route('/results')
+@nocache
+def results(): 
+    file = open(args.game_output+"/results.txt", 'r')
+    data = file.readlines()[:]
+    results = []
+    for line in data:
+        if "20" in line and line.strip():
+            b,w,s,*e = line.strip().split(",")
+            the_result = ResultItem(b,w,s,e)
+            results.append(the_result)
+    return flask.render_template("results.html", results=results)
+
+@app.route('/games/<round>/<filename>')
+@nocache
+def show_game(round, filename):
+    return app.send_static_file("games/%s/%s" % (round,filename))
+
 @app.route('/list/ais')
 @nocache
 def ailist():
@@ -149,14 +185,16 @@ def run_all_games(gm, args):
     file = open(args.game_list, 'r')
     data = file.read()
     file.close()
-    file = open(os.path.join(args.game_output, "results.txt"), 'w')
-    file.write("Black,White,Score,Error\n")
+    file = open(os.path.join(args.game_output, "results.txt"), 'a')
+    file.write("====New round====\nBlack,White,Score,Error\n")
     file.close()
     sid1 = '0'
     sid2 = '1'
     for line in data.split("\n"):
         line = line.strip()
         if line:
+            app.cur_game += 1
+            if app.cur_game < args.start_at_game: continue
             ai1, ai2 = line.split(',')
             log.info("Now playing {} vs {}".format(ai1, ai2))
             gm.create_game(sid1, None)

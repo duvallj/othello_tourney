@@ -1,0 +1,211 @@
+2019vgannava,2019myue
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . . . . . . .
+4 . . . o @ . . .
+5 . . . @ o . . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+2-2
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . . . . . . .
+4 . . . o @ . . .
+5 . . . @ @ @ . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+4-1
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . . . . . . .
+4 . . . o o o . .
+5 . . . @ @ @ . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+3-3
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ . . . . .
+4 . . . @ o o . .
+5 . . . @ @ @ . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+5-2
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ . . . . .
+4 . . o o o o . .
+5 . . . @ @ @ . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+4-4
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ . . . . .
+4 . . @ o o o . .
+5 . . @ @ @ @ . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+6-3
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ . . . . .
+4 . . @ o o o . .
+5 . . @ @ o o . .
+6 . . . . . o . .
+7 . . . . . . . .
+8 . . . . . . . .
+4-6
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ . . . . .
+4 . . @ o o o . .
+5 . . @ @ @ @ @ .
+6 . . . . . o . .
+7 . . . . . . . .
+8 . . . . . . . .
+7-4
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ . . . . .
+4 . . @ o o o . .
+5 . . @ @ @ @ o .
+6 . . . . . o . o
+7 . . . . . . . .
+8 . . . . . . . .
+6-6
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ @ . . . .
+4 . . @ @ @ o . .
+5 . . @ @ @ @ o .
+6 . . . . . o . o
+7 . . . . . . . .
+8 . . . . . . . .
+9-4
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ @ . . . .
+4 . o o o o o . .
+5 . . @ @ @ @ o .
+6 . . . . . o . o
+7 . . . . . . . .
+8 . . . . . . . .
+6-8
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ @ . . . .
+4 . o @ o o o . .
+5 . @ @ @ @ @ o .
+6 . . . . . o . o
+7 . . . . . . . .
+8 . . . . . . . .
+8-7
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ @ . . . .
+4 . o @ o o o . .
+5 o o o o o o o .
+6 . . . . . o . o
+7 . . . . . . . .
+8 . . . . . . . .
+3-13
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ @ . . . .
+4 . o @ o o o . .
+5 o o @ o o o o .
+6 . . @ . . o . o
+7 . . . . . . . .
+8 . . . . . . . .
+5-12
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ @ . . . .
+4 . o @ o o o . .
+5 o o @ o o o o .
+6 . . o . . o . o
+7 . . . o . . . .
+8 . . . . . . . .
+4-14
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . @ @ . . . .
+4 . o @ @ o o . .
+5 o o @ @ o o o .
+6 . . o @ . o . o
+7 . . . o . . . .
+8 . . . . . . . .
+7-12
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . o . . . .
+3 . . o o . . . .
+4 . o @ o o o . .
+5 o o @ o o o o .
+6 . . o o . o . o
+7 . . . o . . . .
+8 . . . . . . . .
+2-18
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . @ o . . . .
+3 . . @ o . . . .
+4 . o @ o o o . .
+5 o o @ o o o o .
+6 . . o o . o . o
+7 . . . o . . . .
+8 . . . . . . . .
+4-17
+
+  1 2 3 4 5 6 7 8
+1 . . o . . . . .
+2 . . o o . . . .
+3 . . o o . . . .
+4 . o o o o o . .
+5 o o o o o o o .
+6 . . o o . o . o
+7 . . . o . . . .
+8 . . . . . . . .
+0-22
+
+winner:2019myue won,'2018-02-27 12:40:04,037:DEBUG:[JAILED]:Listed student folders successfully\n2018-02-27 12:40:04,038:DEBUG:[JAILED]:Got data 2019myue 5.0 o ???????????........??..@o....??..@o....??.o@ooo..??oo@oooo.??..oo.o.o??...o....??........???????????\n2018-02-27 12:40:04,038:DEBUG:[JAILED]:Data is ok\n2018-02-27 12:40:06,462:INFO:[JAILED]:There is an error\nTraceback (most recent call last):\n  File "/home/othello/tourney/run_ai.py", line 64, in strat_wrapper\n    self.strat(board, player, best_shared, running)\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 286, in best_strategy\n    best_move.value = self.ab_minmax_strategy(new, player, depth, count<=20)\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 273, in ab_minmax_strategy\n    return self.ab_minmax_search(board, player, depth, best, INFINITY*-1, INFINITY, mobile)[2]\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 252, in ab_minmax_search\n    score = self.ab_minmax_search(next_board, next_player, depth-1, best, alpha, beta, mobile)[0]\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 252, in ab_minmax_search\n    score = self.ab_minmax_search(next_board, next_player, depth-1, best, alpha, beta, mobile)[0]\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 252, in ab_minmax_search\n    score = self.ab_minmax_search(next_board, next_player, depth-1, best, alpha, beta, mobile)[0]\n  [Previous line repeated 6 more times]\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 243, in ab_minmax_search\n    return ( self.cornerweighted(board, mobile), board, -1)\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 187, in cornerweighted\n    ret+= self.mobility(board)\n  File "/home/othello/tourney/students/2019myue/strategy.py", line 196, in mobility\n    opp = len(self.get_valid_moves(board, self.opponent(player)))\nTypeError: object of type \'NoneType\' has no len()\n2018-02-27 12:40:06,463:DEBUG:[JAILED]:Got move 13\n'

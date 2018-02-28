@@ -8,7 +8,11 @@
   </h2>
   <ol>
   {% for item in schedule %}
-    <li> {{ item }} </li>
+    <li>
+      {% if item.index %}<b>**{% endif %}
+      {{ item.black }} vs {{ item.white }}
+      {% if item.index %}**</b>&lt&lt--current{% endif %}
+    </li>
   {% endfor %}
   </ol>
 {% endblock %}

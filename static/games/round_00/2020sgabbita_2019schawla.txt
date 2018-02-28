@@ -1,0 +1,24 @@
+2020sgabbita,2019schawla
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . . . . . . .
+4 . . . o @ . . .
+5 . . . @ o . . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+2-2
+
+  1 2 3 4 5 6 7 8
+1 . . . . . . . .
+2 . . . . . . . .
+3 . . . . . . . .
+4 . . . o @ . . .
+5 . . . @ @ @ . .
+6 . . . . . . . .
+7 . . . . . . . .
+8 . . . . . . . .
+4-1
+
+winner:2020sgabbita won,'2018-02-27 10:21:09,913:DEBUG:[JAILED]:Listed student folders successfully\n2018-02-27 10:21:09,913:DEBUG:[JAILED]:Got data 2019schawla 1.0 o ???????????........??........??........??...o@...??...@@@..??........??........??........???????????\n2018-02-27 10:21:09,913:DEBUG:[JAILED]:Data is ok\n2018-02-27 10:21:09,934:INFO:[JAILED]:There is an error\nTraceback (most recent call last):\n  File "/home/othello/tourney/run_ai.py", line 64, in strat_wrapper\n    self.strat(board, player, best_shared, running)\n  File "/home/othello/tourney/students/2019schawla/strategy.py", line 129, in best_strategy\n    mv1 = 11 + (mv//8)*10 + (mv%8)\nTypeError: unsupported operand type(s) for //: \'list\' and \'int\'\n2018-02-27 10:21:09,934:DEBUG:[JAILED]:Got move -1\n'
