@@ -8,11 +8,11 @@
   <ol>
     {% for item in results %}
     {% if item.score > 0 %}
-    <li> <b>*{{ item.black }}</b>, {{ item.white }}, {{ item.score }}: <a href="games/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    <li> <b>*{{ item.black }}</b>, {{ item.white }}, {{ item.score }}: <a href="{{dir}}/{{item.black}}_{{item.white}}.txt">See game</a> </li>
     {% elif item.score < 0 %}
-    <li> {{ item.black }}, <b>*{{ item.white }}</b>, {{ item.score }}  <a href="games/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    <li> {{ item.black }}, <b>*{{ item.white }}</b>, {{ item.score }}  <a href="{{dir}}/{{item.black}}_{{item.white}}.txt">See game</a> </li>
     {% else %}
-    <li> <i>{{ item.black }}, {{ item.white }}</i>, {{ item.score }}  <a href="games/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    <li> <i>{{ item.black }}, {{ item.white }}</i>, {{ item.score }}  <a href="{{dir}}/{{item.black}}_{{item.white}}.txt">See game</a> </li>
     {% endif %}
   {% endfor %}
   </ol>

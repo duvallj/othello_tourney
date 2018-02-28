@@ -122,12 +122,40 @@ def results():
             b,w,s,*e = line.strip().split(",")
             the_result = ResultItem(b,w,s,e)
             results.append(the_result)
-    return flask.render_template("results.html", results=results)
+    return flask.render_template("results.html", dir=args.game_output, results=results)
 
 @app.route('/games/<round>/<filename>')
 @nocache
 def show_game(round, filename):
     return app.send_static_file("games/%s/%s" % (round,filename))
+
+class StandingsItem:
+    def __init__(self, name, score):
+        self.name, self.score = name, score
+        
+@app.route('/standings')
+@nocache
+def standings():
+    file = open(args.game_output+"/results.txt", 'r')
+    data = file.readlines()[:]
+    data = [x.strip() for x in data if "20" in x]
+    points = {}
+    for line in data:
+        b,w,s,*e = line.split(",")
+        if not b in points.keys(): points[b]=0
+        if not w in points.keys(): points[w]=0
+        s = int(s)
+        if s>0:
+            points[b] += 1
+        elif s<0:
+            points[w] += 1
+        else:
+            points[b] += 0.5
+            points[w] += 0.5
+    standings = [StandingsItem(name, score) for name, score in points.items()]
+    standings.sort(key = lambda x: (-x.score, x.name))
+    file.close()
+    return flask.render_template("standings.html", standings=standings)
 
 @app.route('/list/ais')
 @nocache

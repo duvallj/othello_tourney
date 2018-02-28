@@ -1,0 +1,12 @@
+{% extends "template.html" %}
+{% block title %}Standings{% endblock %}
+{% block header %}Current Round{% endblock %}
+
+{% block content %}
+  <h2>Current Standings After Current Round</h2>
+  <ol>
+    {% for item in standings %}
+    <li>{{item.name}}, {{item.score}}</li>
+  {% endfor %}
+  </ol>
+{% endblock %}
