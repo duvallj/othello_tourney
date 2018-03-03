@@ -258,7 +258,7 @@ function resize(canvas, gWidth, gHeight){
   }
 }
 
-function init(socket, delay, port1, port2, timelimit, watching){
+function init(socket, ai_name1, ai_name2, timelimit, watching){
   document.getElementById('canvasContainer').style.display = "flex";
   document.getElementById('player-selection-text').style.display = "none";
 
@@ -274,29 +274,11 @@ function init(socket, delay, port1, port2, timelimit, watching){
     rCanvas.resize();
   });
 
-  //var gap = rCanvas.rHeight - rCanvas.rWidth;
   rCanvas.fullbg = new RImg(
     0, 0, 
     rCanvas.rWidth, rCanvas.rWidth, 
     BORDER_IMG
   );
-  /*rCanvas.textbg = new RRect(
-    0, rCanvas.rWidth, 
-    rCanvas.rWidth, gap, 
-    '#805229', 1.0
-  );
-  rCanvas.black = new RText(
-    0, rCanvas.rHeight-gap*2/5,
-    'Black',
-    gap*2/5, 'Roboto Mono',
-    BLACK_CO
-  );
-  rCanvas.white = new RText(
-    rCanvas.rWidth/2,rCanvas.rHeight-gap*2/5,
-    'White',
-    gap*2/5,'Roboto Mono',
-    WHITE_CO
-  );*/
   rCanvas.black = document.getElementById("player-black");
   rCanvas.white = document.getElementById("player-white");
   
@@ -316,8 +298,8 @@ function init(socket, delay, port1, port2, timelimit, watching){
   }
   rCanvas.lBSize = 0;
 
-  rCanvas.black_name = "Loading "+port1+"...";
-  rCanvas.white_name = "Loading "+port2+"...";
+  rCanvas.black_name = "Loading "+ai_name1+"...";
+  rCanvas.white_name = "Loading "+ai_name2+"...";
   drawBoard(rCanvas, dSize, rCanvas.board, BLACK_NM, animArray);
   
   function augmentedMouseMove(event) {
@@ -352,25 +334,23 @@ function init(socket, delay, port1, port2, timelimit, watching){
         lastmove.y = rCanvas.un*cy+rCanvas.bd;
         lastmove.width = rCanvas.sq;
         lastmove.height = rCanvas.sq;
+        
         if (rCanvas.tomove === WHITE_NM) { animArray[cy*rCanvas.lBSize+cx] = 19; }
+        
         drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, 3 - rCanvas.tomove, animArray);
+        
         console.log('sending move');
-        socket.emit('movereply', {move:rCanvas.lastClicked.toString()});
+        socket.send(JSON.stringify({
+          'msg_type': "movereply",
+          'move': rCanvas.lastClicked
+        }));
       } else {
         rCanvas.lastClicked = -1;
       }
     }
   };
   
-  if (!watching) {
-    socket.emit('prequest',{black:port1,white:port2,tml:timelimit});
-    document.addEventListener('click', clickHandler);
-  }
-  else {
-    socket.emit('wrequest', {'watching': watching});
-  }
-  
-  socket.on('reply', function(data){
+  on_reply = function(data){
     rCanvas.black_name = data.black;
     rCanvas.white_name = data.white;
     rCanvas.tomove = CH2NM[data.tomove];
@@ -390,30 +370,22 @@ function init(socket, delay, port1, port2, timelimit, watching){
       }
     }
     drawBoard(rCanvas, bSize, bArray, CH2NM[data.tomove], animArray);
-  });
+  }
 
-  socket.on('moverequest', function(){
+  on_moverequest = function(data){
     console.log('move requested');
     rCanvas.lastClicked = -1;
-  });
-  /* var refreshInterval;
-  if (watching) {
-    refreshInterval = window.setInterval(function(){socket.emit('refresh',{"watching": watching});console.log('refreshed');}, delay);
-  } else {
-    refreshInterval = window.setInterval(function(){socket.emit('refresh',{});console.log('refreshed');}, delay);
-  } */
-
+  };
   /* function alwaysDraw() {
     drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove, animArray);
     requestAnimationFrame(alwaysDraw);
   }
   requestAnimationFrame(alwaysDraw); */
   
-  socket.on('gameend', function(data){
+  on_gameend = function(data){
     //Clean up tasks, end socket
-    //window.clearInterval(refreshInterval);
     document.removeEventListener('click', clickHandler);
-    socket.disconnect();
+    socket.close();
     // Handle winner conditions
     var black_text = "";
     var white_text = "";
@@ -448,36 +420,69 @@ function init(socket, delay, port1, port2, timelimit, watching){
       }
     }
     //Add text signifying that the game is over
-    /*rCanvas.black.y = rCanvas.rHeight - gap*1/5;
-    rCanvas.black.size = gap*3/10;
-    rCanvas.white.y = rCanvas.rHeight - gap*1/5;
-    rCanvas.white.size = gap*3/10;
-    drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove, animArray);
-    rCanvas.add(new RText(0,rCanvas.rHeight-gap*3/5, 
-      black_text,
-      gap*3/10,'Roboto Mono',
-      BLACK_CO
-    ));
-    rCanvas.add(new RText(rCanvas.rWidth/2,rCanvas.rHeight-gap*3/5,
-      white_text,
-      gap*3/10,'Roboto Mono',
-      WHITE_CO
-    ));
-    rCanvas.draw();*/
     rCanvas.black.innerHTML = black_text + rCanvas.black.innerHTML;
     rCanvas.white.innerHTML = rCanvas.white.innerHTML + white_text;
-  });
+  };
+  
+  on_gameerror = function (data) {
+    // Pass
+    ;
+  };
+  
+  socket.onmessage = function(message) {
+    // Decode the JSON
+    console.log("Got websocket message " + message.data);
+    var data = JSON.parse(message.data);
+    // Handle errors
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+    switch (data.msg_type) {
+      case 'reply':
+        on_reply(data);
+        break;
+      case 'moverequest':
+        on_moverequest(data);
+        break;
+      case 'gameend':
+        on_gameend(data);
+        break;
+      case 'gameerror':
+        on_gameerror(data);
+        break;
+      default:
+        console.log("Unsupported message type "+ data.msg_type);
+        return;
+    }
+  }
+  
+  socket.onopen = function() {
+    console.log("Did connect to socket");
+    if (watching) {
+      socket.send(JSON.stringify({
+        'msg_type': "wrequest", 
+        "watching": watching
+      }));
+    }
+    else {
+      socket.send(JSON.stringify({
+        'msg_type': "prequest",
+        'black': ai_name1,
+        'white': ai_name2,
+        'timelimit': timelimit
+      }));
+      document.addEventListener('click', clickHandler);
+    }
+  }
+  socket.onclose = function() {
+    console.log("Did disconnect from socket");
+  }
 }
 
-function makeSocketFromPage(addr, port, port1, port2, delay, timelimit, watching){
-  var socket;
-  if (port !== "443") {
-    socket = io('http://'+addr+':'+port);
-  } else {
-    socket = io('https://'+addr+':'+port);
-  }
+function makeSocketFromPage(ai_name1, ai_name2, timelimit, watching){
+  var socket = new WebSocket(PATH);
   console.log('made socket');
-  var delay = parseInt(delay);
-  init(socket, delay, port1, port2, timelimit, watching);
+  init(socket, ai_name1, ai_name2, timelimit, watching);
   console.log('finished initing socket');
 }

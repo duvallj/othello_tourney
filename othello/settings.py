@@ -96,6 +96,15 @@ DATABASES = {
     }
 }
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [("localhost", 6379)],
+        }
+    }
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/2.0/ref/settings/#auth-password-validators
@@ -154,3 +163,9 @@ STATICFILES_DIRS = (
 
 #MEDIA_URL = "/code/"
 MEDIA_ROOT = os.path.join(BASE_DIR, 'students')
+
+OTHELLO_ROOM_ID_LEN = 32
+OTHELLO_AI_UNKNOWN_PLAYER = "Unknown"
+OTHELLO_AI_HUMAN_PLAYER = "Yourself"
+OTHELLO_AI_SHARED_DIR = os.path.join(MEDIA_ROOT, "public")
+OTHELLO_AI_RUN_COMMAND = "python {}".format(os.path.join(PROJECT_ROOT, "run_ai_jailed.py"))

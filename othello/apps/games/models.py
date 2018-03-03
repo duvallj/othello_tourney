@@ -8,11 +8,11 @@ class Room(models.Model):
     """
     
     # Room id, used for finding the room
-    room_id = models.CharField(max_length=OTHELLO_ROOM_ID_LEN, primary_key=True)
+    room_id = models.CharField(max_length=settings.OTHELLO_ROOM_ID_LEN, primary_key=True)
     
     # Players
-    black = models.CharField(max_length=64, null=True)
-    white = models.CharField(max_length=64, null=True)
+    black = models.CharField(max_length=64, default=settings.OTHELLO_AI_UNKNOWN_PLAYER)
+    white = models.CharField(max_length=64, default=settings.OTHELLO_AI_UNKNOWN_PLAYER)
     
     # Time limit
-    timelimit = models.FloatField(null=True)
+    timelimit = models.FloatField(default=5.0)

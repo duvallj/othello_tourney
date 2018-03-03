@@ -3,8 +3,6 @@ import logging as log
 
 from othello.apps.games.worker import JailedRunner
 
-
-
 if __name__=="__main__":
     log.basicConfig(format='%(asctime)s:%(levelname)s:[JAILED]:%(message)s', level=log.DEBUG)
     """

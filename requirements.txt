@@ -8,4 +8,5 @@ django
 social-auth-app-django
 social-auth-core
 channels
+channels_redis
 Twisted[tls,http2]

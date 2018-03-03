@@ -1,5 +1,6 @@
-HOST = "localhost";//"othello.tjhsst.edu";
-PORT = "10771";//"443";
+SCHEME = window.location.protocol == "https:" ? "wss": "ws";
+HOST = window.location.host;
+PATH = SCHEME + "://" + HOST + "/ws/"
 
 function ajaxConfig(path, callback){
     var xmlhttp = new XMLHttpRequest();
@@ -60,10 +61,10 @@ function putConfigToPage(output){
 };
 
 function actuallyDoSocket(){
-  var port1 = document.getElementById('ai1').value;
-  var port2 = document.getElementById('ai2').value;
-  window.localStorage.setItem("player1", port1);
-  window.localStorage.setItem("player2", port2);
+  var ai_name1 = document.getElementById('ai1').value;
+  var ai_name2 = document.getElementById('ai2').value;
+  window.localStorage.setItem("player1", ai_name1);
+  window.localStorage.setItem("player2", ai_name2);
   var timelimit = document.getElementById('tml').value;
-  makeSocketFromPage(HOST,PORT,port1,port2,'1000',timelimit,false);
+  makeSocketFromPage(ai_name1,ai_name2,timelimit,false);
 };

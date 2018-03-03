@@ -2,6 +2,12 @@ from django.conf import settings
 import logging as log
 import sys, os, io
 import shlex, traceback
+import multiprocessing as mp
+
+from .utils import get_strat
+from .othello_admin import Strategy
+from .othello_core import BLACK, WHITE, EMPTY
+ORIGINAL_SYS = sys.path[:]
 
 """
 Plan:
@@ -11,17 +17,187 @@ this class will take consumer as an arg in order to send channel api messages
 """
 
 class GameRunner:
-    pass
+    black = None
+    white = None
+    timelimit = 5
+    emit_func = lambda *args: print(args)
+
+    def __init__(self):
+        student_folder = settings.MEDIA_ROOT
+        folders = os.listdir(student_folder)
+        log.debug('Listed student folders successfully')
+        self.possible_names =  {x for x in folders if \
+            x != '__pycache__' and \
+            os.path.isdir(os.path.join(student_folder, x))
+        }
     
+    def run(self, comm_queue):
+        """
+        Main loop used to run the game in.
+        Does not have multiprocess support yet.
+        """
+        print("Yay i have started to run {} vs {} ({})".format(
+            self.black,
+            self.white,
+            self.timelimit
+        ))
+        
+        strats = dict()
+        do_start_game = True
+        
+        if self.black not in self.possible_names:
+            if self.black == settings.OTHELLO_AI_HUMAN_PLAYER:
+                strats[BLACK] = None
+            else:
+                self.emit_func({
+                    "type": "game.error",
+                    "error": "{} is not a valid AI name".format(self.black)
+                })
+                do_start_game = False
+        else:
+            strat = JailedRunnerCommunicator(self.black)
+            strat.start()
+            strats[BLACK] = strat
+        
+        if self.white not in self.possible_names:
+            if self.white == settings.OTHELLO_AI_HUMAN_PLAYER:
+                strats[WHITE] = None
+            else:
+                self.emit_func({
+                    "type": "game.error",
+                    "error": "{} is not a valid AI name".format(self.white)
+                })
+                do_start_game = False
+        else:
+            strat = JailedRunnerCommunicator(self.white)
+            strat.start()
+            strats[WHITE] = strat
+        print("Inited strats")
+        core = Strategy()
+        player = BLACK
+        board = core.initial_board()
+        names = {
+            BLACK: self.black,
+            WHITE: self.white,
+        }
+        
+        self.emit_func({
+            "type": "board.update",
+            "board": ''.join(board),
+        })
+        forfeit = False
+        print("All things done")
+        return "It turns out django channels pauses for each channel to finish executing, so I WILL need to run all this inside a process. Hopefully that's not too bad"
+        while player is not None and not forfeit:
+            player, forfeit, board = self.do_game_tick(comm_queue, core, board, player, strats, names)
+            
+        winner = EMPTY
+        if forfeit:
+            winner = core.opponent(player)
+        else:
+            winner = (EMPTY, BLACK, WHITE)[core.final_value(BLACK, board)]
+        self.emit_func({
+            "type": "board.update",
+            "board": ''.join(board),
+        })
+        self.emit_func({
+            "type": "game.end",
+            "winner": winner,
+            "forfeit": forfeit,
+        })
+        
+    def do_game_tick(self, comm_queue, core, board, player, strats, names):
+        """
+        Runs one move in a game, handling all the board flips and game-ending edge cases.
+        
+        If a strat is `None`, it calls out for the user to input a move. Otherwise, it runs the strategy provided.
+        """
+        print("Ticking game")
+        strat = strats[player]
+        move = -1
+        errs = None
+        if strat is None:
+            self.emit_func({"type":"move.request"})
+            move = comm_queue.get()
+        else:
+            move, errs = strat.get_move(board, player, self.timelimit)
+            
+        if not core.is_legal(move, player, board):
+            self.emit_func({
+                'type': "game.error",
+                'error': "{}: {} is an invalid move for board {}\nMore info:\n{}".format(names[player], move, ''.join(board), errs)
+            })
+            forfeit = True
+            return player, forfeit, board
+            
+        board = core.make_move(move, player, board)
+        self.emit_func({
+            "type": "board.update", 
+            "board": ''.join(board),
+        })
+        return player, False, board
     
+
+class LocalRunner:
+    def __init__(self, ai_name):
+        self.name = ai_name
+        self.strat = None
+        self.new_path = self.old_path = os.getcwd()
+        self.new_sys = self.old_sys = ORIGINAL_SYS
+        self.strat, self.new_path, self.new_sys = get_strat(self.name)
+    
+    def strat_wrapper(self, board, player, best_shared, running, pipe_to_parent):
+        try:
+            self.strat(board, player, best_shared, running)
+            pipe_to_parent.send(None)
+        except:
+            pipe_to_parent.send(traceback.format_exc())
+
+    def get_move(self, board, player, timelimit, kill_event):
+        best_shared = mp.Value("i", -1)
+        running = mp.Value("i", 1)
+        
+        os.chdir(self.new_path)
+        sys.path = self.new_sys
+        to_child, to_self = Pipe()
+        try:
+            p = mp.Process(target=self.strat_wrapper, args=("".join(list(board)), player, best_shared, running, to_child))
+            p.start()
+            if kill_event:
+                kill_event.wait(timelimit)
+                p.join(0.01)
+            else:
+                p.join(timelimit)
+            if p.is_alive():
+                running.value = 0
+                p.join(0.01)
+                if p.is_alive(): p.terminate()
+            move = best_shared.value
+            if to_self.poll():
+                err = to_self.recv()
+                log.info("There is an error")
+            else:
+                err = None
+                log.info("There was no error thrown")
+            return move, err
+        except:
+            traceback.print_exc()
+            return -1, 'Server Error'
+        finally:
+            os.chdir(self.old_path)
+            sys.path = self.old_sys
+
+
 class JailedRunner:
     """
     The class that is run in the subprocess to handle the games
     Keeps running until it is killed forcefully
     """
-    def __init__(self, *args, **kwargs):
+    
+    AIClass = LocalRunner
+    def __init__(self, ai_name):
         # I don't know what to put here yet
-        pass
+        self.strat = self.AIClass(ai_name)
     
     def handle(self, client_in, client_out, client_err):
         """
@@ -55,8 +231,7 @@ class JailedRunner:
             save_stdout = sys.stdout
             sys.stdout = io.TextIOWrapper(io.BytesIO())
             
-            strat = self.AIClass(name, possible_names)
-            move, err = strat.get_move(board, player, timelimit, False)
+            move, err = self.strat.get_move(board, player, timelimit, False)
             
             # And then put stdout back where we found it
             sys.stdout = save_stdout
