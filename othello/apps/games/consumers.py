@@ -4,9 +4,10 @@ from asgiref.sync import sync_to_async, async_to_sync
 from channels.db import database_sync_to_async
 
 import logging as log
-from queue import Queue
+from multiprocessing import Process, Queue
 
-from .utils import make_new_room, get_all_rooms, safe_int, safe_float
+from .utils import make_new_room, get_all_rooms
+from .worker_utils import safe_int, safe_float
 from .worker import GameRunner
 
 class GameServingConsumer(JsonWebsocketConsumer):
@@ -74,7 +75,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         """
         Called when the websocket closes for any reason.
         """
-        pass
+        self.proc.terminate()
         
     # Handlers for messages sent over the channel layer
     
@@ -84,13 +85,13 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Actually starts running the game as well
         """
         print("Create game called")
-        self.game = GameRunner()
+        self.game = GameRunner(self.main_room.room_id)
         self.game.black = event["black"]
         self.game.white = event["white"]
         self.game.timelimit = event["timelimit"]
-        self.game.emit_func = lambda data: async_to_sync(self.channel_layer.group_send)(self.main_room.room_id, data)
         self.comm_queue = Queue()
-        self.game.run(self.comm_queue)
+        self.proc = Process(target=self.game.run, args=(self.comm_queue,))
+        self.proc.start()
         
     def join_game(self, event):
         """
@@ -103,7 +104,15 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when there is an update on the board
         that we need to send to the client
         """
-        print("What this was actually called?")
+        print(event)
+        self.send_json({
+            'msg_type': 'reply',
+            'board': event.get('board', ""),
+            'tomove': event.get('tomove', "?"),
+            'black': event.get('black', settings.OTHELLO_AI_UNKNOWN_PLAYER),
+            'white': event.get('white', settings.OTHELLO_AI_UNKNOWN_PLAYER),
+            'bSize': '8',
+        })
         
     def move_request(self, event):
         """
@@ -124,7 +133,12 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when the game has ended, tells client that message too.
         Really should log the result but doesn't yet.
         """
-        pass
+        print(event)
+        self.send_json({
+            'msg_type': "gameend",
+            'winner': event.get('winner', "?"),
+            'forfeit': event.get('forfeit', False),
+        })
         
     def game_error(self, event):
         """

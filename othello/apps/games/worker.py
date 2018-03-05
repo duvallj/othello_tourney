@@ -1,10 +1,12 @@
 from django.conf import settings
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 import logging as log
 import sys, os, io
 import shlex, traceback
 import multiprocessing as mp
 
-from .utils import get_strat
+from .worker_utils import get_strat
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 ORIGINAL_SYS = sys.path[:]
@@ -20,9 +22,8 @@ class GameRunner:
     black = None
     white = None
     timelimit = 5
-    emit_func = lambda *args: print(args)
 
-    def __init__(self):
+    def __init__(self, room_id):
         student_folder = settings.MEDIA_ROOT
         folders = os.listdir(student_folder)
         log.debug('Listed student folders successfully')
@@ -30,6 +31,17 @@ class GameRunner:
             x != '__pycache__' and \
             os.path.isdir(os.path.join(student_folder, x))
         }
+        self.emit_func = None
+        self.room_id = room_id
+    
+    def emit(self, data):
+        if self.emit_func is None:
+            print("GameRunner not ready")
+        else:
+            self.emit_func(
+                self.room_id,
+                data,
+            )
     
     def run(self, comm_queue):
         """
@@ -42,6 +54,8 @@ class GameRunner:
             self.timelimit
         ))
         
+        self.emit_func = async_to_sync(get_channel_layer().group_send)
+        
         strats = dict()
         do_start_game = True
         
@@ -49,7 +63,7 @@ class GameRunner:
             if self.black == settings.OTHELLO_AI_HUMAN_PLAYER:
                 strats[BLACK] = None
             else:
-                self.emit_func({
+                self.emit({
                     "type": "game.error",
                     "error": "{} is not a valid AI name".format(self.black)
                 })
@@ -63,7 +77,7 @@ class GameRunner:
             if self.white == settings.OTHELLO_AI_HUMAN_PLAYER:
                 strats[WHITE] = None
             else:
-                self.emit_func({
+                self.emit({
                     "type": "game.error",
                     "error": "{} is not a valid AI name".format(self.white)
                 })
@@ -81,13 +95,15 @@ class GameRunner:
             WHITE: self.white,
         }
         
-        self.emit_func({
+        self.emit({
             "type": "board.update",
             "board": ''.join(board),
+            "tomove": BLACK,
+            "black": names[BLACK],
+            "white": names[WHITE],
         })
         forfeit = False
         print("All things done")
-        return "It turns out django channels pauses for each channel to finish executing, so I WILL need to run all this inside a process. Hopefully that's not too bad"
         while player is not None and not forfeit:
             player, forfeit, board = self.do_game_tick(comm_queue, core, board, player, strats, names)
             
@@ -96,11 +112,14 @@ class GameRunner:
             winner = core.opponent(player)
         else:
             winner = (EMPTY, BLACK, WHITE)[core.final_value(BLACK, board)]
-        self.emit_func({
+        self.emit({
             "type": "board.update",
             "board": ''.join(board),
+            "tomove": EMPTY,
+            "black": names[BLACK],
+            "white": names[WHITE],
         })
-        self.emit_func({
+        self.emit({
             "type": "game.end",
             "winner": winner,
             "forfeit": forfeit,
@@ -117,13 +136,13 @@ class GameRunner:
         move = -1
         errs = None
         if strat is None:
-            self.emit_func({"type":"move.request"})
+            self.emit({"type":"move.request"})
             move = comm_queue.get()
         else:
             move, errs = strat.get_move(board, player, self.timelimit)
             
         if not core.is_legal(move, player, board):
-            self.emit_func({
+            self.emit({
                 'type': "game.error",
                 'error': "{}: {} is an invalid move for board {}\nMore info:\n{}".format(names[player], move, ''.join(board), errs)
             })
@@ -131,9 +150,13 @@ class GameRunner:
             return player, forfeit, board
             
         board = core.make_move(move, player, board)
-        self.emit_func({
+        player = core.next_player(board, player)
+        self.emit({
             "type": "board.update", 
             "board": ''.join(board),
+            "tomove": player,
+            "black": names[BLACK],
+            "white": names[WHITE],
         })
         return player, False, board
     
@@ -153,7 +176,7 @@ class LocalRunner:
         except:
             pipe_to_parent.send(traceback.format_exc())
 
-    def get_move(self, board, player, timelimit, kill_event):
+    def get_move(self, board, player, timelimit):
         best_shared = mp.Value("i", -1)
         running = mp.Value("i", 1)
         
@@ -163,11 +186,7 @@ class LocalRunner:
         try:
             p = mp.Process(target=self.strat_wrapper, args=("".join(list(board)), player, best_shared, running, to_child))
             p.start()
-            if kill_event:
-                kill_event.wait(timelimit)
-                p.join(0.01)
-            else:
-                p.join(timelimit)
+            p.join(timelimit)
             if p.is_alive():
                 running.value = 0
                 p.join(0.01)
