@@ -145,4 +145,8 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called whenever the AIs/server errors out for whatever reason.
         Could be used in place of game_end
         """
-        pass
+        print(event)
+        self.send_json({
+            'msg_type': "gameerror",
+            'error': event.get('error', "No error"),
+        })

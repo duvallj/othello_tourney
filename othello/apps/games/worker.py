@@ -5,6 +5,7 @@ import logging as log
 import sys, os, io
 import shlex, traceback
 import multiprocessing as mp
+import subprocess
 
 from .worker_utils import get_strat
 from .othello_admin import Strategy
@@ -182,7 +183,7 @@ class LocalRunner:
         
         os.chdir(self.new_path)
         sys.path = self.new_sys
-        to_child, to_self = Pipe()
+        to_child, to_self = mp.Pipe()
         try:
             p = mp.Process(target=self.strat_wrapper, args=("".join(list(board)), player, best_shared, running, to_child))
             p.start()
@@ -217,6 +218,7 @@ class JailedRunner:
     def __init__(self, ai_name):
         # I don't know what to put here yet
         self.strat = self.AIClass(ai_name)
+        self.name = ai_name
     
     def handle(self, client_in, client_out, client_err):
         """
@@ -233,8 +235,8 @@ class JailedRunner:
         board = client_in.readline().strip()
         log.debug("Got data {} {} {} {}".format(name, timelimit, player, board))
         
-        if name in self.possible_names and \
-           (player == oc.BLACK or player == oc.WHITE):
+        if name == self.name and \
+           (player == BLACK or player == WHITE):
 
             try:
                 timelimit = float(timelimit)
@@ -249,8 +251,7 @@ class JailedRunner:
             #sys.stderr = io.BytesIO()
             save_stdout = sys.stdout
             sys.stdout = io.TextIOWrapper(io.BytesIO())
-            
-            move, err = self.strat.get_move(board, player, timelimit, False)
+            move, err = self.strat.get_move(board, player, timelimit)
             
             # And then put stdout back where we found it
             sys.stdout = save_stdout
@@ -291,7 +292,9 @@ class JailedRunnerCommunicator:
         Starts running the specified AI in a subprocess
         """
         command = settings.OTHELLO_AI_RUN_COMMAND.replace(settings.OTHELLO_AI_NAME_REPLACE, self.name)
-        command_args = shlex.split(command)
+        print(command)
+        command_args = shlex.split(command, posix=False)
+        print(command_args)
         self.proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, \
                                     universal_newlines=True, bufsize=1, cwd=settings.PROJECT_ROOT)
 
@@ -303,20 +306,20 @@ class JailedRunnerCommunicator:
         Data format needs to be same as JailedRunner expects it, namely,
         b"duv\n5\n@\n?????..??o@?????\n"
         """
-        data = self.name+"\n"+str(timelimit)+"\n"+player+"\n"+str(board)+"\n"
+        data = self.name+"\n"+str(timelimit)+"\n"+player+"\n"+''.join(board)+"\n"
 
-        log.debug('Started subprocess')
-        self.proc.stdin.write(data.encode('utf-8'))
+        print('Started subprocess')
+        self.proc.stdin.write(data) #.encode('utf-8'))
         self.proc.stdin.flush()
         outs = self.proc.stdout.readline()
         errs = self.proc.stderr.read()
-        log.debug('Got move from subprocess')
+        print('Got move from subprocess')
         try:
-            move = int(outs.decode('utf-8').split("\n")[0])
+            move = int(outs.split("\n")[0])
         except:
             traceback.print_exc()
             move = -1
-        return move, errs.decode()
+        return move, errs #.decode()
         
     def stop(self):
         """
@@ -328,4 +331,3 @@ class JailedRunnerCommunicator:
         
     def __del__(self):
         self.stop()
-        super().__del__()

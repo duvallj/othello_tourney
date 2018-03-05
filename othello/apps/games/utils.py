@@ -34,4 +34,4 @@ def delete_room(room_id):
     """
     Deletes a room. Usually called when client disconnects their websocket
     """
-    pass
+    Room.objects.get(room_id=room_id).delete()

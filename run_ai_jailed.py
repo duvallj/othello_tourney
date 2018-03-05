@@ -14,4 +14,4 @@ if __name__=="__main__":
         os.path.isdir(os.path.join(student_folder, x))
     }
     """
-    JailedRunner.run()
+    JailedRunner(sys.argv[-1]).run()

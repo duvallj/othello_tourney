@@ -1,5 +1,8 @@
 import os, sys
 import importlib
+from django.conf import settings
+
+ORIGINAL_SYS = sys.path[:]
     
 def get_strat(name):
     old_path = os.getcwd()
@@ -8,7 +11,7 @@ def get_strat(name):
     new_path = path
     os.chdir(path)
 
-    sys.path = [os.getcwd(), shared_dir] + ORIGINAL_SYS
+    sys.path = [os.getcwd(), settings.OTHELLO_AI_SHARED_DIR] + ORIGINAL_SYS
     new_sys = sys.path[:]
     
     strat = importlib.import_module('students.'+name+'.strategy').\

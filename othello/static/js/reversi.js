@@ -425,8 +425,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
   };
   
   on_gameerror = function (data) {
-    // Pass
-    ;
+    document.getElementById("err_log").innerHTML += data.error + "\n";
   };
   
   socket.onmessage = function(message) {
@@ -434,10 +433,10 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
     console.log("Got websocket message " + message.data);
     var data = JSON.parse(message.data);
     // Handle errors
-    if (data.error) {
-      alert(data.error);
-      return;
-    }
+    //if (data.error) {
+    //  alert(data.error);
+    //  return;
+    //}
     switch (data.msg_type) {
       case 'reply':
         on_reply(data);
