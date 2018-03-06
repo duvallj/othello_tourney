@@ -6,6 +6,7 @@ import sys, os, io
 import shlex, traceback
 import multiprocessing as mp
 import subprocess
+import time
 
 from .worker_utils import get_strat
 from .othello_admin import Strategy
@@ -296,7 +297,7 @@ class JailedRunnerCommunicator:
         command_args = shlex.split(command, posix=False)
         print(command_args)
         self.proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, \
-                                    universal_newlines=True, bufsize=1, cwd=settings.PROJECT_ROOT)
+                                    bufsize=1, universal_newlines=True, cwd=settings.PROJECT_ROOT)
 
     def get_move(self, board, player, timelimit):
         """
@@ -309,10 +310,15 @@ class JailedRunnerCommunicator:
         data = self.name+"\n"+str(timelimit)+"\n"+player+"\n"+''.join(board)+"\n"
 
         print('Started subprocess')
-        self.proc.stdin.write(data) #.encode('utf-8'))
+        print(data)
+        self.proc.stdin.write(data)
         self.proc.stdin.flush()
+        print("Done writing data")
+        self.proc.stdout.flush()
         outs = self.proc.stdout.readline()
-        errs = self.proc.stderr.read()
+        print("Reading errors")
+        self.proc.stderr.flush()
+        errs = self.proc.stderr.readline()
         print('Got move from subprocess')
         try:
             move = int(outs.split("\n")[0])

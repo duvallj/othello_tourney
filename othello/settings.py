@@ -169,6 +169,4 @@ OTHELLO_AI_UNKNOWN_PLAYER = "Unknown"
 OTHELLO_AI_HUMAN_PLAYER = "Yourself"
 OTHELLO_AI_SHARED_DIR = os.path.join(MEDIA_ROOT, "public")
 OTHELLO_AI_RUN_COMMAND = "python -u {} =NAME=".format(os.path.join(PROJECT_ROOT, "run_ai_jailed.py"))
-print(PROJECT_ROOT)
-print(OTHELLO_AI_RUN_COMMAND)
 OTHELLO_AI_NAME_REPLACE = "=NAME="
