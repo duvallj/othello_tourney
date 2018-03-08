@@ -3,7 +3,7 @@ import logging as log
 from django.conf import settings
 
 import othello.settings
-from othello.apps.games.worker import JailedRunner
+from othello.apps.games.run_ai_utils import JailedRunner
 
 if __name__=="__main__":
     settings.configure(othello.settings)
