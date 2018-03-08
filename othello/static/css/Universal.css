@@ -14,44 +14,44 @@ html, body {
 input {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color: #917a07;
-  border: #c79200 2px solid;
+  color: #805229;
+  border: #a06633 2px solid;
   padding: 4px;
 }
 
 button {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color: #917a07;
-  border: #c79200 2px solid;
+  color: #805229;
+  border: #a06633 2px solid;
   padding: 4px;
 }
 
 select {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color: #917a07;
-  border: #c79200 2px solid;
+  color: #805229;
+  border: #a06633 2px solid;
   padding: 4px;
 }
 
 option {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color: #917a07;
-  border: #c79200 2px solid;
+  color: #805229;
+  border: #a06633 2px solid;
   padding: 4px;
 }
 
 code {
   font-family: 'Roboto Mono', monospace;
   font-size: 16px;
-  color: #917a07;
+  color: #805229;
 }
 
 div.main {
   font-size: 16px;
-  color: #33a122;
+  color: #229011;
   width: 70%;
   padding: 2% 15%;
 }
@@ -98,7 +98,7 @@ a:hover{
 }
 
 /*a:visited{
-  color: #917a07;
+  color: #805229;
 }*/
 
 div.linkbar {
