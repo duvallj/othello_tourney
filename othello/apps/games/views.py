@@ -36,6 +36,6 @@ def game_list_view(request):
             room.white,
             room.timelimit
         ) 
-        for room in rooms
-     ]
+        for room in rooms if room.playing
+    ]
     return HttpResponse("\n".join(data_list), content_type="text/plain")

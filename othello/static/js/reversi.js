@@ -258,6 +258,20 @@ function resize(canvas, gWidth, gHeight){
   }
 }
 
+var tagsToReplace = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;'
+};
+
+function replaceTag(tag) {
+    return tagsToReplace[tag] || tag;
+}
+
+function safe_tags_replace(str) {
+    return str.replace(/[&<>]/g, replaceTag);
+}
+
 function init(socket, ai_name1, ai_name2, timelimit, watching){
   document.getElementById('canvasContainer').style.display = "flex";
   document.getElementById('player-selection-text').style.display = "none";
@@ -425,7 +439,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
   };
   
   on_gameerror = function (data) {
-    document.getElementById("err_log").innerHTML += data.error + "\n";
+    document.getElementById("err_log").innerHTML += safe_tags_replace(data.error + "\n");
   };
   
   socket.onmessage = function(message) {

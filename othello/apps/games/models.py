@@ -16,3 +16,5 @@ class Room(models.Model):
     
     # Time limit
     timelimit = models.FloatField(default=5.0)
+    # Are we playing a game yet?
+    playing = models.BooleanField(default=False)

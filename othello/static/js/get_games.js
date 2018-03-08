@@ -18,5 +18,6 @@ function putGamesToPage(output) {
 
 function actuallyDoSocket2(data) {
   dsplit = data.split(",");
-  makeSocketFromPage(HOST,PORT,dsplit[1],dsplit[2],'1000',dsplit[3],dsplit[0]);
+  //                 ai1      , ai2      , timelimit, watching
+  makeSocketFromPage(dsplit[1], dsplit[2], dsplit[3], dsplit[0]);
 }

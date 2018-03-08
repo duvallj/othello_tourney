@@ -6,7 +6,7 @@ from channels.db import database_sync_to_async
 import logging as log
 from multiprocessing import Process, Queue
 
-from .utils import make_new_room, get_all_rooms
+from .utils import make_new_room, get_all_rooms, delete_room
 from .worker_utils import safe_int, safe_float
 from .worker import GameRunner
 
@@ -33,7 +33,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         
         # Make and add a new room
         room = make_new_room()
-        self.rooms.add(room)
+        self.rooms.add(room.room_id)
         self.main_room = room
         async_to_sync(self.channel_layer.group_add)(
             room.room_id,
@@ -57,8 +57,6 @@ class GameServingConsumer(JsonWebsocketConsumer):
                 },
             )
         elif msg_type == "prequest":
-            print("Got prequest with data {}".format(content))
-            print(self.main_room.room_id)
             async_to_sync(self.channel_layer.group_send)(
                 self.main_room.room_id,
                 {
@@ -69,13 +67,26 @@ class GameServingConsumer(JsonWebsocketConsumer):
                 },
             )
         elif msg_type == "wrequest":
-            pass
+            async_to_sync(self.channel_layer.group_send)(
+                self.main_room.room_id,
+                {
+                    'type': "join.game",
+                    'room': content.get('watching', self.main_room.room_id),
+                },
+            )
         
     def disconnect(self, close_data):
         """
         Called when the websocket closes for any reason.
         """
-        self.proc.terminate()
+        if self.proc:
+            self.proc.terminate()
+        for room in self.rooms:
+            async_to_sync(self.channel_layer.group_discard)(
+                room,
+                self.channel_name,
+            )
+        delete_room(self.main_room.room_id)
         
     # Handlers for messages sent over the channel layer
     
@@ -84,11 +95,18 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when a client wants to create a game.
         Actually starts running the game as well
         """
-        print("Create game called")
+        
         self.game = GameRunner(self.main_room.room_id)
         self.game.black = event["black"]
         self.game.white = event["white"]
         self.game.timelimit = event["timelimit"]
+        
+        self.main_room.black = event["black"]
+        self.main_room.white = event["white"]
+        self.main_room.timelimit = safe_float(event["timelimit"])
+        self.main_room.playing = True
+        self.main_room.save()
+        
         self.comm_queue = Queue()
         self.proc = Process(target=self.game.run, args=(self.comm_queue,))
         self.proc.start()
@@ -97,14 +115,19 @@ class GameServingConsumer(JsonWebsocketConsumer):
         """
         Called when a client wants to join an existing game.
         """
-        pass
+        room_id = event.get('room', self.main_room.room_id)
+        self.rooms.add(room_id)
+        async_to_sync(self.channel_layer.group_add)(
+            room_id,
+            self.channel_name,
+        )
+        self.proc = None
         
     def board_update(self, event):
         """
         Called when there is an update on the board
         that we need to send to the client
         """
-        print(event)
         self.send_json({
             'msg_type': 'reply',
             'board': event.get('board', ""),
@@ -133,7 +156,6 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when the game has ended, tells client that message too.
         Really should log the result but doesn't yet.
         """
-        print(event)
         self.send_json({
             'msg_type': "gameend",
             'winner': event.get('winner', "?"),
@@ -145,7 +167,6 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called whenever the AIs/server errors out for whatever reason.
         Could be used in place of game_end
         """
-        print(event)
         self.send_json({
             'msg_type': "gameerror",
             'error': event.get('error', "No error"),
