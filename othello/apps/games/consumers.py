@@ -4,7 +4,7 @@ from asgiref.sync import sync_to_async, async_to_sync
 from channels.db import database_sync_to_async
 
 import logging as log
-from multiprocessing import Process, Queue
+import multiprocessing as mp
 
 from .utils import make_new_room, get_all_rooms, delete_room
 from .worker_utils import safe_int, safe_float
@@ -35,6 +35,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         room = make_new_room()
         self.rooms.add(room.room_id)
         self.main_room = room
+        print(self.channel_name)
         async_to_sync(self.channel_layer.group_add)(
             room.room_id,
             self.channel_name,
@@ -47,6 +48,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         The only message we care about is "move_reply",
         which should only get sent if we provoke it.
         """
+        print(content)
         msg_type = content.get('msg_type', None)
         if msg_type == "movereply":
             async_to_sync(self.channel_layer.group_send)(
@@ -74,6 +76,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
                     'room': content.get('watching', self.main_room.room_id),
                 },
             )
+        print("Handled {}".format(msg_type))
         
     def disconnect(self, close_data):
         """
@@ -95,7 +98,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when a client wants to create a game.
         Actually starts running the game as well
         """
-        
+        print(event)
         self.game = GameRunner(self.main_room.room_id)
         self.game.black = event["black"]
         self.game.white = event["white"]
@@ -107,8 +110,11 @@ class GameServingConsumer(JsonWebsocketConsumer):
         self.main_room.playing = True
         self.main_room.save()
         
-        self.comm_queue = Queue()
-        self.proc = Process(target=self.game.run, args=(self.comm_queue,))
+        # So it turns out channels doesn't like doing async_to_sync stuff
+        # from inside forked processes, so we need to use spawned ones instead.
+        ctx = mp.get_context('spawn')
+        self.comm_queue = ctx.Queue()
+        self.proc = ctx.Process(target=self.game.run, args=(self.comm_queue,))
         self.proc.start()
         
     def join_game(self, event):
@@ -121,6 +127,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
             room_id,
             self.channel_name,
         )
+        self.comm_queue = None
         self.proc = None
         
     def board_update(self, event):
@@ -149,7 +156,11 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when a client sends a move after the game loop pauses for user input.
         Sends the received move back to the game.
         """
-        self.comm_queue.put(event.get('move', -1))
+        if self.comm_queue:
+            self.comm_queue.put(event.get('move', -1))
+        else:
+            # We are just watching a game
+            pass
         
     def game_end(self, event):
         """

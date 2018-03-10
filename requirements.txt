@@ -5,6 +5,7 @@ requests
 requests-oauthlib
 six
 django
+daphne
 social-auth-app-django
 social-auth-core
 channels

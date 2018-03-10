@@ -4,4 +4,7 @@ class GamesConfig(AppConfig):
     name = 'othello.apps.games'
     def ready(self):
         from .models import Room
-        Room.objects.all().delete()
+        try:
+            Room.objects.all().delete()
+        except:
+            pass

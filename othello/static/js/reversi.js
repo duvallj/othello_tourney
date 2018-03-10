@@ -486,6 +486,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
         'timelimit': timelimit
       }));
       document.addEventListener('click', clickHandler);
+      on_gameerror({error: "[Disconnected from server]"});
     }
   }
   socket.onclose = function() {
