@@ -1,6 +1,6 @@
 from django.conf import settings
 
-import logging as log
+import logging
 import sys, os, io
 import shlex, traceback
 import multiprocessing as mp
@@ -11,7 +11,9 @@ from .worker_utils import get_strat
 from .pipe_utils import get_stream_queue
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
+
 ORIGINAL_SYS = sys.path[:]
+log = logging.getLogger(__name__)
 
 class HiddenPrints:
     def __enter__(self):
@@ -145,9 +147,8 @@ class JailedRunnerCommunicator:
         Starts running the specified AI in a subprocess
         """
         command = settings.OTHELLO_AI_RUN_COMMAND.replace(settings.OTHELLO_AI_NAME_REPLACE, self.name)
-        print(command)
         command_args = shlex.split(command, posix=False)
-        print(command_args)
+        log.debug(command_args)
         self.proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, \
                                     bufsize=1, universal_newlines=True, cwd=settings.PROJECT_ROOT)
         self.proc_stdout = get_stream_queue(self.proc.stdout)
@@ -163,13 +164,13 @@ class JailedRunnerCommunicator:
         """
         data = self.name+"\n"+str(timelimit)+"\n"+player+"\n"+''.join(board)+"\n"
 
-        print('Started subprocess')
-        print(data)
+        log.debug('Started subprocess')
+        log.debug(data)
         self.proc.stdin.write(data)
         self.proc.stdin.flush()
-        print("Done writing data")
+        log.debug("Done writing data")
         outs = self.proc_stdout.get()
-        print("Got output, reading errors")
+        log.debug("Got output, reading errors")
         last_err_line = ""
         errs = []
         while last_err_line is not None:
@@ -179,7 +180,7 @@ class JailedRunnerCommunicator:
             except:
                 last_err_line = None
         errs = "".join(errs)
-        print('Got full report from subprocess')
+        log.debug('Got full report from subprocess')
         try:
             move = int(outs.split("\n")[0])
         except:

@@ -1,7 +1,7 @@
 from django.conf import settings
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-import logging as log
+import logging
 import sys, os, io
 import shlex, traceback
 import multiprocessing as mp
@@ -11,6 +11,8 @@ import time
 from .run_ai_utils import JailedRunnerCommunicator
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
+
+log = logging.getLogger(__name__)
 
 class GameRunner:
     black = None
@@ -29,8 +31,9 @@ class GameRunner:
         self.room_id = room_id
     
     def emit(self, data):
+        log.debug("GameRunner emitting {}".format(data))
         if self.emit_func is None:
-            print("GameRunner not ready")
+            log.warn("GameRunner not ready to emit")
         else:
             self.emit_func(
                 self.room_id,
@@ -42,7 +45,7 @@ class GameRunner:
         Main loop used to run the game in.
         Does not have multiprocess support yet.
         """
-        print("Yay i have started to run {} vs {} ({})".format(
+        log.debug("GameRunner started to run {} vs {} ({})".format(
             self.black,
             self.white,
             self.timelimit
@@ -80,7 +83,7 @@ class GameRunner:
             strat = JailedRunnerCommunicator(self.white)
             strat.start()
             strats[WHITE] = strat
-        print("Inited strats")
+        log.debug("Inited strats")
         core = Strategy()
         player = BLACK
         board = core.initial_board()
@@ -97,7 +100,7 @@ class GameRunner:
             "white": names[WHITE],
         })
         forfeit = False
-        print("All things done")
+        log.debug("All initing done, time to start playing the game")
         while player is not None and not forfeit:
             player, forfeit, board = self.do_game_tick(comm_queue, core, board, player, strats, names)
             
@@ -106,6 +109,7 @@ class GameRunner:
             winner = core.opponent(player)
         else:
             winner = (EMPTY, BLACK, WHITE)[core.final_value(BLACK, board)]
+        
         self.emit({
             "type": "board.update",
             "board": ''.join(board),
@@ -118,6 +122,8 @@ class GameRunner:
             "winner": winner,
             "forfeit": forfeit,
         })
+
+        log.debug("Game over, exiting...")
         
     def do_game_tick(self, comm_queue, core, board, player, strats, names):
         """
@@ -125,7 +131,7 @@ class GameRunner:
         
         If a strat is `None`, it calls out for the user to input a move. Otherwise, it runs the strategy provided.
         """
-        print("Ticking game")
+        log.debug("Ticking game")
         strat = strats[player]
         move = -1
         errs = None

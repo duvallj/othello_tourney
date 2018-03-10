@@ -3,12 +3,14 @@ from channels.generic.websocket import JsonWebsocketConsumer
 from asgiref.sync import sync_to_async, async_to_sync
 from channels.db import database_sync_to_async
 
-import logging as log
+import logging
 import multiprocessing as mp
 
 from .utils import make_new_room, get_all_rooms, delete_room
 from .worker_utils import safe_int, safe_float
 from .worker import GameRunner
+
+log = logging.getLogger(__name__)
 
 class GameServingConsumer(JsonWebsocketConsumer):
     """
@@ -35,7 +37,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         room = make_new_room()
         self.rooms.add(room.room_id)
         self.main_room = room
-        print(self.channel_name)
+        log.debug("Made new room {} for channel {}, now joining...".format(room.room_id, self.channel_name))
         async_to_sync(self.channel_layer.group_add)(
             room.room_id,
             self.channel_name,
@@ -48,7 +50,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         The only message we care about is "move_reply",
         which should only get sent if we provoke it.
         """
-        print(content)
+        log.debug("{} received json {}".format(self.main_room.room_id, content))
         msg_type = content.get('msg_type', None)
         if msg_type == "movereply":
             async_to_sync(self.channel_layer.group_send)(
@@ -76,12 +78,13 @@ class GameServingConsumer(JsonWebsocketConsumer):
                     'room': content.get('watching', self.main_room.room_id),
                 },
             )
-        print("Handled {}".format(msg_type))
+        log.debug("{} successfully handled {}".format(self.main_room.room_id, msg_type))
         
     def disconnect(self, close_data):
         """
         Called when the websocket closes for any reason.
         """
+        log.debug("{} disconnect {}".format(self.main_room.room_id, close_data))
         if self.proc:
             self.proc.terminate()
         for room in self.rooms:
@@ -98,7 +101,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when a client wants to create a game.
         Actually starts running the game as well
         """
-        print(event)
+        log.debug("{} create_game {}".format(self.main_room.room_id, event))
         self.game = GameRunner(self.main_room.room_id)
         self.game.black = event["black"]
         self.game.white = event["white"]
@@ -121,6 +124,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         """
         Called when a client wants to join an existing game.
         """
+        log.debug("{} join_game {}".format(self.main_room.room_id, event))
         room_id = event.get('room', self.main_room.room_id)
         self.rooms.add(room_id)
         async_to_sync(self.channel_layer.group_add)(
@@ -135,6 +139,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when there is an update on the board
         that we need to send to the client
         """
+        log.debug("{} board_update {}".format(self.main_room.room_id, event))
         self.send_json({
             'msg_type': 'reply',
             'board': event.get('board', ""),
@@ -149,6 +154,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when the game wants the user to input a move.
         Sends out a similar call to the client
         """
+        log.debug("{} move_request {}".format(self.main_room.room_id, event))
         self.send_json({'msg_type':"moverequest"})
         
     def move_reply(self, event):
@@ -157,6 +163,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Sends the received move back to the game.
         """
         if self.comm_queue:
+            log.debug("{} move_reply {}".format(self.main_room.room_id, event))
             self.comm_queue.put(event.get('move', -1))
         else:
             # We are just watching a game
@@ -167,6 +174,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when the game has ended, tells client that message too.
         Really should log the result but doesn't yet.
         """
+        log.debug("{} game_end {}".format(self.main_room.room_id, event))
         self.send_json({
             'msg_type': "gameend",
             'winner': event.get('winner', "?"),
@@ -178,6 +186,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called whenever the AIs/server errors out for whatever reason.
         Could be used in place of game_end
         """
+        log.debug("{} game_error {}".format(self.main_room.room_id, event))
         self.send_json({
             'msg_type': "gameerror",
             'error': event.get('error', "No error"),

@@ -14,14 +14,11 @@ def make_new_room():
     Makes a new room. Usually called when a client connects via websocket
     Really should check for duplicates, but doesn't
     """
-    print("make new room called")
     room_id = gen_room_id()
-    print("room id created")
     # OTHELLO_ROOM_ID_LEN should really be long enough that this never triggers
+    # but its good to have around anyways
     while Room.objects.filter(room_id=room_id).exists(): room_id = gen_room_id()
-    print("Good room id found")
     room, _ = Room.objects.get_or_create(room_id=room_id)
-    print("created the room")
     return room
     
 def get_all_rooms():
