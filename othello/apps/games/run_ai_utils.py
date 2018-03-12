@@ -164,8 +164,13 @@ class JailedRunnerCommunicator:
         """
         data = self.name+"\n"+str(timelimit)+"\n"+player+"\n"+''.join(board)+"\n"
 
-        log.debug('Started subprocess')
-        log.debug(data)
+        log.debug('About to send {} to subprocess'.format(repr(data)))
+        """
+        x = "Debug:"
+        while x:
+            print(x)
+            x = self.proc_stderr.get_nowait()
+        """
         self.proc.stdin.write(data)
         self.proc.stdin.flush()
         log.debug("Done writing data")

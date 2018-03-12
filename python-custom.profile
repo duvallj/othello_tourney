@@ -3,12 +3,15 @@ include /etc/firejail/disable-secret.inc
 include /etc/firejail/disable-common.inc
 include /etc/firejail/disable-devel.inc
 caps.drop all
-net none
+#net none
 noroot
 seccomp
-whitelist /home/othello/www-old/anaconda3
-whitelist /home/othello/www-old/public
-whitelist /home/othello/www-old/run_ai_jailed.py
-whitelist /home/othello/www-old/run_ai.py
-whitelist /home/othello/www-old/Othello_Core.py
-whitelist /home/othello/www-old/othello_admin.py
+whitelist /home/othello/anaconda3/envs/django
+whitelist /home/othello/django/run_ai_jailed.py
+whitelist /home/othello/django/othello/settings.py
+whitelist /home/othello/django/students/public/Othello_Core.py
+whitelist /home/othello/django/othello/apps/games/othello_admin.py
+whitelist /home/othello/django/othello/apps/games/othello_core.py
+whitelist /home/othello/django/othello/apps/games/run_ai_utils.py
+whitelist /home/othello/django/othello/apps/games/pipe_utils.py
+whitelist /home/othello/django/othello/apps/games/worker_utils.py

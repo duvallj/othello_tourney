@@ -6,7 +6,13 @@ import othello.settings
 from othello.apps.games.run_ai_utils import JailedRunner
 
 if __name__=="__main__":
-    settings.configure(othello.settings)
+    # Have appropriate settings for other files,
+    # but don't allow any sensitive information for AIs
+    settings.configure(othello.settings, 
+        SOCIAL_AUTH_ION_KEY="",
+        SOCIAL_AUTH_ION_SECRET="",
+        SECRET_KEY=""
+    )
     log.basicConfig(format='%(asctime)s:%(levelname)s:[JAILED]:%(message)s', level=log.WARN)
     """
     student_folder = os.path.join(os.getcwd(), 'students')
