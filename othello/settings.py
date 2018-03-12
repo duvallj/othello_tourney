@@ -29,7 +29,7 @@ PROJECT_ROOT = BASE_DIR
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["localhost"]
+ALLOWED_HOSTS = ["localhost", "othello.tjhsst.edu"]
 
 
 # Application definition
@@ -155,6 +155,8 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTHENTICATION_BACKENDS = [
     'othello.apps.auth.oauth.IonOauth2',
 ]
+
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 
 AUTH_USER_MODEL = "users.User"
 
