@@ -43,6 +43,9 @@ NM2CO[EMPTY_NM] = EMPTY_CO;
 NM2CO[WHITE_NM] = WHITE_CO;
 NM2CO[BLACK_NM] = BLACK_CO;
 
+HISTORY = []
+RCANVAS = null;
+
 function addBorders(rCanvas, bSize, un, bd, rc) {
   for(var i=0; i<=bSize; i++){
     rCanvas.add(new RRect(un*i, 0, bd, rc, BORDER_CO, 1.0));
@@ -272,6 +275,61 @@ function safe_tags_replace(str) {
     return str.replace(/[&<>]/g, replaceTag);
 }
 
+
+function add_board_to_history(board) {
+  HISTORY[HISTORY.length] = board;
+}
+
+function prettyPrint(bArray, bSize) {
+  var out = " ";
+  for (var i=1; i<=bSize; i++) {
+    out += " " + i;
+  }
+  out += "\r\n";
+  for (var y=1; y<bSize+1; y++) {
+    out += y;
+    for (var x=1; x<bSize+1; x++) {
+      out += " " + bArray[y*(bSize+2)+x];
+    }
+    out += "\r\n";
+  }
+  return out;
+}
+
+function uglyPrint(bArray, bSize) {
+  return bArray.join("");
+}
+
+function printHistory(history, ai_name1, ai_name2, bSize, printFunc) {
+  var out = ai_name1 + "," + ai_name2 + "\r\n";
+  var counts;
+  console.log("Starting to print history");
+  for (var i=0; i<history.length; i++) {
+    out += printFunc(history[i], bSize);
+    counts = countPieces(bSize, bStringToBArray(history[i]));
+    out += counts[BLACK_NM]+"-"+counts[WHITE_NM]+"\r\n\r\n";
+  }
+  return out;
+}
+
+function download(filename, text) {
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
+}
+
+function fullHistoryDownload() {
+  var text = printHistory(HISTORY, RCANVAS.black_name, RCANVAS.white_name, RCANVAS.lBSize, prettyPrint);
+  download(RCANVAS.black_name+"_"+RCANVAS.white_name+".txt", text);
+}
+
 function init(socket, ai_name1, ai_name2, timelimit, watching){
   document.getElementById('canvasContainer').style.display = "flex";
   document.getElementById('player-selection-text').style.display = "none";
@@ -282,6 +340,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
 
   //resize(canvas, gWidth, gHeight);
   var rCanvas = new RCanvas(canvas, gWidth, gHeight);
+  RCANVAS = rCanvas;
   rCanvas.resize();
   window.addEventListener('resize', function(){
     //resize(canvas, gWidth, gHeight);
@@ -368,6 +427,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
     rCanvas.black_name = data.black;
     rCanvas.white_name = data.white;
     rCanvas.tomove = CH2NM[data.tomove];
+    add_board_to_history(data.board);
     var bArray = bStringToBArray(data.board);
     var bSize = parseInt(data.bSize);
     if (bSize === rCanvas.lBSize) {

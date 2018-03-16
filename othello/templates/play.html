@@ -16,12 +16,14 @@ div.selectize-input, div.selectize-dropdown {
 {% block content %}
       <div id="canvasContainer" style="display:none" class="centered">
         <div>
-          <canvas id="canvas" onClick=""></canvas>
+          <canvas id="canvas" onclick=""></canvas>
           <div id="player-score-box" class="centered">
             <p id="player-black" class="player-score">Player 1</p>
             <p style="visibility: hidden">WWW</p>
             <p id="player-white" class="player-score">Player 2</p>
           </div>
+          <br>
+          <button onclick="fullHistoryDownload();">Download Game</button>
           <code id="err_log" style="word-wrap:break-word; overflow-wrap:break-word;word-break:break-word;"></code>
         </div>
       </div>
