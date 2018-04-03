@@ -8,6 +8,8 @@ import multiprocessing
 from functools import wraps, update_wrapper
 from datetime import datetime
 import logging as log
+import mail
+import re
 
 import socketio
 import flask
@@ -38,11 +40,13 @@ parser.add_argument('--game_output', type=str,
 parser.add_argument('--game_delay', type=int, default=10,
                     help="Number of seconds the ais are allowed, AND the number of minutes each game will run")
 parser.add_argument('--start_at_game', type=int, default=0)
+parser.add_argument('--send_mail', type=int, default=0)
 
 app = flask.Flask(__name__)
 app.gm = None
 app.args = None
 app.cur_game = 0
+app.cur_game_start_time = time.time()
 
 app.config['DEBUG'] = True
 
@@ -88,8 +92,8 @@ def nocache(view):
     return update_wrapper(no_cache, view)
     
 class ScheduleItem():
-    def __init__(self, b, w, i):
-        self.black, self.white, self.index = b, w, i
+    def __init__(self, b, w, i, t = ":"):
+        self.black, self.white, self.index, self.start_time = b, w, i, t
 
 @app.route('/schedule')
 @nocache
@@ -102,7 +106,12 @@ def schedule():
     for line in data.split("\n"):
         if line.strip():
             black, white = line.strip().split(",")
-            the_item = ScheduleItem(black, white, index==app.cur_game)
+            est_start_time = int(app.cur_game_start_time) + 60 * int(args.game_delay) * (index-int(app.cur_game))
+            if index<app.cur_game:
+                timestring = "Over"
+            else:
+                timestring = time.strftime("%H:%M", time.localtime(est_start_time))
+            the_item = ScheduleItem(black, white, index==app.cur_game, timestring)
             schedule.append(the_item)
             index += 1
     return flask.render_template("schedule.html", schedule=schedule)
@@ -111,18 +120,29 @@ class ResultItem():
     def __init__(self,b,w,s,e):
         self.black, self.white, self.score, self.err = b,w,int(s),e
 
+class RoundItem():
+    def __init__(self, results, number, active, dir):
+        self.results, self.number, self.active, self.dir  = results, number, active, dir
+        
 @app.route('/results')
 @nocache
-def results(): 
-    file = open(args.game_output+"/results.txt", 'r')
-    data = file.readlines()[:]
-    results = []
-    for line in data:
-        if "20" in line and line.strip():
-            b,w,s,*e = line.strip().split(",")
-            the_result = ResultItem(b,w,s,e)
-            results.append(the_result)
-    return flask.render_template("results.html", dir=args.game_output, results=results)
+def results():
+    rounds = []
+    m = re.search('round_([0-9]+)', args.game_output)
+    current_round = int(m.group(1))
+    for round_num in range(1,current_round+1):
+        round_dir = "static/games/round_%02i" % round_num
+        file = open(round_dir+"/results.txt", 'r')
+        data = file.readlines()[:]
+        results = []
+        for line in data:
+            if "20" in line and line.strip():
+                b,w,s,*e = line.strip().split(",")
+                the_result = ResultItem(b,w,s,e)
+                results.append(the_result)
+        rounds += [RoundItem(results, round_num, False, round_dir)]
+    rounds[-1].active = True
+    return flask.render_template("results.html", rounds=rounds, results=results)
 
 @app.route('/games/<round>/<filename>')
 @nocache
@@ -132,11 +152,9 @@ def show_game(round, filename):
 class StandingsItem:
     def __init__(self, name, score):
         self.name, self.score = name, score
-        
-@app.route('/standings')
-@nocache
-def standings():
-    file = open(args.game_output+"/results.txt", 'r')
+
+def standings(dir):
+    file = open(dir+"/results.txt", 'r')
     data = file.readlines()[:]
     data = [x.strip() for x in data if "20" in x]
     points = {}
@@ -152,11 +170,21 @@ def standings():
         else:
             points[b] += 0.5
             points[w] += 0.5
-    standings = [StandingsItem(name, score) for name, score in points.items()]
+    standings = [StandingsItem(name, score) for name, score in points.items() if not name=="2019jduvall"]
     standings.sort(key = lambda x: (-x.score, x.name))
     file.close()
     return flask.render_template("standings.html", standings=standings)
 
+@app.route('/standings')
+@nocache
+def current_standings():
+    return standings(args.game_output)
+
+@app.route('/allstandings')
+@nocache
+def all_standings():
+    return standings("static/games/all")
+    
 @app.route('/list/ais')
 @nocache
 def ailist():
@@ -224,6 +252,8 @@ def run_all_games(gm, args):
             app.cur_game += 1
             if app.cur_game < args.start_at_game: continue
             ai1, ai2 = line.split(',')
+            if args.send_mail==1:
+                mail.send_emails(ai1, ai2, 0)
             log.info("Now playing {} vs {}".format(ai1, ai2))
             gm.create_game(sid1, None)
             gm.create_game(sid2, None)
@@ -234,6 +264,7 @@ def run_all_games(gm, args):
             lf1.close()
             lf2.close()
             log.debug("Games were created")
+            app.cur_game_start_time=time.time()
             gm.start_game(sid1, {'black': ai1, 'white': ai2, 'tml': args.game_delay})
             gm.start_game(sid2, {'black': ai2, 'white': ai1, 'tml': args.game_delay})
             log.debug("Successfully started games")
@@ -245,8 +276,10 @@ def run_all_games(gm, args):
             gm.delete_game(sid1)
             gm.delete_game(sid2)
             log.debug("Game data deleted")
+            time.sleep(10)
             sid1 = str(int(sid1)+2)
             sid2 = str(int(sid2)+2)
+    app.cur_game += 1
     file.close()
     log.info("All games run")
 

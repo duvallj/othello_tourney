@@ -3,12 +3,12 @@
 {% block header %}Game Schedule{% endblock %}
 
 {% block content %}
-  <h2>
-    Please note that this is the schedule for all the games, not just upcoming ones
-  </h2>
+
+  <p> Games and estimated start times shown</p>
   <ol>
   {% for item in schedule %}
-    <li>
+  <li>
+      {{ item.start_time }}: 
       {% if item.index %}<b>**{% endif %}
       {{ item.black }} vs {{ item.white }}
       {% if item.index %}**</b>&lt&lt--current{% endif %}

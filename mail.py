@@ -20,7 +20,7 @@ def send_email(player, opp, time):
 
 	msg = MIMEText(body)
 
-	msg['Subject'] = 'Your Othello Game is Soon'
+	msg['Subject'] = 'TEST: Your Othello Game is Soon'
 	msg['From'] = "Othello-Server@tjhsst.edu"
 	msg['To'] = "%s@tjhsst.edu" % player
 	status = 0

@@ -120,3 +120,31 @@ div.linkbar a:link{
 div.linkbar a:visited{
   color: #fffff0;
 }
+
+#results {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#results td, #results th {
+    border: 1px solid #ddd;
+    padding: 1px;
+    font-size: 11pt;
+}
+
+#results tr:nth-child(4n+0){background-color: #e2e2e2;}
+#results tr:nth-child(4n+1){background-color: #e2e2e2;}
+#results tr:nth-child(4n+2){background-color: #ffffff;}
+#results tr:nth-child(4n+3){background-color: #ffffff;}
+#results td:nth-child(3) {text-align: right;}
+#results th:nth-child(3) {text-align: right;}
+
+#results tr:hover {background-color: #ddd;}
+
+#results th {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    text-align: left;
+    background-color: #4CAF50;
+    color: white;
+}

@@ -1,0 +1,66 @@
+{% extends "template.html" %}
+{% block title %}Results{% endblock %}
+{% block header %}Current Round{% endblock %}
+
+{% block content %}
+
+<div class="w3-bar w3-green">
+  <button onclick="openRound('Round1')">Round 1</button>
+  <button onclick="openRound('Round2')">Round 2</button>
+  <button onclick="openRound('Round3')">Round 3</button>
+</div>
+
+<div id="Round1" class="round" style="display:none">
+  <h2>Round 1</h2>
+  <p>Results</p>
+  Coming soon
+</div>
+
+<div id="Round2" class="round" style="display:none">
+  <h2>Round 2</h2>
+  <p>Results</p>
+  Coming soon
+</div>
+
+<div id="Round3" class="round">
+  <h2>Round 3</h2>
+  <p>Results</p>
+  <div style="overflow-x:auto">
+  <table id="results">
+    <tr><th>Black</th><th>White</th><th>Score</th></tr>
+    {% for item in results %}
+    {% if item.score > 0 %}
+    <tr> <td><b>*{{ item.black }}</b></td>
+      <td>{{ item.white }}</td>
+      <td><a href="{{dir}}/{{item.black}}_{{item.white}}.txt">{{ item.score }}</a></td>
+    </tr>
+    {% elif item.score < 0 %}
+    <tr> <td>{{ item.black }}</td>
+      <td><b>*{{ item.white }}</b></td>
+      <td><a href="{{dir}}/{{item.black}}_{{item.white}}.txt">{{ item.score }}</a></td>
+    </tr>
+    {% else %}
+    <tr> <td><i>{{ item.black }}</i></td>
+      <td><i>{{ item.white }}</i></td>
+      <td><a href="{{dir}}/{{item.black}}_{{item.white}}.txt">{{ item.score }}</a></td>
+    </tr>
+    {% endif %}
+  {% endfor %}
+  </table>
+  </div>
+
+</div>
+
+<script>
+  function openRound(roundName) {
+  var i;
+  var x = document.getElementsByClassName("round");
+  for (i = 0; i < x.length; i++) {
+		  x[i].style.display = "none";
+		  }
+		  document.getElementById(roundName).style.display = "block";
+		  }
+		  </script>
+
+
+{% endblock %}

@@ -3,17 +3,58 @@
 {% block header %}Current Round{% endblock %}
 
 {% block content %}
-  <h2>Scores of games played in current round</h2>
-  <p> Format: black player, white player, black minus white score. abs(score)=100 indicates error</p>	
-  <ol>
-    {% for item in results %}
+
+<div class="w3-bar w3-green">
+  <button onclick="openRound('Round1')">Round 1</button>
+  <button onclick="openRound('Round2')">Round 2</button>
+  <button onclick="openRound('Round3')">Round 3</button>
+  <button onclick="openRound('Round4')">Round 4</button>
+</div>
+
+{% for round in rounds %}
+{% if round.active %}
+<div id="Round{{ round.number }}" class="round">
+{% else %}
+<div id="Round{{ round.number }}" class="round" style="display:none">
+{% endif %}
+  <h2>Round {{ round.number }}</h2>
+  <p>Results</p>
+  <div style="overflow-x:auto">
+  <table id="results">
+    <tr><th>Black</th><th>White</th><th>Score</th></tr>
+    {% for item in round.results %}
     {% if item.score > 0 %}
-    <li> <b>*{{ item.black }}</b>, {{ item.white }}, {{ item.score }}: <a href="{{dir}}/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    <tr> <td><b>*{{ item.black }}</b></td>
+      <td>{{ item.white }}</td>
+      <td><a href="{{round.dir}}/{{item.black}}_{{item.white}}.txt">{{ item.score }}</a></td>
+    </tr>
     {% elif item.score < 0 %}
-    <li> {{ item.black }}, <b>*{{ item.white }}</b>, {{ item.score }}  <a href="{{dir}}/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    <tr> <td>{{ item.black }}</td>
+      <td><b>*{{ item.white }}</b></td>
+      <td><a href="{{round.dir}}/{{item.black}}_{{item.white}}.txt">{{ item.score }}</a></td>
+    </tr>
     {% else %}
-    <li> <i>{{ item.black }}, {{ item.white }}</i>, {{ item.score }}  <a href="{{dir}}/{{item.black}}_{{item.white}}.txt">See game</a> </li>
+    <tr> <td><i>{{ item.black }}</i></td>
+      <td><i>{{ item.white }}</i></td>
+      <td><a href="{{round.dir}}/{{item.black}}_{{item.white}}.txt">{{ item.score }}</a></td>
+    </tr>
     {% endif %}
-  {% endfor %}
-  </ol>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endfor %}
+
+<script>
+  function openRound(roundName) {
+  var i;
+  var x = document.getElementsByClassName("round");
+  for (i = 0; i < x.length; i++) {
+		  x[i].style.display = "none";
+		  }
+		  document.getElementById(roundName).style.display = "block";
+		  }
+		  </script>
+
+
 {% endblock %}

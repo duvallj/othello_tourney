@@ -4,9 +4,10 @@
 
 {% block content %}
   <h2>Current Standings After Current Round</h2>
-  <ol>
+  <table id="results">
+    <tr><th>Name</th><th>Wins</th></tr>
     {% for item in standings %}
-    <li>{{item.name}}, {{item.score}}</li>
+    <tr><td>{{item.name}}</td><td>{{item.score}}</td></tr>
   {% endfor %}
-  </ol>
+  </table>
 {% endblock %}

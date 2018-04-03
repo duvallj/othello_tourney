@@ -58,9 +58,13 @@ anaconda3
 
 # Don't expose oauth keys
 ion_secret.py
+
+# Don't commit tournament results or code
 students/20*/*
 students/
 game_output/
 game_list.txt
 game_test.txt
 game_output.txt
+static/games/*
+lists/*

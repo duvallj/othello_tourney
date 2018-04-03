@@ -1,5 +1,7 @@
 Hello {PLAYER},
 
+THIS IS A TEST EMAIL. SERVER RUNNING IN TEST MODE. GAMES DO NOT COUNT>
+
 Your match against {OPPONENT} in Round 1 of the TJHSST
 Othello tournament will begin in approximately {TIME} minutes.
 
