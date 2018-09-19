@@ -27,7 +27,7 @@ PROJECT_ROOT = BASE_DIR
 # SECURITY WARNING: keep the secret key used in production secret!
 #SECRET_KEY = ""
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "othello.tjhsst.edu"]
 
@@ -90,7 +90,7 @@ LOGGING = {
     'handlers': {
         'file': {
             'class': 'logging.FileHandler',
-            'filename': '/home/othello/logs/django.log',
+            'filename': '/home/jduvall/logs/django.log',
         },
         'console': {
             'class': 'logging.StreamHandler',
@@ -195,7 +195,7 @@ OTHELLO_ROOM_ID_LEN = 32
 OTHELLO_AI_UNKNOWN_PLAYER = "Unknown"
 OTHELLO_AI_HUMAN_PLAYER = "Yourself"
 OTHELLO_AI_SHARED_DIR = os.path.join(MEDIA_ROOT, "public")
-OTHELLO_AI_RUN_COMMAND = "firejail --profile={0} --whitelist={1} python -u {2} =NAME=".format(
+OTHELLO_AI_RUN_COMMAND = "firejail --quiet --profile={0} --whitelist={1} python -u {2} =NAME=".format(
     os.path.join(PROJECT_ROOT, "python-custom.profile"),
     os.path.join(PROJECT_ROOT, "students/=NAME="),
     os.path.join(PROJECT_ROOT, "run_ai_jailed.py")
