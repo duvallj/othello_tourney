@@ -8,7 +8,7 @@ import multiprocessing as mp
 import subprocess
 import time
 
-from .run_ai_utils import JailedRunnerCommunicator
+from .run_ai_utils import JailedRunnerCommunicator, RawRunner
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 
@@ -65,6 +65,14 @@ class GameRunner:
                     "error": "{} is not a valid AI name".format(self.black)
                 })
                 do_start_game = False
+        elif self.black == settings.OTHELLO_AI_UNLIMITED_PLAYER:
+            log.info("Using Unlimited Runner")
+            self.emit({
+                "type": "game.error",
+                "error": "Using Unlimited Runner"
+            })
+            strat = RawRunner(self.black)
+            strats[BLACK] = strat
         else:
             strat = JailedRunnerCommunicator(self.black)
             strat.start()

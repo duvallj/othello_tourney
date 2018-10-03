@@ -30,7 +30,7 @@ class LocalRunner:
         self.new_path = self.old_path = os.getcwd()
         self.new_sys = self.old_sys = ORIGINAL_SYS
         self.strat, self.new_path, self.new_sys = get_strat(self.name)
-    
+
     def strat_wrapper(self, board, player, best_shared, running, pipe_to_parent):
         with HiddenPrints():
             try:
@@ -42,7 +42,7 @@ class LocalRunner:
     def get_move(self, board, player, timelimit):
         best_shared = mp.Value("i", -1)
         running = mp.Value("i", 1)
-        
+
         os.chdir(self.new_path)
         sys.path = self.new_sys
         to_child, to_self = mp.Pipe()
@@ -52,7 +52,7 @@ class LocalRunner:
             p.join(timelimit)
             if p.is_alive():
                 running.value = 0
-                p.join(0.01)
+                p.join(0.05)
                 if p.is_alive(): p.terminate()
             move = best_shared.value
             if to_self.poll():
@@ -69,26 +69,58 @@ class LocalRunner:
             os.chdir(self.old_path)
             sys.path = self.old_sys
 
-            
+class RawRunner(LocalRunner):
+    """
+    Should only be used with AIs that accept timelimit as an optional arg
+    """
+    def strat_wrapper(self, board, player, best_shared, running, timelimit):
+        with HiddenPrints():
+            try:
+                self.strat(board, player, best_shared, running, timelimit=timelimit)
+                return None
+            except:
+                return traceback.format_exc()
+    
+    def get_move(self, board, player, timelimit):
+        best_shared = mp.Value("i", -1)
+        running = mp.Value("i", 1)
+
+        os.chdir(self.new_path)
+        sys.path = self.new_sys
+
+        try:
+            err = self.strat_wrapper("".join(list(board)), player, best_shared, running, timelimit)
+            move = best_shared.value
+            sys.stderr.write(str((move, err))+"\n")
+            return move, err
+        except:
+            traceback.print_exc()
+            return -1, "Server Error"
+        finally:
+            os.chdir(self.old_path)
+            sys.path = self.old_sys
+
 class JailedRunner:
     """
     The class that is run in the subprocess to handle the games
     Keeps running until it is killed forcefully
     """
-    
+
     AIClass = LocalRunner
     def __init__(self, ai_name):
         # I don't know what to put here yet
+        if ai_name == settings.OTHELLO_AI_UNLIMITED_PLAYER:
+            self.AIClass = RawRunner
         self.strat = self.AIClass(ai_name)
         self.name = ai_name
-    
+
     def handle(self, client_in, client_out, client_err):
         """
         Handles one incoming request for getting a move from the target AI
         given the current board, player to move, and time limit.
-        
+
         client_in, client_out, and client_err are socket-like objects.
-        input received on client_in, output sent out on client_out, any 
+        input received on client_in, output sent out on client_out, any
         errors the AI throws are sent on client_err
         """
         name = client_in.readline().strip()
@@ -96,7 +128,7 @@ class JailedRunner:
         player = client_in.readline().strip()
         board = client_in.readline().strip()
         log.debug("Got data {} {} {} {}".format(name, timelimit, player, board))
-        
+
         if name == self.name and \
            (player == BLACK or player == WHITE):
 
@@ -110,9 +142,9 @@ class JailedRunner:
             # sys.stdout temporarily
             with HiddenPrints():
                 move, err = self.strat.get_move(board, player, timelimit)
-            
+
             if err is not None: client_err.write(err)
-            
+
             log.debug("Got move {}".format(move))
             client_out.write(str(move)+"\n")
         else:
@@ -120,15 +152,15 @@ class JailedRunner:
             client_out.write("-1"+"\n")
         client_out.flush()
         client_err.flush()
-        
+
     def run(self):
         while True:
             self.handle(sys.stdin, sys.stdout, sys.stderr)
-            
+
 class JailedRunnerCommunicator:
     """
     Class used to communicate with a jailed process.
-    
+
     Standard usage:
     ai = JailedRunnerCommunicator(ai_name)
     ai.start()
@@ -141,7 +173,7 @@ class JailedRunnerCommunicator:
     def __init__(self, ai_name):
         self.name = ai_name
         self.proc = None
-        
+
     def start(self):
         """
         Starts running the specified AI in a subprocess
@@ -158,7 +190,7 @@ class JailedRunnerCommunicator:
         """
         Gets a move from the running subprocess, providing it with all the data it
         needs to make a decision.
-        
+
         Data format needs to be same as JailedRunner expects it, namely,
         b"duv\n5\n@\n?????..??o@?????\n"
         """
@@ -192,7 +224,7 @@ class JailedRunnerCommunicator:
             traceback.print_exc()
             move = -1
         return move, errs #.decode()
-        
+
     def stop(self):
         """
         Stops the currently running subprocess.
@@ -200,6 +232,6 @@ class JailedRunnerCommunicator:
         """
         self.proc.kill()
         self.proc = None
-        
+
     def __del__(self):
         self.stop()
