@@ -16,14 +16,17 @@ import multiprocessing as mp
 log = logging.getLogger(__name__)
 
 class TournamentRunner(SyncConsumer):
-    def __init__(self, player_list, format, num_games, *args, **kwargs):
+    #def __init__(self, player_list, format, num_games, concurrent_games, *args, **kwargs):
+    def __init__(self, timelimit, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.tournament = make_new_tournament()
+        """self.tournament = make_new_tournament()
         self.tournament.player_list = player_list
         self.tournament.format = format
         self.tournament.num_games = num_games
+        self.tournament.concurrent_games = concurrent_games
         self.tournament.results = []
-        self.tournament.save()
+        self.tournament.save()"""
+        self.timelimit = timelimit
         self.games = dict()
         self.game_queue = None
 
@@ -37,7 +40,12 @@ class TournamentRunner(SyncConsumer):
 
     def game_end(self, event):
         rid = event['room_id']
-        if self.games[rid].proc: self.games[rid].proc.terminate()
+        self.results.append((
+            event['winner'],
+            self.games[rid]['room'].black,
+            self.games[rid]['room'].white,
+        ))
+        if self.games[rid]['proc']: self.games[rid]['proc'].terminate()
         async_to_sync(self.channel_layer.group_discard)(
             rid,
             self.channel_name
@@ -46,7 +54,9 @@ class TournamentRunner(SyncConsumer):
         del self.games[rid]
 
         if self.game_queue and not self.game_queue.empty():
-            self.start_game(*self.game_queue.pop())
+            self.start_game(*self.game_queue.get())
+        else:
+            self.end()
 
     def game_error(self, event): self.game_end(event)
 
@@ -54,19 +64,19 @@ class TournamentRunner(SyncConsumer):
 
     def start_game(self, black, white):
         room = make_new_room()
-        log.debug("Made new room {} for tournament {}".format(
+        """log.debug("Made new room {} for tournament {}".format(
             room.room_id,
             self.tournament.tournament_id
-        ))
+        ))"""
 
         game = GameRunner(self.main_room.room_id)
         game.black = black
         game.white = white
-        game.timelimit = self.tournament.timelimit
+        game.timelimit = self.timelimit
 
         room.black = black
         room.white = white
-        room.timelimit = self.tournament.timelimit
+        room.timelimit = self.timelimit
         room.playing = True
         room.save()
 
@@ -95,5 +105,9 @@ class TournamentRunner(SyncConsumer):
         for x in range(num_games):
             pass
 
+    def end(self):
+        pass
+
     def stop(self):
+        self.end()
         pass

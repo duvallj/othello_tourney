@@ -3,7 +3,7 @@ import importlib
 from django.conf import settings
 
 ORIGINAL_SYS = sys.path[:]
-    
+
 def get_strat(name):
     old_path = os.getcwd()
 
@@ -13,21 +13,28 @@ def get_strat(name):
 
     sys.path = [os.getcwd(), settings.OTHELLO_AI_SHARED_DIR] + ORIGINAL_SYS
     new_sys = sys.path[:]
-    
+
+    stratargs = tuple()
+    if name.startswith(settings.OTHELLO_AI_UNLIMITED_PLAYER):
+        try:
+            stratargs = (int(name[:len(settings.OTHELLO_AI_UNLIMITED_PLAYER)]),)
+        except:
+            pass
+
     strat = importlib.import_module('students.'+name+'.strategy').\
-            Strategy().best_strategy
+            Strategy(*stratargs).best_strategy
 
     os.chdir(old_path)
     sys.path = ORIGINAL_SYS
 
     return strat, new_path, new_sys
-    
+
 def safe_int(s):
     try:
         return int(s)
     except:
         return -1
-        
+
 def safe_float(s):
     try:
         return float(s)
