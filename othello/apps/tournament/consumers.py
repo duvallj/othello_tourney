@@ -5,20 +5,19 @@ from asgiref.sync import sync_to_async, async_to_sync
 from channels.db import database_sync_to_async
 
 from ..games.utils import make_new_room, get_all_rooms, delete_room
-from .utils import make_new_tournament, delete_tournament
+#from .utils import make_new_tournament, delete_tournament
 from ..games.worker_utils import safe_int, safe_float
 from ..games.worker import GameRunner
 
 import logging
 import multiprocessing as mp
 
-
 log = logging.getLogger(__name__)
 
 class TournamentRunner(SyncConsumer):
     #def __init__(self, player_list, format, num_games, concurrent_games, *args, **kwargs):
-    def __init__(self, timelimit, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        
+    def post_init(self, timelimit):
         """self.tournament = make_new_tournament()
         self.tournament.player_list = player_list
         self.tournament.format = format
@@ -40,6 +39,7 @@ class TournamentRunner(SyncConsumer):
 
     def game_end(self, event):
         rid = event['room_id']
+        print(self.games[rid])
         self.results.append((
             event['winner'],
             self.games[rid]['room'].black,
@@ -50,11 +50,12 @@ class TournamentRunner(SyncConsumer):
             rid,
             self.channel_name
         )
-        delete_room(rid)
+        #print(rid, self.games[rid]['room'].room_id)
+        #delete_room(rid)
         del self.games[rid]
 
         if self.game_queue and not self.game_queue.empty():
-            self.start_game(*self.game_queue.get())
+            async_to_sync(self.start_game)(*self.game_queue.get())
         else:
             self.end()
 
@@ -62,14 +63,14 @@ class TournamentRunner(SyncConsumer):
 
     ### End compat methods
 
-    def start_game(self, black, white):
+    async def start_game(self, black, white):
         room = make_new_room()
         """log.debug("Made new room {} for tournament {}".format(
             room.room_id,
             self.tournament.tournament_id
         ))"""
 
-        game = GameRunner(self.main_room.room_id)
+        game = GameRunner(room.room_id)
         game.black = black
         game.white = white
         game.timelimit = self.timelimit
@@ -94,7 +95,7 @@ class TournamentRunner(SyncConsumer):
             'comm_queue': comm_queue,
         }
 
-        async_to_sync(self.channel_layer.group_add)(
+        await self.channel_layer.group_add(
             room.room_id,
             self.channel_name
         )

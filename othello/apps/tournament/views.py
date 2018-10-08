@@ -4,7 +4,6 @@ from django.conf import settings
 
 from ..users.models import User
 from .forms import StartTournamentForm
-from .tournaments import Tournament
 
 def tournament_info_view(request):
     return render(request, "tournament_info.html")
