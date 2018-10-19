@@ -57,7 +57,15 @@ class GameRunner:
         strats = dict()
         do_start_game = True
 
-        if self.black not in self.possible_names:
+        if self.black.startswith(settings.OTHELLO_AI_UNLIMITED_PLAYER):
+            log.info("Using black Unlimited Runner")
+            self.emit({
+                "type": "game.error",
+                "error": "Using black Unlimited Runner"
+            })
+            strat = RawRunner(self.black)
+            strats[BLACK] = strat
+        elif self.black not in self.possible_names:
             if self.black == settings.OTHELLO_AI_HUMAN_PLAYER:
                 strats[BLACK] = None
             else:
@@ -66,20 +74,20 @@ class GameRunner:
                     "error": "{} is not a valid AI name".format(self.black)
                 })
                 do_start_game = False
-        elif self.black == settings.OTHELLO_AI_UNLIMITED_PLAYER:
-            log.info("Using black Unlimited Runner")
-            self.emit({
-                "type": "game.error",
-                "error": "Using black Unlimited Runner"
-            })
-            strat = RawRunner(self.black)
-            strats[BLACK] = strat
         else:
             strat = JailedRunnerCommunicator(self.black)
             strat.start()
             strats[BLACK] = strat
 
-        if self.white not in self.possible_names:
+        if self.white.startswith(settings.OTHELLO_AI_UNLIMITED_PLAYER):
+            log.info("Using white Unlimited Runner")
+            self.emit({
+                "type": "game.error",
+                "error": "Using white Unlimited Runner"
+            })
+            strat = RawRunner(self.white)
+            strats[WHITE] = strat
+        elif self.white not in self.possible_names:
             if self.white == settings.OTHELLO_AI_HUMAN_PLAYER:
                 strats[WHITE] = None
             else:
@@ -88,18 +96,11 @@ class GameRunner:
                     "error": "{} is not a valid AI name".format(self.white)
                 })
                 do_start_game = False
-        elif self.white == settings.OTHELLO_AI_UNLIMITED_PLAYER:
-            log.info("Using white Unlimited Runner")
-            self.emit({
-                "type": "game.error",
-                "error": "Using white Unlimited Runner"
-            })
-            strat = RawRunner(self.white)
-            strats[WHITE] = strat
         else:
             strat = JailedRunnerCommunicator(self.white)
             strat.start()
             strats[WHITE] = strat
+        
         log.debug("Inited strats")
         core = Strategy()
         player = BLACK
@@ -137,6 +138,7 @@ class GameRunner:
         self.emit({
             "type": "game.end",
             "winner": winner,
+            "board": ''.join(board),
             "forfeit": forfeit,
         })
 

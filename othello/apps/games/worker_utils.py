@@ -7,19 +7,20 @@ ORIGINAL_SYS = sys.path[:]
 def get_strat(name):
     old_path = os.getcwd()
 
+    stratargs = tuple()
+    if name.startswith(settings.OTHELLO_AI_UNLIMITED_PLAYER):
+        try:
+            stratargs = (int(name[len(settings.OTHELLO_AI_UNLIMITED_PLAYER):]),)
+        except:
+            pass
+        name = settings.OTHELLO_AI_UNLIMITED_PLAYER
+    
     path = os.path.join(old_path, 'students/', name)
     new_path = path
     os.chdir(path)
 
     sys.path = [os.getcwd(), settings.OTHELLO_AI_SHARED_DIR] + ORIGINAL_SYS
     new_sys = sys.path[:]
-
-    stratargs = tuple()
-    if name.startswith(settings.OTHELLO_AI_UNLIMITED_PLAYER):
-        try:
-            stratargs = (int(name[:len(settings.OTHELLO_AI_UNLIMITED_PLAYER)]),)
-        except:
-            pass
 
     strat = importlib.import_module('students.'+name+'.strategy').\
             Strategy(*stratargs).best_strategy

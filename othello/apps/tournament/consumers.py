@@ -42,8 +42,9 @@ class TournamentRunner(SyncConsumer):
         print(self.games[rid])
         self.results.append((
             event['winner'],
-            self.games[rid]['room'].black,
-            self.games[rid]['room'].white,
+            event['board'],
+            {   '@': self.games[rid]['room'].black,
+                'o': self.games[rid]['room'].white, },
         ))
         if self.games[rid]['proc']: self.games[rid]['proc'].terminate()
         async_to_sync(self.channel_layer.group_discard)(
@@ -59,7 +60,7 @@ class TournamentRunner(SyncConsumer):
         else:
             self.end()
 
-    def game_error(self, event): self.game_end(event)
+    def game_error(self, event): log.error(event.get('error', ''))
 
     ### End compat methods
 
