@@ -61,4 +61,6 @@ db.sqlite3
 
 # Don't expose oauth keys
 ion_secret.py
+# Or student files
 students/
+students-2017-18/
