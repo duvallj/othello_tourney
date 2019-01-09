@@ -29,7 +29,7 @@ class GameRunner:
         }
         self.emit_func = None
         self.room_id = room_id
-    
+
     def emit(self, data):
         log.debug("GameRunner emitting {}".format(data))
         if self.emit_func is None:
@@ -39,7 +39,7 @@ class GameRunner:
                 self.room_id,
                 data,
             )
-    
+
     def run(self, comm_queue):
         """
         Main loop used to run the game in.
@@ -50,12 +50,12 @@ class GameRunner:
             self.white,
             self.timelimit
         ))
-        
+
         self.emit_func = async_to_sync(get_channel_layer().group_send)
-        
+
         strats = dict()
         do_start_game = True
-        
+
         if self.black not in self.possible_names:
             if self.black == settings.OTHELLO_AI_HUMAN_PLAYER:
                 strats[BLACK] = None
@@ -69,7 +69,7 @@ class GameRunner:
             strat = JailedRunnerCommunicator(self.black)
             strat.start()
             strats[BLACK] = strat
-        
+
         if self.white not in self.possible_names:
             if self.white == settings.OTHELLO_AI_HUMAN_PLAYER:
                 strats[WHITE] = None
@@ -83,7 +83,14 @@ class GameRunner:
             strat = JailedRunnerCommunicator(self.white)
             strat.start()
             strats[WHITE] = strat
+
         log.debug("Inited strats")
+
+        if not do_start_game:
+            log.warn("Already threw error, not starting game")
+            self._cleanup(strats)
+            return
+
         core = Strategy()
         player = BLACK
         board = core.initial_board()
@@ -91,7 +98,7 @@ class GameRunner:
             BLACK: self.black,
             WHITE: self.white,
         }
-        
+
         self.emit({
             "type": "board.update",
             "board": ''.join(board),
@@ -100,16 +107,18 @@ class GameRunner:
             "white": names[WHITE],
         })
         forfeit = False
+
         log.debug("All initing done, time to start playing the game")
+
         while player is not None and not forfeit:
             player, forfeit, board = self.do_game_tick(comm_queue, core, board, player, strats, names)
-            
+
         winner = EMPTY
         if forfeit:
             winner = core.opponent(player)
         else:
             winner = (EMPTY, BLACK, WHITE)[core.final_value(BLACK, board)]
-        
+
         self.emit({
             "type": "board.update",
             "board": ''.join(board),
@@ -124,11 +133,22 @@ class GameRunner:
         })
 
         log.debug("Game over, exiting...")
-        
+        self._cleanup(strats)
+
+
+    def _cleanup(self, strats):
+        if getattr(strats.get(BLACK, None), "stop", False):
+            strats[BLACK].stop()
+            log.warn("successfully stopped BLACK jailed runner")
+        if getattr(strats.get(WHITE, None), "stop", False):
+            strats[WHITE].stop()
+            log.warn("successfully stopped WHITE jailed runner")
+
+
     def do_game_tick(self, comm_queue, core, board, player, strats, names):
         """
         Runs one move in a game, handling all the board flips and game-ending edge cases.
-        
+
         If a strat is `None`, it calls out for the user to input a move. Otherwise, it runs the strategy provided.
         """
         log.debug("Ticking game")
@@ -140,7 +160,7 @@ class GameRunner:
             move = comm_queue.get()
         else:
             move, errs = strat.get_move(board, player, self.timelimit)
-            
+
         if not core.is_legal(move, player, board):
             self.emit({
                 'type': "game.error",
@@ -148,15 +168,14 @@ class GameRunner:
             })
             forfeit = True
             return player, forfeit, board
-            
+
         board = core.make_move(move, player, board)
         player = core.next_player(board, player)
         self.emit({
-            "type": "board.update", 
+            "type": "board.update",
             "board": ''.join(board),
             "tomove": player,
             "black": names[BLACK],
             "white": names[WHITE],
         })
         return player, False, board
-        

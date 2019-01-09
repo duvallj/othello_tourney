@@ -8,7 +8,7 @@ from othello.apps.games.run_ai_utils import JailedRunner
 if __name__=="__main__":
     # Have appropriate settings for other files,
     # but don't allow any sensitive information for AIs
-    settings.configure(othello.settings, 
+    settings.configure(othello.settings,
         SOCIAL_AUTH_ION_KEY="",
         SOCIAL_AUTH_ION_SECRET="",
         SECRET_KEY=""
