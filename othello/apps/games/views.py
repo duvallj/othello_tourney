@@ -26,8 +26,8 @@ def about_uploading_view(request):
 def ai_list_view(request):
     student_folder = settings.MEDIA_ROOT
     folders = os.listdir(student_folder)
-    possible_names =  [x for x in folders if \
-        x != '__pycache__' and x != 'public' and \
+    possible_names = [x for x in folders if
+        x != '__pycache__' and x != 'public' and
         os.path.isdir(os.path.join(student_folder, x))
     ]
     possible_names = sorted(possible_names)
