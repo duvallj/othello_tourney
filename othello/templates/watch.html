@@ -15,7 +15,14 @@
             <p id="player-white" class="player-score">Player 2</p>
           </div>
           <br>
-          <button onclick="fullHistoryDownload();">Download Game</button>
+          <button onclick="historyDownload();">Download Game</button>
+          <br>
+          <p>Download Format:</p>
+          <input type="radio" name="downloadFormat" id="downloadFormat-pretty" value="pretty" checked="true" />
+          <label for="downloadFormat-pretty">Pretty</label>
+          <input type="radio" name="downloadFormat" id="downloadFormat-parseable" value="parseable" />
+          <label for="downloadFormat-parseable">Parseable</label>
+          <br>
           <code id="err_log" style="word-wrap:break-word; overflow-wrap:break-word;word-break:break-word;"></code>
         </div>
       </div>

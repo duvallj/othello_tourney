@@ -1,0 +1,24 @@
+django_channels
+   | hooks into
+   V
+othello.apps.games.consumers.GameServingConsumer
+   | creates a continuously-running
+   V
+multiprocessing.Process
+   of othello.apps.games.worker.GameRunner
+          |
+   +------+ which starts two
+   V
+othello.apps.games.run_ai_utils.JailedRunnerCommunicator
+   | which each start (in a sandbox) a continuously-running
+   V
+multiprocessing.Process
+   of othello.apps.games.run_ai_utils.JailedRunner
+          |
+   +------+ which have a
+   V
+othello.apps.games.run_ai_utils.LocalRunner
+   | which each start, every time a move is needed, a
+   V
+multiprocessing.Process
+   of the student's AI
