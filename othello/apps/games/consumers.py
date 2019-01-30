@@ -85,7 +85,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         Called when the websocket closes for any reason.
         """
         log.debug("{} disconnect {}".format(self.main_room.room_id, close_data))
-        if self.proc:
+        if getattr(self, "proc", None):
             self.proc.terminate()
         for room in self.rooms:
             async_to_sync(self.channel_layer.group_discard)(

@@ -186,13 +186,15 @@ class JailedRunnerCommunicator:
         log.debug("Done writing data")
         outs = self.proc_stdout.get()
         log.debug("Got output, reading errors")
+        errs2 = []
+        last_err_line = ""
         while last_err_line is not None:
-            errs.append(last_err_line)
+            errs2.append(last_err_line)
             try:
                 last_err_line = self.proc_stderr.get_nowait()
             except:
                 last_err_line = None
-        errs = "".join(errs)
+        errs += "".join(errs2)
         log.debug('Got full report from subprocess')
         try:
             move = int(outs.split("\n")[0])
@@ -206,9 +208,9 @@ class JailedRunnerCommunicator:
         Stops the currently running subprocess.
         Will throw an error if the subprocess is not running.
         """
-
-        self.proc.kill()
-        self.proc = None
+        if not (self.proc is None):
+            self.proc.kill()
+            self.proc = None
 
     def __del__(self):
         log.warn("__del__ called! (as it should be)")
