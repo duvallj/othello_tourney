@@ -149,7 +149,7 @@ class GameRunner:
         """
         Runs one move in a game, handling all the board flips and game-ending edge cases.
 
-        If a strat is `None`, it calls out for the user to input a move. Otherwise, it runs the strategy provided.
+        If a strat is `None', it calls out for the user to input a move. Otherwise, it runs the strategy provided.
         """
         log.debug("Ticking game")
         strat = strats[player]

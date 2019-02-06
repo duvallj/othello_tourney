@@ -16,6 +16,10 @@ ORIGINAL_SYS = sys.path[:]
 log = logging.getLogger(__name__)
 
 class HiddenPrints:
+    """
+    Surpresses all stdout from a subprocess so we
+    can only send what we need to to our parent
+    """
     def __enter__(self):
         self._original_stdout = sys.stdout
         sys.stdout = None
@@ -40,6 +44,10 @@ class LocalRunner:
                 pipe_to_parent.send(traceback.format_exc())
 
     def get_move(self, board, player, timelimit):
+        """
+        Starts a multiprocessing.Process with the student AI inside,
+        automatically kills it after the timelimit expires
+        """
         best_shared = mp.Value("i", -1)
         running = mp.Value("i", 1)
 
@@ -206,7 +214,6 @@ class JailedRunnerCommunicator:
     def stop(self):
         """
         Stops the currently running subprocess.
-        Will throw an error if the subprocess is not running.
         """
         if not (self.proc is None):
             self.proc.kill()

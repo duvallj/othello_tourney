@@ -4,14 +4,15 @@ from social_core.pipeline.user import get_username as social_get_username
 def get_username(strategy, details, user=None, *args, **kwargs):
     result = social_get_username(strategy, details, user=user, *args, **kwargs)
     return result
-    
+
+# Instead of using an Ion user id, just take the username as a base36 number
 def username_to_id(username):
     if not username.isalnum():
         return -1
     id = int(username, 36)
     return id
-    
-    
+
+
 class IonOauth2(BaseOAuth2):
     name = 'ion'
     AUTHORIZATION_URL = 'https://ion.tjhsst.edu/oauth/authorize'
@@ -23,6 +24,7 @@ class IonOauth2(BaseOAuth2):
     ]
 
     def get_scope(self):
+        # The permissions we require when accessing an account
         return ["read"]
 
     def get_user_details(self, response):

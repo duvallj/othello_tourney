@@ -25,6 +25,8 @@ def about_uploading_view(request):
 
 def ai_list_view(request):
     student_folder = settings.MEDIA_ROOT
+    # Using the filesystem as a database for which students
+    # have uploaded. kind of hacky, but works well
     folders = os.listdir(student_folder)
     possible_names = [x for x in folders if
         x != '__pycache__' and x != 'public' and

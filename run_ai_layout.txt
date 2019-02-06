@@ -21,4 +21,6 @@ othello.apps.games.run_ai_utils.LocalRunner
    | which each start, every time a move is needed, a
    V
 multiprocessing.Process
-   of the student's AI
+   | of the student's AI at
+   V
+students.20xxssomeone.strategy.Strategy
