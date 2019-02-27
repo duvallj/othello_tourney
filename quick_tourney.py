@@ -11,7 +11,7 @@ application = get_default_application()
 
 NUM_CHECKPOINTS = 80
 START_CHECKPOINT = 53
-ALL_AIS = ['duv', '2019ssaxena', '2019vnguyen']
+ALL_AIS = ['T17-Duvall', 'T18-Arya', 'random']
 
 from othello.apps.tournament.consumers import TournamentRunner
 import queue
@@ -43,7 +43,7 @@ class QuickTournamentRunner(TournamentRunner):
         print("Done, safe to kill script once \"saved\" appears")
 
 if __name__ == "__main__":
-    a = AlphaZeroTournamentRunner(None)
+    a = QuickTournamentRunner(None)
     a.post_init(5)
 
     async def nothing(): return {"type": "move.reply", "move": "-1"}

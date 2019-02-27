@@ -8,7 +8,7 @@ import multiprocessing as mp
 import subprocess
 import time
 
-from .run_ai_utils import JailedRunnerCommunicator, RawRunner
+from .run_ai_utils import JailedRunnerCommunicator 
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 

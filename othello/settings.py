@@ -29,7 +29,7 @@ PROJECT_ROOT = BASE_DIR
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "othello.tjhsst.edu"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.3", "othello.tjhsst.edu"]
 
 
 # Application definition
@@ -90,7 +90,7 @@ LOGGING = {
     'handlers': {
         'file': {
             'class': 'logging.FileHandler',
-            'filename': '/home/jduvall/logs/django.log',
+            'filename': os.path.join(PROJECT_ROOT, 'django.log'),
         },
         'console': {
             'class': 'logging.StreamHandler',
