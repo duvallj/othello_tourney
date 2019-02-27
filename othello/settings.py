@@ -27,7 +27,7 @@ PROJECT_ROOT = BASE_DIR
 # SECURITY WARNING: keep the secret key used in production secret!
 #SECRET_KEY = ""
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "othello.tjhsst.edu"]
 
@@ -41,10 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     'social_django',
     'channels',
-    
+
     'othello',
     'othello.apps.auth',
     'othello.apps.users',
@@ -59,7 +59,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
+
     'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
 
@@ -76,7 +76,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                
+
                 'social_django.context_processors.backends',
                 'social_django.context_processors.login_redirect',
             ],
@@ -90,7 +90,7 @@ LOGGING = {
     'handlers': {
         'file': {
             'class': 'logging.FileHandler',
-            'filename': '/home/othello/logs/django.log',
+            'filename': '/home/jduvall/logs/django.log',
         },
         'console': {
             'class': 'logging.StreamHandler',
@@ -104,7 +104,7 @@ LOGGING = {
         },
         'othello': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
     },
@@ -194,6 +194,7 @@ MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'students')
 OTHELLO_ROOM_ID_LEN = 32
 OTHELLO_AI_UNKNOWN_PLAYER = "Unknown"
 OTHELLO_AI_HUMAN_PLAYER = "Yourself"
+OTHELLO_AI_UNLIMITED_PLAYER = "alphazero"
 OTHELLO_AI_SHARED_DIR = os.path.join(MEDIA_ROOT, "public")
 OTHELLO_AI_RUN_COMMAND = "firejail --quiet --profile={0} --whitelist={1} python3 -u {2} =NAME=".format(
     os.path.join(PROJECT_ROOT, "python-custom.profile"),

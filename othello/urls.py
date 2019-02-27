@@ -22,6 +22,7 @@ from .apps.auth import views as auth_views
 urlpatterns = [
     url('', include('social_django.urls', namespace='social')),
     url('', include('othello.apps.games.urls')),
+    url('', include('othello.apps.tournament.urls')),
     url(r'^$', auth_views.index_view, name='index'),
     url(r'^upload$', auth_views.upload_view, name='upload'),
     url(r'^login/$', auth_views.login_view, name='login'),

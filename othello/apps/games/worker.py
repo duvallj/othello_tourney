@@ -8,7 +8,7 @@ import multiprocessing as mp
 import subprocess
 import time
 
-from .run_ai_utils import JailedRunnerCommunicator
+from .run_ai_utils import JailedRunnerCommunicator, RawRunner
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 
@@ -35,6 +35,7 @@ class GameRunner:
         if self.emit_func is None:
             log.warn("GameRunner not ready to emit")
         else:
+            data['room_id'] = self.room_id
             self.emit_func(
                 self.room_id,
                 data,
@@ -129,6 +130,7 @@ class GameRunner:
         self.emit({
             "type": "game.end",
             "winner": winner,
+            "board": ''.join(board),
             "forfeit": forfeit,
         })
 
@@ -139,17 +141,17 @@ class GameRunner:
     def _cleanup(self, strats):
         if getattr(strats.get(BLACK, None), "stop", False):
             strats[BLACK].stop()
-            log.warn("successfully stopped BLACK jailed runner")
+            log.info("successfully stopped BLACK jailed runner")
         if getattr(strats.get(WHITE, None), "stop", False):
             strats[WHITE].stop()
-            log.warn("successfully stopped WHITE jailed runner")
+            log.info("successfully stopped WHITE jailed runner")
 
 
     def do_game_tick(self, comm_queue, core, board, player, strats, names):
         """
         Runs one move in a game, handling all the board flips and game-ending edge cases.
 
-        If a strat is `None', it calls out for the user to input a move. Otherwise, it runs the strategy provided.
+        If a strat is `None`, it calls out for the user to input a move. Otherwise, it runs the strategy provided.
         """
         log.debug("Ticking game")
         strat = strats[player]

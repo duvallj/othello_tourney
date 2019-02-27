@@ -60,7 +60,7 @@ class LocalRunner:
             p.join(timelimit)
             if p.is_alive():
                 running.value = 0
-                p.join(0.01)
+                p.join(0.05)
                 if p.is_alive(): p.terminate()
             move = best_shared.value
             if to_self.poll():
@@ -87,6 +87,8 @@ class JailedRunner:
     AIClass = LocalRunner
     def __init__(self, ai_name):
         # I don't know what to put here yet
+        if ai_name == settings.OTHELLO_AI_UNLIMITED_PLAYER:
+            self.AIClass = RawRunner
         self.strat = self.AIClass(ai_name)
         self.name = ai_name
 

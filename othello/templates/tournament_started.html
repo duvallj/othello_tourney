@@ -1,0 +1,12 @@
+{% extends "template.html" %}
+{% block title %}Tournament Config{% endblock %}
+{% block header %}Tournament Config{% endblock %}
+
+{% block content %}
+  <h2>Your tournament has been started</h2>
+  <p>
+    Go to <a href="{% url 'watch' %}">watch</a>
+    <br>
+    Go to <a href="{% url 'tournament_manage'%}">Manage tournaments</a>
+  </p>
+{% endblock %}
