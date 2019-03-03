@@ -10,6 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
+"""
+Every comment with DEVEL should be checked before running a development server
+"""
+
 import os
 try:
     from .ion_secret import *
@@ -27,9 +31,11 @@ PROJECT_ROOT = BASE_DIR
 # SECURITY WARNING: keep the secret key used in production secret!
 #SECRET_KEY = ""
 # SECURITY WARNING: don't run with debug turned on in production!
+# DEVEL: change this to true
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.3", "othello.tjhsst.edu"]
+# DEVEL: change this if necessary
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "127.0.0.3", "othello.tjhsst.edu"]
 
 
 # Application definition
@@ -104,6 +110,7 @@ LOGGING = {
         },
         'othello': {
             'handlers': ['console', 'file'],
+            # DEVEL: might want to set this to 'DEBUG' sometimes
             'level': 'INFO',
             'propagate': True,
         },
@@ -156,6 +163,7 @@ AUTHENTICATION_BACKENDS = [
     'othello.apps.auth.oauth.IonOauth2',
 ]
 
+# DEVEL: set this to False
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 
 AUTH_USER_MODEL = "users.User"
@@ -196,6 +204,7 @@ OTHELLO_AI_UNKNOWN_PLAYER = "Unknown"
 OTHELLO_AI_HUMAN_PLAYER = "Yourself"
 OTHELLO_AI_UNLIMITED_PLAYER = "alphazero"
 OTHELLO_AI_SHARED_DIR = os.path.join(MEDIA_ROOT, "public")
+# DEVEL: set this to "python -u {2} =NAME=".format(...)
 OTHELLO_AI_RUN_COMMAND = "firejail --quiet --profile={0} --whitelist={1} python3 -u {2} =NAME=".format(
     os.path.join(PROJECT_ROOT, "python-custom.profile"),
     os.path.join(PROJECT_ROOT, "students/=NAME="),
