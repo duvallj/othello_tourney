@@ -1,5 +1,3 @@
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 import logging
 import sys, os, io
 import shlex, traceback
@@ -12,23 +10,32 @@ from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 from .utils import get_possible_strats
 from .settings import OTHELLO_AI_HUMAN_PLAYER
+from .settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
 
 log = logging.getLogger(__name__)
+for handler in LOGGING_HANDLERS:
+    log.addHandler(handler)
+log.setLevel(LOGGING_LEVEL)
 
 class GameRunner:
-    black = None
-    white = None
-    timelimit = 5
-
-    def __init__(self, room_id):
-        self.possible_names = get_possible_strats()
+    def __init__(self, black, white, timelimit, loop, room_id, emit_callback):
+        self.black = black
+        self.white = white
+        self.timelimit = timelimit
         self.room_id = room_id
+        self.loop = loop
+        self.emit_callback = emit_callback
+
+        self.possible_names = get_possible_strats()
+        self.strats = dict()
 
     def emit(self, data):
         # TODO: implement this somehow
-        pass
+        log.debug("GameRunner emmitting {}".format(data))
+        data['room'] = self.room_id
+        self.loop.call_soon_threadsafe(self.emit_callback, data)
 
-    def run(self, in_q, out_q):
+    def run(self, in_q):
         """
         Main loop used to run the game in.
         Does not have multiprocess support yet.
@@ -39,12 +46,12 @@ class GameRunner:
             self.timelimit
         ))
 
-        strats = dict()
+        self.strats = dict()
         do_start_game = True
 
         if self.black not in self.possible_names:
             if self.black == settings.OTHELLO_AI_HUMAN_PLAYER:
-                strats[BLACK] = None
+                self.strats[BLACK] = None
             else:
                 self.emit({
                     "type": "game.error",
@@ -54,11 +61,11 @@ class GameRunner:
         else:
             strat = JailedRunnerCommunicator(self.black)
             strat.start()
-            strats[BLACK] = strat
+            self.strats[BLACK] = strat
 
         if self.white not in self.possible_names:
             if self.white == settings.OTHELLO_AI_HUMAN_PLAYER:
-                strats[WHITE] = None
+                self.strats[WHITE] = None
             else:
                 self.emit({
                     "type": "game.error",
@@ -68,13 +75,13 @@ class GameRunner:
         else:
             strat = JailedRunnerCommunicator(self.white)
             strat.start()
-            strats[WHITE] = strat
+            self.strats[WHITE] = strat
 
         log.debug("Inited strats")
 
         if not do_start_game:
             log.warn("Already threw error, not starting game")
-            self._cleanup(strats)
+            self.cleanup()
             return
 
         core = Strategy()
@@ -97,7 +104,7 @@ class GameRunner:
         log.debug("All initing done, time to start playing the game")
 
         while player is not None and not forfeit:
-            player, board, forfeit = self.do_game_tick(in_q, core, board, player, strats, names)
+            player, board, forfeit = self.do_game_tick(in_q, core, board, player, names)
 
         winner = EMPTY
         if forfeit:
@@ -120,26 +127,29 @@ class GameRunner:
         })
 
         log.debug("Game over, exiting...")
-        self.cleanup(strats)
+        self.cleanup()
 
 
-    def cleanup(self, strats):
-        if getattr(strats.get(BLACK, None), "stop", False):
-            strats[BLACK].stop()
+    def cleanup(self):
+        if getattr(self.strats.get(BLACK, None), "stop", False):
+            self.strats[BLACK].stop()
             log.info("successfully stopped BLACK jailed runner")
-        if getattr(strats.get(WHITE, None), "stop", False):
-            strats[WHITE].stop()
+        if getattr(self.strats.get(WHITE, None), "stop", False):
+            self.strats[WHITE].stop()
             log.info("successfully stopped WHITE jailed runner")
 
+    # just in case of wonkiness
+    def __del__(self):
+        self.cleanup()
 
-    def do_game_tick(self, in_q, core, board, player, strats, names):
+    def do_game_tick(self, in_q, core, board, player, names):
         """
         Runs one move in a game, handling all the board flips and game-ending edge cases.
 
         If a strat is `None`, it calls out for the user to input a move. Otherwise, it runs the strategy provided.
         """
         log.debug("Ticking game")
-        strat = strats[player]
+        strat = self.strats[player]
         move = -1
         errs = None
         if strat is None:

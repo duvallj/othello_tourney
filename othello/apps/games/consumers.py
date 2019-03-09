@@ -17,6 +17,7 @@ from django.conf import settings
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from asgiref.sync import sync_to_async, async_to_sync
 from channels.db import database_sync_to_async
+from channels.exceptions import StopConsumer
 
 import logging
 
@@ -34,27 +35,13 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
 
     # #### Websocket event handlers
 
-    def connect(self):
+    async def connect(self):
         """
         Called when the websocket is handshaking as part of initial connection.
-        Creates a new room (with id) for the client and adds them to that room.
         """
+        await self.accept()
 
-        # Make a new storage for rooms
-        self.rooms = set()
-
-        # Make and add a new room
-        room = make_new_room()
-        self.rooms.add(room.room_id)
-        self.main_room = room
-        log.debug("Made new room {} for channel {}, now joining...".format(room.room_id, self.channel_name))
-        async_to_sync(self.channel_layer.group_add)(
-            room.room_id,
-            self.channel_name,
-        )
-        self.accept()
-
-    def receive_json(self, content):
+    async def receive_json(self, content):
         """
         Called when we get a message from the client.
         The only message we care about is "move_reply",
@@ -63,34 +50,14 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         log.debug("{} received json {}".format(self.main_room.room_id, content))
         msg_type = content.get('msg_type', None)
         if msg_type == "movereply":
-            async_to_sync(self.channel_layer.group_send)(
-                self.main_room.room_id,
-                {
-                    'type': "move.reply",
-                    'move': safe_int(content.get('move', "-1"))
-                },
-            )
+            pass
         elif msg_type == "prequest":
-            async_to_sync(self.channel_layer.group_send)(
-                self.main_room.room_id,
-                {
-                    'type': "create.game",
-                    'black': content.get('black', settings.OTHELLO_AI_UNKNOWN_PLAYER),
-                    'white': content.get('white', settings.OTHELLO_AI_UNKNOWN_PLAYER),
-                    'timelimit': safe_float(content.get('timelimit', "5.0"))
-                },
-            )
+            pass
         elif msg_type == "wrequest":
-            async_to_sync(self.channel_layer.group_send)(
-                self.main_room.room_id,
-                {
-                    'type': "join.game",
-                    'room': content.get('watching', self.main_room.room_id),
-                },
-            )
+            pass
         log.debug("{} successfully handled {}".format(self.main_room.room_id, msg_type))
 
-    def disconnect(self, close_data):
+    async def disconnect(self, close_data):
         """
         Should be called when the websocket closes for any reason.
         In reality, there are a few edge cases where it doesn't. See
@@ -99,52 +66,8 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         log.debug("{} disconnect {}".format(self.main_room.room_id, close_data))
         if getattr(self, "proc", None):
             self.proc.terminate()
-        for room in self.rooms:
-            async_to_sync(self.channel_layer.group_discard)(
-                room,
-                self.channel_name,
-            )
-        delete_room(self.main_room.room_id)
 
-    # Handlers for messages sent over the channel layer
-
-    def create_game(self, event):
-        """
-        Called when a client wants to create a game.
-        Actually starts running the game as well
-        """
-        log.debug("{} create_game {}".format(self.main_room.room_id, event))
-        self.game = GameRunner(self.main_room.room_id)
-        self.game.black = event["black"]
-        self.game.white = event["white"]
-        self.game.timelimit = event["timelimit"]
-
-        self.main_room.black = event["black"]
-        self.main_room.white = event["white"]
-        self.main_room.timelimit = safe_float(event["timelimit"])
-        self.main_room.playing = True
-        self.main_room.save()
-
-        # So it turns out channels doesn't like doing async_to_sync stuff
-        # from inside forked processes, so we need to use spawned ones instead.
-        ctx = mp.get_context('spawn')
-        self.comm_queue = ctx.Queue()
-        self.proc = ctx.Process(target=self.game.run, args=(self.comm_queue,))
-        self.proc.start()
-
-    def join_game(self, event):
-        """
-        Called when a client wants to join an existing game.
-        """
-        log.debug("{} join_game {}".format(self.main_room.room_id, event))
-        room_id = event.get('room', self.main_room.room_id)
-        self.rooms.add(room_id)
-        async_to_sync(self.channel_layer.group_add)(
-            room_id,
-            self.channel_name,
-        )
-        self.comm_queue = None
-        self.proc = None
+        raise StopConsumer
 
     def board_update(self, event):
         """

@@ -2,6 +2,8 @@ import os, sys
 from threading import Thread
 from queue import Queue, Empty
 import importlib
+import random
+import string
 
 from .settings import OTHELLO_STUDENT_PATH, OTHELLO_PUBLIC_PATH
 
@@ -28,6 +30,7 @@ def get_stream_queue(stream):
     return q
 
 def get_strat(name):
+    old_path = os.getcwd()
     path = os.path.join(OTHELLO_STUDENT_PATH, name)
     new_path = path
 
@@ -49,9 +52,13 @@ def get_possible_strats():
     folders = os.listdir(OTHELLO_STUDENT_PATH)
     possible_names =  {x for x in folders if \
         x != '__pycache__' and \
-        os.path.isdir(os.path.join(student_folder, x))
+        os.path.isdir(os.path.join(OTHELLO_STUDENT_PATH, x))
     }
     return possible_names
+
+def generate_id(size=10, chars=string.ascii_letters + string.digits):
+    return 'abc'
+    #return ''.join(random.choice(chars) for _ in range(size))
 
 def safe_int(s):
     try:

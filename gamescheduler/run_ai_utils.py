@@ -5,12 +5,20 @@ import multiprocessing as mp
 import subprocess
 import time
 
+from .settings import OTHELLO_AI_RUN_COMMAND, OTHELLO_AI_NAME_REPLACE
+from .settings import PROJECT_ROOT
 from .utils import get_strat, get_stream_queue
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 
 ORIGINAL_SYS = sys.path[:]
+
+from .settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
+
 log = logging.getLogger(__name__)
+for handler in LOGGING_HANDLERS:
+    log.addHandler(handler)
+log.setLevel(LOGGING_LEVEL)
 
 class HiddenPrints:
     """
@@ -146,16 +154,18 @@ class JailedRunnerCommunicator:
     def __init__(self, ai_name):
         self.name = ai_name
         self.proc = None
+        log.debug("JailedRunnerCommunicator created")
 
     def start(self):
         """
         Starts running the specified AI in a subprocess
         """
-        command = settings.OTHELLO_AI_RUN_COMMAND.replace(settings.OTHELLO_AI_NAME_REPLACE, self.name)
+        log.debug("JailedRunnerCommunicator started")
+        command = OTHELLO_AI_RUN_COMMAND.replace(OTHELLO_AI_NAME_REPLACE, self.name)
         command_args = shlex.split(command, posix=False)
         log.debug(command_args)
         self.proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, \
-                                    bufsize=1, universal_newlines=True, cwd=settings.PROJECT_ROOT)
+                                    bufsize=1, universal_newlines=True, cwd=PROJECT_ROOT)
         self.proc_stdout = get_stream_queue(self.proc.stdout)
         self.proc_stderr = get_stream_queue(self.proc.stderr)
 
@@ -185,7 +195,7 @@ class JailedRunnerCommunicator:
             except:
                 last_err_line = None
         errs = "".join(errs)
-        log.error(errs)
+        if errs: log.error(errs)
         self.proc.stdin.write(data)
         self.proc.stdin.flush()
         log.debug("Done writing data")

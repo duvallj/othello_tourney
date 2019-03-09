@@ -9,8 +9,9 @@ OTHELLO_PUBLIC_PATH = os.path.join(OTHELLO_STUDENT_PATH, 'public')
 
 OTHELLO_AI_HUMAN_PLAYER = "Yourself"
 OTHELLO_AI_NAME_REPLACE = "=NAME="
-# DEVEL: set this to "python -u {2} =NAME=".format(...)
-OTHELLO_AI_RUN_COMMAND = "firejail --quiet --profile={0} --whitelist={1} python3 -u {2} {3}".format(
+# DEVEL: set this to "python -u {2} {3}".format(...)
+OTHELLO_AI_RUN_COMMAND = "python -u {2} {3}".format(
+#OTHELLO_AI_RUN_COMMAND = "firejail --quiet --profile={0} --whitelist={1} python3 -u {2} {3}".format(
     os.path.join(PROJECT_ROOT, "python-custom.profile"),
     os.path.join(OTHELLO_STUDENT_PATH, OTHELLO_AI_NAME_REPLACE),
     os.path.join(PROJECT_ROOT, "run_ai_jailed.py"),
