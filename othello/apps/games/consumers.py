@@ -14,20 +14,15 @@ Debuggig this is not for the faint of heart. Consider yourself warned.
 """
 
 from django.conf import settings
-from channels.generic.websocket import JsonWebsocketConsumer
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from asgiref.sync import sync_to_async, async_to_sync
 from channels.db import database_sync_to_async
 
 import logging
-import multiprocessing as mp
-
-from .utils import make_new_room, get_all_rooms, delete_room
-from .worker_utils import safe_int, safe_float
-from .worker import GameRunner
 
 log = logging.getLogger(__name__)
 
-class GameServingConsumer(JsonWebsocketConsumer):
+class GameConsumer(AsyncJsonWebsocketConsumer):
     """
     The consumer the handle websocket connections with game clients.
 
@@ -99,7 +94,7 @@ class GameServingConsumer(JsonWebsocketConsumer):
         """
         Should be called when the websocket closes for any reason.
         In reality, there are a few edge cases where it doesn't. See
-        
+
         """
         log.debug("{} disconnect {}".format(self.main_room.room_id, close_data))
         if getattr(self, "proc", None):

@@ -1,5 +1,3 @@
-from django.conf import settings
-
 import logging
 import sys, os, io
 import shlex, traceback
@@ -7,8 +5,7 @@ import multiprocessing as mp
 import subprocess
 import time
 
-from .worker_utils import get_strat
-from .pipe_utils import get_stream_queue
+from .utils import get_strat, get_stream_queue
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 
@@ -84,11 +81,9 @@ class JailedRunner:
     Keeps running until it is killed forcefully
     """
 
+    # just in case some doofus wants to do distributed AI running instead
     AIClass = LocalRunner
     def __init__(self, ai_name):
-        # I don't know what to put here yet
-        if ai_name == settings.OTHELLO_AI_UNLIMITED_PLAYER:
-            self.AIClass = RawRunner
         self.strat = self.AIClass(ai_name)
         self.name = ai_name
 
@@ -222,5 +217,5 @@ class JailedRunnerCommunicator:
             self.proc = None
 
     def __del__(self):
-        log.warn("__del__ called! (as it should be)")
+        # Just in case wonkiness
         self.stop()

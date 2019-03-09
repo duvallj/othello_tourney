@@ -1,4 +1,3 @@
-from django.conf import settings
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 import logging
@@ -8,9 +7,11 @@ import multiprocessing as mp
 import subprocess
 import time
 
-from .run_ai_utils import JailedRunnerCommunicator 
+from .run_ai_utils import JailedRunnerCommunicator
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
+from .utils import get_possible_strats
+from .settings import OTHELLO_AI_HUMAN_PLAYER
 
 log = logging.getLogger(__name__)
 
@@ -20,28 +21,14 @@ class GameRunner:
     timelimit = 5
 
     def __init__(self, room_id):
-        student_folder = settings.MEDIA_ROOT
-        folders = os.listdir(student_folder)
-        log.debug('Listed student folders successfully')
-        self.possible_names =  {x for x in folders if \
-            x != '__pycache__' and \
-            os.path.isdir(os.path.join(student_folder, x))
-        }
-        self.emit_func = None
+        self.possible_names = get_possible_strats()
         self.room_id = room_id
 
     def emit(self, data):
-        log.debug("GameRunner emitting {}".format(data))
-        if self.emit_func is None:
-            log.warn("GameRunner not ready to emit")
-        else:
-            data['room_id'] = self.room_id
-            self.emit_func(
-                self.room_id,
-                data,
-            )
+        # TODO: implement this somehow
+        pass
 
-    def run(self, comm_queue):
+    def run(self, in_q, out_q):
         """
         Main loop used to run the game in.
         Does not have multiprocess support yet.
@@ -51,8 +38,6 @@ class GameRunner:
             self.white,
             self.timelimit
         ))
-
-        self.emit_func = async_to_sync(get_channel_layer().group_send)
 
         strats = dict()
         do_start_game = True
@@ -112,7 +97,7 @@ class GameRunner:
         log.debug("All initing done, time to start playing the game")
 
         while player is not None and not forfeit:
-            player, forfeit, board = self.do_game_tick(comm_queue, core, board, player, strats, names)
+            player, board, forfeit = self.do_game_tick(in_q, core, board, player, strats, names)
 
         winner = EMPTY
         if forfeit:
@@ -135,10 +120,10 @@ class GameRunner:
         })
 
         log.debug("Game over, exiting...")
-        self._cleanup(strats)
+        self.cleanup(strats)
 
 
-    def _cleanup(self, strats):
+    def cleanup(self, strats):
         if getattr(strats.get(BLACK, None), "stop", False):
             strats[BLACK].stop()
             log.info("successfully stopped BLACK jailed runner")
@@ -147,7 +132,7 @@ class GameRunner:
             log.info("successfully stopped WHITE jailed runner")
 
 
-    def do_game_tick(self, comm_queue, core, board, player, strats, names):
+    def do_game_tick(self, in_q, core, board, player, strats, names):
         """
         Runs one move in a game, handling all the board flips and game-ending edge cases.
 
@@ -159,7 +144,7 @@ class GameRunner:
         errs = None
         if strat is None:
             self.emit({"type":"move.request"})
-            move = comm_queue.get()
+            move = in_q.get()
         else:
             move, errs = strat.get_move(board, player, self.timelimit)
 
@@ -168,8 +153,7 @@ class GameRunner:
                 'type': "game.error",
                 'error': "{}: {} is an invalid move for board {}\nMore info:\n{}".format(names[player], move, ''.join(board), errs)
             })
-            forfeit = True
-            return player, forfeit, board
+            return player, board, True
 
         board = core.make_move(move, player, board)
         player = core.next_player(board, player)
@@ -180,4 +164,4 @@ class GameRunner:
             "black": names[BLACK],
             "white": names[WHITE],
         })
-        return player, False, board
+        return player, board, False

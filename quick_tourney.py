@@ -9,8 +9,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "othello.settings")
 django.setup()
 application = get_default_application()
 
-NUM_CHECKPOINTS = 80
-START_CHECKPOINT = 53
 ALL_AIS = ['T17-Duvall', 'T18-Arya', 'random']
 
 from othello.apps.tournament.consumers import TournamentRunner

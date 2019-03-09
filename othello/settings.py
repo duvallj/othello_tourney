@@ -199,15 +199,4 @@ STATIC_ROOT = os.path.join(PROJECT_ROOT, 'othello/static/')
 #MEDIA_URL = "/code/"
 MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'students')
 
-OTHELLO_ROOM_ID_LEN = 32
-OTHELLO_AI_UNKNOWN_PLAYER = "Unknown"
 OTHELLO_AI_HUMAN_PLAYER = "Yourself"
-OTHELLO_AI_UNLIMITED_PLAYER = "alphazero"
-OTHELLO_AI_SHARED_DIR = os.path.join(MEDIA_ROOT, "public")
-# DEVEL: set this to "python -u {2} =NAME=".format(...)
-OTHELLO_AI_RUN_COMMAND = "firejail --quiet --profile={0} --whitelist={1} python3 -u {2} =NAME=".format(
-    os.path.join(PROJECT_ROOT, "python-custom.profile"),
-    os.path.join(PROJECT_ROOT, "students/=NAME="),
-    os.path.join(PROJECT_ROOT, "run_ai_jailed.py")
-)
-OTHELLO_AI_NAME_REPLACE = "=NAME="
