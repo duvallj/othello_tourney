@@ -20,6 +20,7 @@ from channels.db import database_sync_to_async
 from channels.exceptions import StopConsumer
 
 import logging
+import json
 
 log = logging.getLogger(__name__)
 
@@ -51,10 +52,6 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         msg_type = content.get('msg_type', None)
         if msg_type == "movereply":
             pass
-        elif msg_type == "prequest":
-            pass
-        elif msg_type == "wrequest":
-            pass
         log.debug("{} successfully handled {}".format(self.main_room.room_id, msg_type))
 
     async def disconnect(self, close_data):
@@ -69,13 +66,17 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
 
         raise StopConsumer
 
-    def board_update(self, event):
+
+    # For the rest of these methods, trust that the data we recieve
+    # from the GameScheduler is OK
+
+    async def board_update(self, event):
         """
         Called when there is an update on the board
         that we need to send to the client
         """
         log.debug("{} board_update {}".format(self.main_room.room_id, event))
-        self.send_json({
+        await self.send_json({
             'msg_type': 'reply',
             'board': event.get('board', ""),
             'tomove': event.get('tomove', "?"),
@@ -84,45 +85,33 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             'bSize': '8',
         })
 
-    def move_request(self, event):
+    async def move_request(self, event):
         """
         Called when the game wants the user to input a move.
         Sends out a similar call to the client
         """
         log.debug("{} move_request {}".format(self.main_room.room_id, event))
-        self.send_json({'msg_type':"moverequest"})
+        await self.send_json({'msg_type':"moverequest"})
 
-    def move_reply(self, event):
-        """
-        Called when a client sends a move after the game loop pauses for user input.
-        Sends the received move back to the game.
-        """
-        if self.comm_queue:
-            log.debug("{} move_reply {}".format(self.main_room.room_id, event))
-            self.comm_queue.put(event.get('move', -1))
-        else:
-            # We are just watching a game
-            pass
-
-    def game_end(self, event):
+    async def game_end(self, event):
         """
         Called when the game has ended, tells client that message too.
         Really should log the result but doesn't yet.
         """
         log.debug("{} game_end {}".format(self.main_room.room_id, event))
-        self.send_json({
+        await self.send_json({
             'msg_type': "gameend",
             'winner': event.get('winner', "?"),
             'forfeit': event.get('forfeit', False),
         })
 
-    def game_error(self, event):
+    async def game_error(self, event):
         """
         Called whenever the AIs/server errors out for whatever reason.
         Could be used in place of game_end
         """
         log.debug("{} game_error {}".format(self.main_room.room_id, event))
-        self.send_json({
+        await self.send_json({
             'msg_type': "gameerror",
             'error': event.get('error', "No error"),
         })

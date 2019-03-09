@@ -57,8 +57,7 @@ def get_possible_strats():
     return possible_names
 
 def generate_id(size=10, chars=string.ascii_letters + string.digits):
-    return 'abc'
-    #return ''.join(random.choice(chars) for _ in range(size))
+    return ''.join(random.choice(chars) for _ in range(size))
 
 def safe_int(s):
     try:

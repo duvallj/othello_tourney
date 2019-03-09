@@ -8,6 +8,7 @@ OTHELLO_STUDENT_PATH = os.path.join(PROJECT_ROOT, 'students')
 OTHELLO_PUBLIC_PATH = os.path.join(OTHELLO_STUDENT_PATH, 'public')
 
 OTHELLO_AI_HUMAN_PLAYER = "Yourself"
+OTHELLO_AI_UNKNOWN_PLAYER = "Unknown"
 OTHELLO_AI_NAME_REPLACE = "=NAME="
 # DEVEL: set this to "python -u {2} {3}".format(...)
 OTHELLO_AI_RUN_COMMAND = "python -u {2} {3}".format(

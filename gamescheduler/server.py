@@ -6,8 +6,8 @@ import json
 
 from .worker import GameRunner
 from .utils import generate_id
+from .settings import OTHELLO_AI_UNKNOWN_PLAYER
 from .settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
-
 
 log = logging.getLogger(__name__)
 for handler in LOGGING_HANDLERS:
@@ -22,8 +22,9 @@ class Room:
     black_ai = None
     white_ai = None
     timelimit = 5.0
+    watching = []
 
-    transports = []
+    transport = None
     game = None
     queue = None
     task = None
@@ -54,21 +55,48 @@ class GameScheduler(asyncio.Protocol):
         while new_id in self.rooms: new_id = generate_id()
         room = Room()
         room.id = new_id
-        room.transports.append(transport)
+        room.transport = transport
         self.rooms[new_id] = room
         transport.write((new_id+'\n').encode('utf-8'))
 
-    def gamerunner_callback(self, data):
-        log.info("Got data from subprocess: {}".format(data))
+    def gamerunner_callback(self, event):
+        log.info("Got data from subprocess: {}".format(event))
+        msg_type = event.get('type', None)
+        room_id = event.get('room_id', None)
+        if not msg_type or not room_id:
+            log.warn("Data from subprocess was invalid! ack!")
+            return
 
+        if msg_type == 'board.update':
+            self.board_update(event, room_id)
+        elif msg_type == 'move.request':
+            self.move_request(event, room_id)
+        elif msg_type == 'game.end':
+            self.game_end(event, room_id)
+        elif msg_type == 'game.error':
+            self.game_error(event, room_id)
+
+    # TODO: add a heartbeat to the client that checks if it is still
+    # actively listening for board updates. If not, kill the room
     def connection_lost(self, exc):
         log.info("Lost connection")
 
     def _send(self, data, room_id):
         if type(data) is str:
             data = data.encode('utf-8')
-        for transport in self.rooms[room_id].transports:
-            transport.write(data)
+
+        # don't send to a client that's disconnected
+        if self.rooms[room_id].transport.is_closing():
+            self._game_end_actual(room_id)
+        else:
+            self.rooms[room_id].transport.write(data)
+            for watching_id in self.rooms[room_id].watching:
+                if watching_id in self.rooms:
+                    self.rooms[watching_id].transport.write(data)
+
+    def _send_json(self, data, room_id):
+        json_data = json.dumps(data)
+        self._send(json_data, room_id)
 
     def data_received(self, data):
         log.info("Recieved data {}".format(data))
@@ -79,7 +107,7 @@ class GameScheduler(asyncio.Protocol):
 
         if not (parsed_data is None):
             room_id = parsed_data.get('room_id', None)
-            if room_id is None: return
+            if room_id is None or room_id not in self.rooms: return
             # yes, you read that code right, even simple utility calls
             # need to be identified w/ a room. Downside to a single class :/
 
@@ -87,14 +115,16 @@ class GameScheduler(asyncio.Protocol):
             if msg_type == 'list_request':
                 self.list_games(parsed_data, room_id)
             elif msg_type == 'play_request':
-                self.start_game(parsed_data, room_id)
+                self.play_game(parsed_data, room_id)
             elif msg_type == 'watch_request':
                 self.watch_game(parsed_data, room_id)
             elif msg_type == 'move_reply':
-                self.handle_move(parsed_data, room_id)
+                self.move_reply(parsed_data, room_id)
 
     def eof_received(self):
         log.info("Recieved EOF")
+
+    # From client to server
 
     def list_games(self, parsed_data, room_id):
         room_list = dict(
@@ -105,7 +135,7 @@ class GameScheduler(asyncio.Protocol):
         list_json = json.dumps(room_list) + '\n'
         self._send(list_json, room_id)
 
-    def start_game(self, parsed_data, room_id):
+    def play_game(self, parsed_data, room_id):
         black_ai = parsed_data.get('black', None)
         white_ai = parsed_data.get('white', None)
         timelimit = parsed_data.get('t', None)
@@ -131,10 +161,90 @@ class GameScheduler(asyncio.Protocol):
 
 
     def watch_game(self, parsed_data, room_id):
-        pass
+        id_to_watch = parsed_data.get('watching', None)
+        if id_to_watch is None:
+            log.warn("Watch request was invalid! ignoring...")
+            return
+        if id_to_watch not in self.rooms:
+            log.warn("Client wants to watch game {}, but it doesn't exist!".format(id_to_watch))
+            return
 
-    def handle_move(self, parsed_data, room_id):
-        pass
+        self.rooms[id_to_watch].watching.append(room_id)
+
+    def move_reply(self, parsed_data, room_id):
+        if self.rooms[room_id].queue:
+            move = parsed_data.get('move', -1)
+            log.debug("{} move_reply {}".format(room_id, move))
+            self.rooms[room_id].queue.put_nowait(move)
+        else:
+            # don't have a queue to put in to
+            pass
+
+    # From GameRunner to server
+
+    def board_update(self, event, room_id):
+        """
+        Called when there is an update on the board
+        that we need to send to the client
+        """
+        log.debug("{} board_update {}".format(room_id, event))
+        self._send_json({
+            'msg_type': 'reply',
+            'board': event.get('board', ""),
+            'tomove': event.get('tomove', "?"),
+            'black': event.get('black', OTHELLO_AI_UNKNOWN_PLAYER),
+            'white': event.get('white', OTHELLO_AI_UNKNOWN_PLAYER),
+            'bSize': '8',
+        }, room_id)
+
+    def move_request(self, event, room_id):
+        """
+        Called when the game wants the user to input a move.
+        Sends out a similar call to the client
+        """
+        log.debug("{} move_request {}".format(room_id, event))
+        self._send_json({'msg_type':"moverequest"}, room_id)
+
+    def game_error(self, event, room_id):
+        """
+        Called whenever the AIs/server errors out for whatever reason.
+        Could be used in place of game_end
+        """
+        log.debug("{} game_error {}".format(room_id, event))
+        self._send_json({
+            'msg_type': "gameerror",
+            'error': event.get('error', "No error"),
+        }, room_id)
+        # game_end is called after this, no need to ternimate room just yet
+
+    def game_end(self, event, room_id):
+        """
+        Called when the game has ended, tells client that message too.
+        Really should log the result but doesn't yet.
+        """
+        log.debug("{} game_end {}".format(room_id, event))
+        self._send_json({
+            'msg_type': "gameend",
+            'winner': event.get('winner', "?"),
+            'forfeit': event.get('forfeit', False),
+        }, room_id)
+        self._game_end_actual(room_id)
+
+    def _game_end_actual(self, room_id):
+        if room_id not in self.rooms: return
+
+        if self.rooms[room_id].game:
+            self.rooms[room_id].task.cancel()
+            self.rooms[room_id].executor.shutdown(wait=False)
+            # self.rooms[room_id].game.cleanup() # shouldn't be necessary, already gets called
+
+        self.rooms[room_id].transport.close()
+        # avoiding any cylcical bs
+        watching = self.rooms[room_id].watching.copy()
+        del self.rooms[room_id]
+        for watching_id in watching:
+            self._game_end_actual(watching_id)
+
 
 class TournamentScheduler(GameScheduler):
     """

@@ -32,7 +32,7 @@ class GameRunner:
     def emit(self, data):
         # TODO: implement this somehow
         log.debug("GameRunner emmitting {}".format(data))
-        data['room'] = self.room_id
+        data['room_id'] = self.room_id
         self.loop.call_soon_threadsafe(self.emit_callback, data)
 
     def run(self, in_q):
