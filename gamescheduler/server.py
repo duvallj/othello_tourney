@@ -46,10 +46,10 @@ class GameScheduler(asyncio.Protocol):
         super().__init__()
         self.loop = loop
         self.rooms = dict()
-        log.info("Made GameScheduler")
+        log.debug("Made GameScheduler")
 
     def connection_made(self, transport):
-        log.info("Recieved connection")
+        log.debug("Recieved connection")
         new_id = generate_id()
         # extremely low chance to block, ~~we take those~~
         while new_id in self.rooms: new_id = generate_id()
@@ -60,7 +60,7 @@ class GameScheduler(asyncio.Protocol):
         transport.write((new_id+'\n').encode('utf-8'))
 
     def gamerunner_callback(self, event):
-        log.info("Got data from subprocess: {}".format(event))
+        log.debug("Got data from subprocess: {}".format(event))
         msg_type = event.get('type', None)
         room_id = event.get('room_id', None)
         if not msg_type or not room_id:
@@ -76,10 +76,8 @@ class GameScheduler(asyncio.Protocol):
         elif msg_type == 'game.error':
             self.game_error(event, room_id)
 
-    # TODO: add a heartbeat to the client that checks if it is still
-    # actively listening for board updates. If not, kill the room
     def connection_lost(self, exc):
-        log.info("Lost connection")
+        log.debug("Lost connection")
 
     def _send(self, data, room_id):
         if type(data) is str:
@@ -99,7 +97,7 @@ class GameScheduler(asyncio.Protocol):
         self._send(json_data, room_id)
 
     def data_received(self, data):
-        log.info("Recieved data {}".format(data))
+        log.debug("Recieved data {}".format(data))
         # taking HUGE assumption here that all data is properly line-buffered
         # should mostly work out tho, the packets are tiny
         parsed_data = None
@@ -111,6 +109,9 @@ class GameScheduler(asyncio.Protocol):
             # yes, you read that code right, even simple utility calls
             # need to be identified w/ a room. Downside to a single class :/
 
+            # I'm honestly not sure why I'm not just transparently passing data
+            # through and going through all the trouble of sanitizing it here.
+            # I control the GameRunner, supposedly, no need to worry? idk just leave it.
             msg_type = parsed_data.get('type', 'list_request')
             if msg_type == 'list_request':
                 self.list_games(parsed_data, room_id)
@@ -122,7 +123,7 @@ class GameScheduler(asyncio.Protocol):
                 self.move_reply(parsed_data, room_id)
 
     def eof_received(self):
-        log.info("Recieved EOF")
+        log.debug("Recieved EOF")
 
     # From client to server
 
@@ -189,7 +190,7 @@ class GameScheduler(asyncio.Protocol):
         """
         log.debug("{} board_update {}".format(room_id, event))
         self._send_json({
-            'msg_type': 'reply',
+            'type': 'reply',
             'board': event.get('board', ""),
             'tomove': event.get('tomove', "?"),
             'black': event.get('black', OTHELLO_AI_UNKNOWN_PLAYER),
@@ -203,7 +204,7 @@ class GameScheduler(asyncio.Protocol):
         Sends out a similar call to the client
         """
         log.debug("{} move_request {}".format(room_id, event))
-        self._send_json({'msg_type':"moverequest"}, room_id)
+        self._send_json({'type':"moverequest"}, room_id)
 
     def game_error(self, event, room_id):
         """
@@ -212,7 +213,7 @@ class GameScheduler(asyncio.Protocol):
         """
         log.debug("{} game_error {}".format(room_id, event))
         self._send_json({
-            'msg_type': "gameerror",
+            'type': "gameerror",
             'error': event.get('error', "No error"),
         }, room_id)
         # game_end is called after this, no need to ternimate room just yet
@@ -224,7 +225,7 @@ class GameScheduler(asyncio.Protocol):
         """
         log.debug("{} game_end {}".format(room_id, event))
         self._send_json({
-            'msg_type': "gameend",
+            'type': "gameend",
             'winner': event.get('winner', "?"),
             'forfeit': event.get('forfeit', False),
         }, room_id)

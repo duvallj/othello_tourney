@@ -199,4 +199,5 @@ STATIC_ROOT = os.path.join(PROJECT_ROOT, 'othello/static/')
 #MEDIA_URL = "/code/"
 MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'students')
 
-OTHELLO_AI_HUMAN_PLAYER = "Yourself"
+# more settings to look at
+from ..gamescheduler.settings import *

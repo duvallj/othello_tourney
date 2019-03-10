@@ -456,7 +456,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
 
         console.log('sending move');
         socket.send(JSON.stringify({
-          'msg_type': "movereply",
+          'type': "movereply",
           'move': rCanvas.lastClicked
         }));
       } else {
@@ -553,7 +553,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
     //  alert(data.error);
     //  return;
     //}
-    switch (data.msg_type) {
+    switch (data.type) {
       case 'reply':
         on_reply(data);
         break;

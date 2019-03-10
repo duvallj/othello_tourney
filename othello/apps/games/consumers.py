@@ -14,17 +14,21 @@ Debuggig this is not for the faint of heart. Consider yourself warned.
 """
 
 from django.conf import settings
-from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from channels.generic.websocket import JsonWebsocketConsumer
 from asgiref.sync import sync_to_async, async_to_sync
-from channels.db import database_sync_to_async
 from channels.exceptions import StopConsumer
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 import logging
 import json
 
+from ...gamescheduler.client import game_scheduler_client_factory
+from ...gamescheduler.utils import safe_int
+
 log = logging.getLogger(__name__)
 
-class GameConsumer(AsyncJsonWebsocketConsumer):
+class GameConsumer(JsonWebsocketConsumer):
     """
     The consumer the handle websocket connections with game clients.
 
@@ -33,85 +37,118 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     Just for reference, it seems a new one of these is created for each new client.
     """
 
-
     # #### Websocket event handlers
 
-    async def connect(self):
+    def connect(self):
         """
         Called when the websocket is handshaking as part of initial connection.
         """
-        await self.accept()
+        self.loop = asyncio.get_event_loop()
+        self.room_fut = self.loop.create_future()
+        self.transport, self.protocol = async_to_sync(self.loop.create_connection(
+            game_scheduler_client_factory(self.loop, self.first_init, self.handle_outgoing),
+            host=settings.SCHEDULER_HOST,
+            port=settings.SCHEDULER_PORT
+        ))
+        self.room_id = None
 
-    async def receive_json(self, content):
-        """
-        Called when we get a message from the client.
-        The only message we care about is "move_reply",
-        which should only get sent if we provoke it.
-        """
-        log.debug("{} received json {}".format(self.main_room.room_id, content))
-        msg_type = content.get('msg_type', None)
-        if msg_type == "movereply":
-            pass
-        log.debug("{} successfully handled {}".format(self.main_room.room_id, msg_type))
+    def first_init(self, data):
+        # called when we actually have a room id assigned (hopefully)
+        self.room_id = data
 
-    async def disconnect(self, close_data):
+    def disconnect(self, close_data):
         """
         Should be called when the websocket closes for any reason.
         In reality, there are a few edge cases where it doesn't. See
-
         """
-        log.debug("{} disconnect {}".format(self.main_room.room_id, close_data))
+        log.debug("{} disconnect {}".format(self.room_id, close_data))
         if getattr(self, "proc", None):
             self.proc.terminate()
 
         raise StopConsumer
 
+    def handle_outgoing(self, data):
+        # with the data we recieve from the GameScheduler,
+        # send it through the websocket
+        log.debug("Got data {}".format(data))
+        str_data = data.decode('utf-8').strip()
+        if getattr(self, 'room_id', False):
+            self.send(text_data=str_data)
+        else:
+            self.room_id = str_data
 
-    # For the rest of these methods, trust that the data we recieve
-    # from the GameScheduler is OK
+    def handle_incoming(self, content):
+        content['room_id'] = self.room_id
+        data = json.dumps(content).encode('utf-8')
+        self.transport.write(data)
 
-    async def board_update(self, event):
-        """
-        Called when there is an update on the board
-        that we need to send to the client
-        """
-        log.debug("{} board_update {}".format(self.main_room.room_id, event))
-        await self.send_json({
-            'msg_type': 'reply',
-            'board': event.get('board', ""),
-            'tomove': event.get('tomove', "?"),
-            'black': event.get('black', settings.OTHELLO_AI_UNKNOWN_PLAYER),
-            'white': event.get('white', settings.OTHELLO_AI_UNKNOWN_PLAYER),
-            'bSize': '8',
-        })
+    def recieve_json(self, content):
+        # with the data we recieve from the websocket,
+        # send it to the GameScheduler
+        log.debug("Recieving json {}".format(content))
+        if getattr(self, 'room_id', False):
+            self.handle_incoming(content)
+        else:
+            log.warn("Recieved data before we could get a room id! ignoring...")
 
-    async def move_request(self, event):
-        """
-        Called when the game wants the user to input a move.
-        Sends out a similar call to the client
-        """
-        log.debug("{} move_request {}".format(self.main_room.room_id, event))
-        await self.send_json({'msg_type':"moverequest"})
 
-    async def game_end(self, event):
-        """
-        Called when the game has ended, tells client that message too.
-        Really should log the result but doesn't yet.
-        """
-        log.debug("{} game_end {}".format(self.main_room.room_id, event))
-        await self.send_json({
-            'msg_type': "gameend",
-            'winner': event.get('winner', "?"),
-            'forfeit': event.get('forfeit', False),
-        })
+class GamePlayingConsumer(GameConsumer):
+    black_ai = None
+    white_ai = None
+    timelimit = 5
 
-    async def game_error(self, event):
-        """
-        Called whenever the AIs/server errors out for whatever reason.
-        Could be used in place of game_end
-        """
-        log.debug("{} game_error {}".format(self.main_room.room_id, event))
-        await self.send_json({
-            'msg_type': "gameerror",
-            'error': event.get('error', "No error"),
-        })
+    def connect(self):
+        super().connect()
+        # parse URL
+        self.black_ai = self.scope['url_route']['kwargs'].get('black', None)
+        self.white_ai = self.scope['url_route']['kwargs'].get('white', None)
+        self.timelimit = safe_int(self.scope['url_route']['kwargs'].get('t', None))
+
+        if self.black_ai is None or self.white_ai is None:
+            log.warn("Got invalid play_request from client!")
+            self.accept()
+            self.send_json({'type': "gameerror", 'error':"Error: You didn't specify the AIs to play in the websocket url!"})
+            self.send_json({'type': "gameend", 'winner': "?", 'forfeit': True})
+            self.close()
+        else:
+            self.accept()
+
+    def first_init(self, data):
+        # send initial playing request
+        super().__init__(data)
+        content = {
+            'type': "play_request",
+            'black': self.black_ai,
+            'white': self.white_ai,
+            't': self.timelimit,
+            'room_id': self.room_id,
+        }
+        encoded_content = json.dumps(content).encode('utf-8')
+        self.transport.write(encoded_content)
+
+class GameWatchingConsumer(GameConsumer):
+    watching = None
+
+    def connect(self):
+        super().connect()
+        # parse URL
+        self.watching = self.scope['url_route']['kwargs'].get('watching', None)
+
+        if self.watching is None:
+            log.warn("Got invalid watch_request from client!")
+            self.accept()
+            self.send_json({'type': "gameerror", 'error':"Error: You didn't specify which game to watch in the websocket url!"})
+            self.send_json({'type': "gameend", 'winner': "?", 'forfeit': True})
+            self.close()
+        else:
+            self.accept()
+
+    def first_init(self, data):
+        # send initial watching request
+        content = {
+            'type': 'watch_request',
+            'watching': self.watching,
+            'room_id': self.room_id,
+        }
+        encoded_content = json.dumps(content).encode('utf-8')
+        self.transport.write(encoded_content)
