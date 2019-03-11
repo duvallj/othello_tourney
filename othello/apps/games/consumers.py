@@ -66,14 +66,12 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
 
         raise StopConsumer
 
-    def handle_outgoing(self, data):
+    async def handle_outgoing(self, data):
         # with the data we recieve from the GameScheduler,
         # send it through the websocket
         log.debug("Got data {}".format(data))
         if getattr(self, 'room_id', False):
-            log.debug("sending data...")
-            async_to_sync(self.send(text_data=data))
-            log.debug("send data?")
+            await self.send(text_data=data)
         else:
             self.room_id = data
 

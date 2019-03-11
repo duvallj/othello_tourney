@@ -39,7 +39,7 @@ def ai_list_view(request):
 
 def game_list_view(request):
     rooms = async_to_sync(get_playing_rooms)()
-    rooms = json.loads(rooms)
+    print(rooms)
     data_list = [
         "{},{},{},{}".format(
             room,
