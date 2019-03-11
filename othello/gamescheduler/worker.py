@@ -11,12 +11,8 @@ from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 from .utils import get_possible_strats
 from .settings import OTHELLO_AI_HUMAN_PLAYER
-from .settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
 
 log = logging.getLogger(__name__)
-for handler in LOGGING_HANDLERS:
-    log.addHandler(handler)
-log.setLevel(LOGGING_LEVEL)
 
 class GameRunner:
     def __init__(self, black, white, timelimit, loop, room_id, emit_callback):
@@ -154,10 +150,10 @@ class GameRunner:
     def cleanup(self):
         if getattr(self.strats.get(BLACK, None), "stop", False):
             self.strats[BLACK].stop()
-            log.info("successfully stopped BLACK jailed runner")
+            log.debug("successfully stopped BLACK jailed runner")
         if getattr(self.strats.get(WHITE, None), "stop", False):
             self.strats[WHITE].stop()
-            log.info("successfully stopped WHITE jailed runner")
+            log.debug("successfully stopped WHITE jailed runner")
 
     # just in case of wonkiness
     def __del__(self):

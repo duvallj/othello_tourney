@@ -6,7 +6,7 @@ import multiprocessing as mp
 import subprocess
 import time
 
-from .settings import OTHELLO_AI_RUN_COMMAND, OTHELLO_AI_NAME_REPLACE
+from .settings import OTHELLO_AI_RUN_COMMAND, OTHELLO_AI_NAME_REPLACE, OTHELLO_AI_MAX_TIME
 from .settings import PROJECT_ROOT
 from .utils import get_strat, get_stream_queue
 from .othello_admin import Strategy
@@ -14,12 +14,8 @@ from .othello_core import BLACK, WHITE, EMPTY
 
 ORIGINAL_SYS = sys.path[:]
 
-from .settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
-
 log = logging.getLogger(__name__)
-for handler in LOGGING_HANDLERS:
-    log.addHandler(handler)
-log.setLevel(LOGGING_LEVEL)
+
 
 class HiddenPrints:
     """
@@ -71,10 +67,10 @@ class LocalRunner:
             move = best_shared.value
             if to_self.poll():
                 err = to_self.recv()
-                log.info("There is an error")
+                log.info("LocalRunner caught threwn error")
             else:
                 err = None
-                log.info("There was no error thrown")
+                log.debug("LocalRunner did not throw an error")
             return move, err
         except:
             traceback.print_exc()
@@ -201,7 +197,11 @@ class JailedRunnerCommunicator:
         self.proc.stdin.write(data)
         self.proc.stdin.flush()
         log.debug("Done writing data")
-        outs = self.proc_stdout.get()
+
+        # this needs to be .get() in order to block until queue has something,
+        # i.e. process is finished. Trusting JailedRunner to always output, but
+        # just in case, actually do time out
+        outs = self.proc_stdout.get(timeout=OTHELLO_AI_MAX_TIME+10)
         log.debug("Got output, reading errors")
         errs2 = []
         last_err_line = ""

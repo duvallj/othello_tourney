@@ -19,13 +19,7 @@ OTHELLO_AI_RUN_COMMAND = "python -u {2} {3}".format(
     OTHELLO_AI_NAME_REPLACE,
 )
 
+OTHELLO_AI_MAX_TIME = 60
+
 SCHEDULER_HOST = "127.0.0.1"
 SCHEDULER_PORT = 13770
-
-LOGGING_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s %(message)s')
-LOGGING_LEVEL = logging.DEBUG
-LOGGING_HANDLERS = [
-    logging.StreamHandler(),
-]
-for handler in LOGGING_HANDLERS:
-    handler.setFormatter(LOGGING_FORMATTER)

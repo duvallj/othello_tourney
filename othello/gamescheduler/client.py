@@ -4,12 +4,7 @@
 import asyncio
 import logging
 
-from .settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
-
 log = logging.getLogger(__name__)
-for handler in LOGGING_HANDLERS:
-    log.addHandler(handler)
-log.setLevel(LOGGING_LEVEL)
 
 class GameSchedulerClient(asyncio.Protocol):
     def __init__(self, loop, first_callback, reg_callback):
@@ -21,6 +16,7 @@ class GameSchedulerClient(asyncio.Protocol):
         log.debug("Made GameSchedulerClient")
 
     def connection_made(self, transport):
+        log.debug("Made connection")
         self.transport = transport
 
     def data_received(self, data):

@@ -3,7 +3,14 @@ import logging
 
 from othello.gamescheduler.server import GameScheduler
 from othello.gamescheduler.settings import SCHEDULER_HOST, SCHEDULER_PORT
-from othello.gamescheduler.settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
+
+LOGGING_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s %(message)s')
+LOGGING_LEVEL = logging.INFO
+LOGGING_HANDLERS = [
+    logging.StreamHandler(),
+]
+for handler in LOGGING_HANDLERS:
+    handler.setFormatter(LOGGING_FORMATTER)
 
 log = logging.getLogger(__name__)
 for handler in LOGGING_HANDLERS:

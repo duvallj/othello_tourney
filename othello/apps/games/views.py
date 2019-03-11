@@ -4,9 +4,12 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from django.conf import settings
 from asgiref.sync import async_to_sync
+import logging
 import json
 
 from .utils import get_playing_rooms
+
+log = logging.getLogger(__name__)
 
 
 def play_view(request):
@@ -39,7 +42,7 @@ def ai_list_view(request):
 
 def game_list_view(request):
     rooms = async_to_sync(get_playing_rooms)()
-    print(rooms)
+    log.debug(repr(rooms))
     data_list = [
         "{},{},{},{}".format(
             room,

@@ -34,8 +34,7 @@ class GameListRetriever:
         )
 
 
-# ha     haha      HAhaha   HAHAHA HAHAHAHAHAHAHA
-# what have i done
+# i mean, it works?
 async def get_playing_rooms():
     loop = asyncio.get_event_loop()
     glr = GameListRetriever(loop)

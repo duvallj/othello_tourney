@@ -92,14 +92,26 @@ TEMPLATES = [
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': False,
+    'disable_existing_loggers': True,
+    'formatters': {
+        'verbose': {
+            'format': "{asctime}:{module}:{levelname} {message}",
+            'style': '{'
+        },
+        'simple': {
+            'format': "{levelname} {message}",
+            'style': '{'
+        }
+    },
     'handlers': {
         'file': {
             'class': 'logging.FileHandler',
             'filename': os.path.join(PROJECT_ROOT, 'django.log'),
+            'formatter': 'verbose',
         },
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
     },
     'loggers': {
@@ -111,7 +123,7 @@ LOGGING = {
         'othello': {
             'handlers': ['console', 'file'],
             # DEVEL: might want to set this to 'DEBUG' sometimes
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
     },

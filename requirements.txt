@@ -11,4 +11,3 @@ social-auth-core
 channels
 channels_redis
 Twisted[tls,http2]
-celery

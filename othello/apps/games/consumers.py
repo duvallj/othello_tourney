@@ -3,14 +3,12 @@
 #         WARNING        #
 ##########################
 
-Attempting to understand this file easily has the potential to make anyone go
-insane. It did me in, that's for sure, and I wrote it.
+You should not read this or any file in gamescheduler without first looking at
+the file `run_ai_layout.txt' at the root of this repo. It contains the basic
+layout for how everything fits together to run a game, which is really hard to
+understand otherwise.
 
-You should probably check out `run_ai_layout.txt' at the root of this repo
-before reading any further, it has the basic layout for how everything in this
-app fits together to run a game.
-
-Debuggig this is not for the faint of heart. Consider yourself warned.
+Debuggig any of this is not for the faint of heart. Consider yourself warned.
 """
 
 from django.conf import settings
@@ -87,7 +85,7 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         if getattr(self, 'room_id', False):
             self.handle_incoming(content)
         else:
-            log.warn("Recieved data before we could get a room id! ignoring...")
+            log.info("Recieved data before we could get a room id! ignoring...")
 
     # just in case of wonkiness
     def __del__(self):

@@ -1,19 +1,27 @@
+"""
+##########################
+#         WARNING        #
+##########################
+
+You should not read this or `othello.apps.games.consumers` without first looking at
+the file `run_ai_layout.txt' at the root of this repo. It contains the basic
+layout for how everything fits together to run a game, which is really hard to
+understand otherwise.
+
+Debuggig any of this is not for the faint of heart. Consider yourself warned.
+"""
+
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import queue
 import logging
 import json
-from mem_top import mem_top
 
 from .worker import GameRunner
 from .utils import generate_id
 from .settings import OTHELLO_AI_UNKNOWN_PLAYER
-from .settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
 
 log = logging.getLogger(__name__)
-for handler in LOGGING_HANDLERS:
-    log.addHandler(handler)
-log.setLevel(LOGGING_LEVEL)
 
 class Room:
     """
@@ -51,7 +59,6 @@ class GameScheduler(asyncio.Protocol):
 
     def connection_made(self, transport):
         log.debug("Recieved connection")
-        log.info(mem_top())
         new_id = generate_id()
         # extremely low chance to block, ~~we take those~~
         while new_id in self.rooms: new_id = generate_id()
@@ -87,7 +94,8 @@ class GameScheduler(asyncio.Protocol):
             data = data.encode('utf-8')
 
         if room_id not in self.rooms:
-            log.warn("room_id {} does not exist anymore! oops!".format(room_id))
+            # changing to debug b/c this happens so often
+            log.debug("room_id {} does not exist anymore! ignoring b/c probably already killed".format(room_id))
             return
 
         # don't send to a client that's disconnected
@@ -150,7 +158,7 @@ class GameScheduler(asyncio.Protocol):
         if black_ai is None or \
           white_ai is None or \
           timelimit is None:
-            log.warn("Play request was invalid! ignoring...")
+            log.info("Play request was invalid! ignoring...")
             return
 
         game = GameRunner(black_ai, white_ai, timelimit, \
@@ -171,7 +179,7 @@ class GameScheduler(asyncio.Protocol):
     def watch_game(self, parsed_data, room_id):
         id_to_watch = parsed_data.get('watching', None)
         if id_to_watch is None:
-            log.warn("Watch request was invalid! ignoring...")
+            log.info("Watch request was invalid! ignoring...")
             return
         if id_to_watch not in self.rooms:
             log.warn("Client wants to watch game {}, but it doesn't exist!".format(id_to_watch))
