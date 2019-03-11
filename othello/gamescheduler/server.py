@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import queue
 import logging
 import json
+from mem_top import mem_top
 
 from .worker import GameRunner
 from .utils import generate_id
@@ -50,6 +51,7 @@ class GameScheduler(asyncio.Protocol):
 
     def connection_made(self, transport):
         log.debug("Recieved connection")
+        log.info(mem_top())
         new_id = generate_id()
         # extremely low chance to block, ~~we take those~~
         while new_id in self.rooms: new_id = generate_id()
@@ -57,6 +59,7 @@ class GameScheduler(asyncio.Protocol):
         room.id = new_id
         room.transport = transport
         self.rooms[new_id] = room
+        log.debug("Assigning room id {}".format(new_id))
         transport.write((new_id+'\n').encode('utf-8'))
 
     def gamerunner_callback(self, event):
@@ -82,6 +85,10 @@ class GameScheduler(asyncio.Protocol):
     def _send(self, data, room_id):
         if type(data) is str:
             data = data.encode('utf-8')
+
+        if room_id not in self.rooms:
+            log.warn("room_id {} does not exist anymore! oops!".format(room_id))
+            return
 
         # don't send to a client that's disconnected
         if self.rooms[room_id].transport.is_closing():
@@ -235,9 +242,11 @@ class GameScheduler(asyncio.Protocol):
         if room_id not in self.rooms: return
 
         if self.rooms[room_id].game:
+            with self.rooms[room_id].game.do_quit_lock:
+                self.rooms[room_id].game.do_quit = True
             self.rooms[room_id].task.cancel()
-            self.rooms[room_id].executor.shutdown(wait=False)
-            # self.rooms[room_id].game.cleanup() # shouldn't be necessary, already gets called
+            self.rooms[room_id].executor.shutdown(wait=True)
+            #self.rooms[room_id].game.cleanup() # shouldn't be necessary, already gets called
 
         self.rooms[room_id].transport.close()
         # avoiding any cylcical bs

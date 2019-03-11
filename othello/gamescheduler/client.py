@@ -24,9 +24,9 @@ class GameSchedulerClient(asyncio.Protocol):
         log.debug("Recieved data {}".format(data))
         decoded_data = data.decode('utf-8').strip()
         if self.has_recieved:
-            self.loop.call_soon_threadsafe(self.reg_callback, data)
+            self.loop.call_soon_threadsafe(self.reg_callback, decoded_data)
         else:
-            self.loop.call_soon_threadsafe(self.first_callback, data)
+            self.loop.call_soon_threadsafe(self.first_callback, decoded_data)
             self.has_recieved = True
 
     def connection_lost(self, exc):

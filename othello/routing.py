@@ -6,8 +6,14 @@ print("Routing application imported??")
 
 application = ProtocolTypeRouter({
     'websocket':  URLRouter([
-        url(r"^ws/play", GamePlayingConsumer),
-        url(r"^ws/watch", GameWatchingConsumer),
+        url(
+            r"^ws/play/(?=.*black=(?P<black>[\w\d-]+))(?=.*white=(?P<white>[\w\d-]+))(?=.*t=(?P<t>[\d\.]+))",
+            GamePlayingConsumer
+        ),
+        url(
+            r"^ws/watch/(?=.*watching=(?P<watching>[\w\d]+))",
+            GameWatchingConsumer
+        ),
     ]),
     'channel': ChannelNameRouter({
         # empty

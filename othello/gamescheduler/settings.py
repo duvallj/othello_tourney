@@ -2,7 +2,7 @@ import os, sys
 import logging
 
 # Main settings file for the GameScheduler
-PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 OTHELLO_STUDENT_PATH = os.path.join(PROJECT_ROOT, 'students')
 OTHELLO_PUBLIC_PATH = os.path.join(OTHELLO_STUDENT_PATH, 'public')

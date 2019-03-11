@@ -1,9 +1,9 @@
 import asyncio
 import logging
 
-from gamescheduler.server import GameScheduler
-from gamescheduler.settings import SCHEDULER_HOST, SCHEDULER_PORT
-from gamescheduler.settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
+from othello.gamescheduler.server import GameScheduler
+from othello.gamescheduler.settings import SCHEDULER_HOST, SCHEDULER_PORT
+from othello.gamescheduler.settings import LOGGING_HANDLERS, LOGGING_FORMATTER, LOGGING_LEVEL
 
 log = logging.getLogger(__name__)
 for handler in LOGGING_HANDLERS:

@@ -111,7 +111,7 @@ LOGGING = {
         'othello': {
             'handlers': ['console', 'file'],
             # DEVEL: might want to set this to 'DEBUG' sometimes
-            'level': 'INFO',
+            'level': 'DEBUG',
             'propagate': True,
         },
     },
@@ -200,4 +200,4 @@ STATIC_ROOT = os.path.join(PROJECT_ROOT, 'othello/static/')
 MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'students')
 
 # more settings to look at
-from ..gamescheduler.settings import *
+from .gamescheduler.settings import *

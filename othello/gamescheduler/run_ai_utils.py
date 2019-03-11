@@ -1,6 +1,7 @@
 import logging
 import sys, os, io
 import shlex, traceback
+from threading import Event
 import multiprocessing as mp
 import subprocess
 import time
@@ -166,8 +167,9 @@ class JailedRunnerCommunicator:
         log.debug(command_args)
         self.proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, \
                                     bufsize=1, universal_newlines=True, cwd=PROJECT_ROOT)
-        self.proc_stdout = get_stream_queue(self.proc.stdout)
-        self.proc_stderr = get_stream_queue(self.proc.stderr)
+        self.stop_event = Event()
+        self.proc_stdout = get_stream_queue(self.proc.stdout, self.stop_event)
+        self.proc_stderr = get_stream_queue(self.proc.stderr, self.stop_event)
 
     def get_move(self, board, player, timelimit):
         """
@@ -224,6 +226,7 @@ class JailedRunnerCommunicator:
         """
         if not (self.proc is None):
             self.proc.kill()
+            self.stop_event.set()
             self.proc = None
 
     def __del__(self):

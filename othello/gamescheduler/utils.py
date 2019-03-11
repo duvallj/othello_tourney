@@ -1,5 +1,5 @@
 import os, sys
-from threading import Thread
+from threading import Thread, Lock
 from queue import Queue, Empty
 import importlib
 import random
@@ -9,21 +9,22 @@ from .settings import OTHELLO_STUDENT_PATH, OTHELLO_PUBLIC_PATH
 
 ORIGINAL_SYS = sys.path[:]
 
-def enqueue_stream_helper(stream, q):
+def enqueue_stream_helper(stream, q, event):
     """
     Continuously reads from stream and puts any results into
     the queue `q`
     """
     for line in iter(stream.readline, b''):
+        if event.is_set(): break
         q.put(line)
     stream.close()
 
-def get_stream_queue(stream):
+def get_stream_queue(stream, event):
     """
     Takes in a stream, and returns a Queue that will return the output from that stream. Starts a background thread as a side effect.
     """
     q = Queue()
-    t = Thread(target=enqueue_stream_helper, args=(stream, q))
+    t = Thread(target=enqueue_stream_helper, args=(stream, q, event))
     t.daemon = True # Dies with the main program
     t.start()
 

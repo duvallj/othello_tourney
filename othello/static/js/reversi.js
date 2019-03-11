@@ -574,19 +574,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
 
   socket.onopen = function() {
     console.log("Did connect to socket");
-    if (watching) {
-      socket.send(JSON.stringify({
-        'msg_type': "wrequest",
-        "watching": watching
-      }));
-    }
-    else {
-      socket.send(JSON.stringify({
-        'msg_type': "prequest",
-        'black': ai_name1,
-        'white': ai_name2,
-        'timelimit': timelimit
-      }));
+    if (!watching) {
       document.addEventListener('click', clickHandler);
     }
   }
@@ -597,7 +585,13 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
 }
 
 function makeSocketFromPage(ai_name1, ai_name2, timelimit, watching){
-  var socket = new WebSocket(PATH);
+  var socket;
+  if (watching) {
+    socket = new WebSocket(PATH+"watch/watching="+watching);
+  } else {
+    socket = new WebSocket(PATH+"play/black="+ai_name1+",white="+ai_name2+",t="+timelimit);
+  }
+
   console.log('made socket');
   init(socket, ai_name1, ai_name2, timelimit, watching);
   console.log('finished initing socket');

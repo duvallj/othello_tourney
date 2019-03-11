@@ -4,6 +4,7 @@ import shlex, traceback
 import multiprocessing as mp
 import subprocess
 import time
+from threading import Lock
 
 from .run_ai_utils import JailedRunnerCommunicator
 from .othello_admin import Strategy
@@ -28,6 +29,8 @@ class GameRunner:
 
         self.possible_names = get_possible_strats()
         self.strats = dict()
+        self.do_quit = False
+        self.do_quit_lock = Lock()
 
     def emit(self, data):
         # TODO: implement this somehow
@@ -92,6 +95,12 @@ class GameRunner:
             WHITE: self.white,
         }
 
+        # first check to see if we should still emit
+        with self.do_quit_lock:
+            if self.do_quit:
+                self.cleanup()
+                return
+
         self.emit({
             "type": "board.update",
             "board": ''.join(board),
@@ -104,6 +113,11 @@ class GameRunner:
         log.debug("All initing done, time to start playing the game")
 
         while player is not None and not forfeit:
+            # another check before each tick
+            with self.do_quit_lock:
+                if self.do_quit:
+                    self.cleanup()
+                    return
             player, board, forfeit = self.do_game_tick(in_q, core, board, player, names)
 
         winner = EMPTY
@@ -111,6 +125,13 @@ class GameRunner:
             winner = core.opponent(player)
         else:
             winner = (EMPTY, BLACK, WHITE)[core.final_value(BLACK, board)]
+
+
+        # final check before game ends (just in case ya know)
+        with self.do_quit_lock:
+            if self.do_quit:
+                self.cleanup()
+                return
 
         self.emit({
             "type": "board.update",
