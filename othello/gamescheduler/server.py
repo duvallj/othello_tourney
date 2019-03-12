@@ -13,6 +13,7 @@ Debuggig any of this is not for the faint of heart. Consider yourself warned.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 import queue
 import logging
 import json
@@ -20,6 +21,7 @@ import json
 from .worker import GameRunner
 from .utils import generate_id
 from .settings import OTHELLO_AI_UNKNOWN_PLAYER
+from .othello_core import BLACK, WHITE, EMPTY
 
 log = logging.getLogger(__name__)
 
@@ -27,17 +29,18 @@ class Room:
     """
     Utility class that stores information about a game room
     """
-    id = None
-    black_ai = None
-    white_ai = None
-    timelimit = 5.0
-    watching = []
+    def __init__(self):
+        self.id = None
+        self.black_ai = None
+        self.white_ai = None
+        self.timelimit = 5.0
+        self.watching = []
 
-    transport = None
-    game = None
-    queue = None
-    task = None
-    executor = None
+        self.transport = None
+        self.game = None
+        self.queue = None
+        self.task = None
+        self.executor = None
 
 
 class GameScheduler(asyncio.Protocol):
@@ -92,6 +95,7 @@ class GameScheduler(asyncio.Protocol):
     def _send(self, data, room_id):
         if type(data) is str:
             data = data.encode('utf-8')
+        log.debug("sending out {} to {}".format(data, room_id))
 
         if room_id not in self.rooms:
             # changing to debug b/c this happens so often
@@ -99,12 +103,20 @@ class GameScheduler(asyncio.Protocol):
             return
 
         # don't send to a client that's disconnected
-        if self.rooms[room_id].transport.is_closing():
-            self._game_end_actual(room_id)
-        else:
-            self.rooms[room_id].transport.write(data)
-            for watching_id in self.rooms[room_id].watching:
-                if watching_id in self.rooms:
+        if self.rooms[room_id].transport:
+            if self.rooms[room_id].transport.is_closing():
+                self.game_end_actual(room_id)
+            else:
+                log.debug("Writing to transport {}".format(room_id))
+                self.rooms[room_id].transport.write(data)
+
+        for watching_id in self.rooms[room_id].watching:
+            # same here, don't send to disconnected ppl
+            if watching_id in self.rooms and self.rooms[watching_id].transport:
+                if self.rooms[watching_id].transport.is_closing():
+                    self.game_end_actual(watching_id)
+                else:
+                    log.debug("Writing to watching transport {}".format(room_id))
                     self.rooms[watching_id].transport.write(data)
 
     def _send_json(self, data, room_id):
@@ -161,6 +173,9 @@ class GameScheduler(asyncio.Protocol):
             log.info("Play request was invalid! ignoring...")
             return
 
+        self.play_game_actual(black_ai, white_ai, timelimit, room_id)
+
+    def play_game_actual(self, black_ai, white_ai, timelimit, room_id):
         game = GameRunner(black_ai, white_ai, timelimit, \
             self.loop, room_id, self.gamerunner_callback)
         q = queue.Queue()
@@ -173,10 +188,14 @@ class GameScheduler(asyncio.Protocol):
         self.rooms[room_id].queue = q
         self.rooms[room_id].executor = executor
         # here's where the **magic** happens. Tasks should be scheduled to run automatically
+        log.debug("Starting game {} v {} ({}) for room {}".format(
+            black_ai, white_ai, timelimit, room_id
+        ))
         self.rooms[room_id].task = self.loop.create_task(self.loop.run_in_executor(executor, game.run, q))
 
 
     def watch_game(self, parsed_data, room_id):
+        log.debug("watch_game from {}".format(room_id))
         id_to_watch = parsed_data.get('watching', None)
         if id_to_watch is None:
             log.info("Watch request was invalid! ignoring...")
@@ -243,11 +262,13 @@ class GameScheduler(asyncio.Protocol):
             'type': "gameend",
             'winner': event.get('winner', "?"),
             'forfeit': event.get('forfeit', False),
+            'board': event.get('board', ""),
         }, room_id)
-        self._game_end_actual(room_id)
+        self.game_end_actual(room_id)
 
-    def _game_end_actual(self, room_id):
+    def game_end_actual(self, room_id):
         if room_id not in self.rooms: return
+        log.debug("actually ending {}".format(room_id))
 
         if self.rooms[room_id].game:
             with self.rooms[room_id].game.do_quit_lock:
@@ -256,18 +277,98 @@ class GameScheduler(asyncio.Protocol):
             self.rooms[room_id].executor.shutdown(wait=True)
             #self.rooms[room_id].game.cleanup() # shouldn't be necessary, already gets called
 
-        self.rooms[room_id].transport.close()
+        if self.rooms[room_id].transport:
+            self.rooms[room_id].transport.close()
         # avoiding any cylcical bs
         watching = self.rooms[room_id].watching.copy()
         del self.rooms[room_id]
         for watching_id in watching:
-            self._game_end_actual(watching_id)
+            self.game_end_actual(watching_id)
 
 
 class TournamentScheduler(GameScheduler):
     """
     A subclass that doesn't allow anyone to make new games, and
     is instead started with a list of initial games to start running.
-    Logs results of tournament in aztr format.
+    Logs results of tournament to CSV file for easy processing,
+    either by Django shell or other method.
     """
-    pass
+
+    """
+    Available tournament types:
+    'rr': Round robin, everybody plays everybody else at least once.
+    (not implemented) 'bracket': Bracket auto-seeded based on ranking provided
+        in input list (towards front = higher rank).
+    """
+
+    def __init__(self, loop, completed_callback, ai_list, timelimit, tournament_type='rr', tournament_args=dict()):
+        super().__init__(loop)
+
+        self.completed_callback = completed_callback
+        self.ai_list = ai_list
+        self.timelimit = timelimit
+        self.tournament_type = tournament_type
+        self.tournament_args = tournament_args
+
+        self.game_queue = queue.Queue()
+        self.results = []
+        self.results_lock = Lock()
+
+        # populate queue with initial matchups to play
+        if self.tournament_type == 'rr':
+            import itertools
+            for black, white in itertools.permutations(self.ai_list, 2):
+                self.game_queue.put_nowait((black, white))
+
+        # independent of tournament type, start running as many games as we can
+        for x in range(self.tournament_args.get('num_games', 2)):
+            if not self.game_queue.empty():
+                self.loop.call_soon_threadsafe(self.play_tournament_game, *self.game_queue.get_nowait())
+
+    def play_game(self, parsed_data, room_id):
+        # send an error message back telling them they can't play
+        log.warn("Client {} tried to play during a tournament".format(room_id))
+        self.game_error({'error': "You cannot start a game during a tournament."}, room_id)
+        self.game_end(dict(), room_id)
+
+    def play_tournament_game(self, black, white):
+        log.info("Playing next game: {} v {}".format(black, white))
+        new_id = generate_id()
+        # extremely low chance to block, ~~we take those~~
+        while new_id in self.rooms: new_id = generate_id()
+        room = Room()
+        room.id = new_id
+        self.rooms[new_id] = room
+        log.debug("Creating new room id {}".format(new_id))
+
+        self.play_game_actual(black, white, self.timelimit, new_id)
+
+    def game_end(self, parsed_data, room_id):
+        log.debug("Overridded game_end called")
+        # log result
+        board = parsed_data.get('board', "")
+        forfeit = parsed_data.get('forfeit', False)
+        winner = parsed_data.get('winner', '?')
+        black_score = board.count(BLACK)
+        white_score = board.count(WHITE)
+        black_ai = self.rooms[room_id].black_ai
+        white_ai = self.rooms[room_id].white_ai
+
+        with self.results_lock:
+            result = (
+                black_ai, white_ai, black_score, white_score, winner, int(forfeit),
+            )
+
+            self.results.append(result)
+
+        log.debug("Added to results: {}".format(result))
+
+        super().game_end(parsed_data, room_id)
+
+        # handle putting new games into queue, if necessary
+        if self.tournament_type == 'rr':
+            if not self.game_queue.empty():
+                self.loop.call_soon_threadsafe(self.play_tournament_game, *self.game_queue.get_nowait())
+            else:
+                log.info("Tournament completed! Returning results...")
+                self.loop.call_soon_threadsafe(self.completed_callback, self.results, self.results_lock)
