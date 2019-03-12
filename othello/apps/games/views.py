@@ -3,8 +3,13 @@ import os
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.conf import settings
+from asgiref.sync import async_to_sync
+import logging
+import json
 
 from .utils import get_playing_rooms
+
+log = logging.getLogger(__name__)
 
 
 def play_view(request):
@@ -35,15 +40,15 @@ def ai_list_view(request):
     possible_names = sorted(possible_names)
     return HttpResponse("\n".join(possible_names), content_type="text/plain")
 
-
 def game_list_view(request):
-    rooms = get_playing_rooms()
+    rooms = async_to_sync(get_playing_rooms)()
+    log.debug(repr(rooms))
     data_list = [
         "{},{},{},{}".format(
-            room.room_id,
-            room.black,
-            room.white,
-            room.timelimit
+            room,
+            rooms[room][0], # black
+            rooms[room][1], # white
+            rooms[room][2], # timelimit
         )
         for room in rooms
     ]

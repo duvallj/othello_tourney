@@ -1,46 +1,43 @@
-from django.utils.crypto import get_random_string
+import asyncio
 from django.conf import settings
+import json
 
-from .models import Room
+from ...gamescheduler.client import game_scheduler_client_factory
 
+class GameListRetriever:
+    def __init__(self, loop):
+        self.loop = loop
+        # Python 3.6 holdback, 3.7 code should use
+        #self.fut = self.loop.get_future()
+        self.fut = asyncio.Future(loop=loop)
+        self.room_id = None
 
-def gen_room_id():
-    """
-    Generates a new room id
-    """
-    return get_random_string(length=settings.OTHELLO_ROOM_ID_LEN)
+    def recieve(self, data):
+        self.fut.set_result(json.loads(data))
+        self.transport.close()
 
+    def first_init(self, data):
+        self.room_id = data
 
-def make_new_room():
-    """
-    Makes a new room. Usually called when a client connects via websocket
-    Really should check for duplicates, but doesn't
-    """
-    room_id = gen_room_id()
-    # OTHELLO_ROOM_ID_LEN should really be long enough that this never triggers
-    # but its good to have around anyways
-    while Room.objects.filter(room_id=room_id).exists():
-        room_id = gen_room_id()
-    room, _ = Room.objects.get_or_create(room_id=room_id)
-    return room
+        content = {
+            'type': 'list_request',
+            'room_id': self.room_id,
+        }
+        encoded_content = json.dumps(content).encode('utf-8')
+        self.transport.write(encoded_content)
 
-
-def get_all_rooms():
-    """
-    Returns a list of all available rooms
-    """
-    return Room.objects.all()
-
-
-def get_playing_rooms():
-    """
-    Returns a list of all current playing games
-    """
-    return Room.objects.filter(playing=True)
+    async def get(self):
+        self.transport, self.protocol = await self.loop.create_connection(
+            game_scheduler_client_factory(self.loop, self.first_init, self.recieve),
+            host=settings.SCHEDULER_HOST,
+            port=settings.SCHEDULER_PORT
+        )
 
 
-def delete_room(room_id):
-    """
-    Deletes a room. Usually called when client disconnects their websocket
-    """
-    Room.objects.get(room_id=room_id).delete()
+# i mean, it works?
+async def get_playing_rooms():
+    loop = asyncio.get_event_loop()
+    glr = GameListRetriever(loop)
+    await glr.get()
+    await glr.fut
+    return glr.fut.result()

@@ -1,19 +1,21 @@
-from django.conf import settings
-
 import logging
 import sys, os, io
 import shlex, traceback
+from threading import Event
 import multiprocessing as mp
 import subprocess
 import time
 
-from .worker_utils import get_strat
-from .pipe_utils import get_stream_queue
+from .settings import OTHELLO_AI_RUN_COMMAND, OTHELLO_AI_NAME_REPLACE, OTHELLO_AI_MAX_TIME
+from .settings import PROJECT_ROOT
+from .utils import get_strat, get_stream_queue
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 
 ORIGINAL_SYS = sys.path[:]
+
 log = logging.getLogger(__name__)
+
 
 class HiddenPrints:
     """
@@ -65,10 +67,10 @@ class LocalRunner:
             move = best_shared.value
             if to_self.poll():
                 err = to_self.recv()
-                log.info("There is an error")
+                log.info("LocalRunner caught threwn error")
             else:
                 err = None
-                log.info("There was no error thrown")
+                log.debug("LocalRunner did not throw an error")
             return move, err
         except:
             traceback.print_exc()
@@ -84,11 +86,9 @@ class JailedRunner:
     Keeps running until it is killed forcefully
     """
 
+    # just in case some doofus wants to do distributed AI running instead
     AIClass = LocalRunner
     def __init__(self, ai_name):
-        # I don't know what to put here yet
-        if ai_name == settings.OTHELLO_AI_UNLIMITED_PLAYER:
-            self.AIClass = RawRunner
         self.strat = self.AIClass(ai_name)
         self.name = ai_name
 
@@ -151,18 +151,21 @@ class JailedRunnerCommunicator:
     def __init__(self, ai_name):
         self.name = ai_name
         self.proc = None
+        log.debug("JailedRunnerCommunicator created")
 
     def start(self):
         """
         Starts running the specified AI in a subprocess
         """
-        command = settings.OTHELLO_AI_RUN_COMMAND.replace(settings.OTHELLO_AI_NAME_REPLACE, self.name)
+        log.debug("JailedRunnerCommunicator started")
+        command = OTHELLO_AI_RUN_COMMAND.replace(OTHELLO_AI_NAME_REPLACE, self.name)
         command_args = shlex.split(command, posix=False)
         log.debug(command_args)
         self.proc = subprocess.Popen(command_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, \
-                                    bufsize=1, universal_newlines=True, cwd=settings.PROJECT_ROOT)
-        self.proc_stdout = get_stream_queue(self.proc.stdout)
-        self.proc_stderr = get_stream_queue(self.proc.stderr)
+                                    bufsize=1, universal_newlines=True, cwd=PROJECT_ROOT)
+        self.stop_event = Event()
+        self.proc_stdout = get_stream_queue(self.proc.stdout, self.stop_event)
+        self.proc_stderr = get_stream_queue(self.proc.stderr, self.stop_event)
 
     def get_move(self, board, player, timelimit):
         """
@@ -190,11 +193,15 @@ class JailedRunnerCommunicator:
             except:
                 last_err_line = None
         errs = "".join(errs)
-        log.error(errs)
+        if errs: log.error(errs)
         self.proc.stdin.write(data)
         self.proc.stdin.flush()
         log.debug("Done writing data")
-        outs = self.proc_stdout.get()
+
+        # this needs to be .get() in order to block until queue has something,
+        # i.e. process is finished. Trusting JailedRunner to always output, but
+        # just in case, actually do time out
+        outs = self.proc_stdout.get(timeout=OTHELLO_AI_MAX_TIME+10)
         log.debug("Got output, reading errors")
         errs2 = []
         last_err_line = ""
@@ -219,8 +226,9 @@ class JailedRunnerCommunicator:
         """
         if not (self.proc is None):
             self.proc.kill()
+            self.stop_event.set()
             self.proc = None
 
     def __del__(self):
-        log.warn("__del__ called! (as it should be)")
+        # Just in case wonkiness
         self.stop()
