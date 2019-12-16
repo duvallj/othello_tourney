@@ -49,7 +49,7 @@ class GameRunner:
         do_start_game = True
 
         if self.black not in self.possible_names:
-            if self.black == settings.OTHELLO_AI_HUMAN_PLAYER:
+            if self.black == OTHELLO_AI_HUMAN_PLAYER:
                 self.strats[BLACK] = None
             else:
                 self.emit({
@@ -63,7 +63,7 @@ class GameRunner:
             self.strats[BLACK] = strat
 
         if self.white not in self.possible_names:
-            if self.white == settings.OTHELLO_AI_HUMAN_PLAYER:
+            if self.white == OTHELLO_AI_HUMAN_PLAYER:
                 self.strats[WHITE] = None
             else:
                 self.emit({

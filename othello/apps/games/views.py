@@ -37,7 +37,7 @@ def ai_list_view(request):
         x != '__pycache__' and x != 'public' and
         os.path.isdir(os.path.join(student_folder, x))
     ]
-    possible_names = sorted(possible_names)
+    possible_names = [settings.OTHELLO_AI_HUMAN_PLAYER] + sorted(possible_names)
     return HttpResponse("\n".join(possible_names), content_type="text/plain")
 
 def game_list_view(request):

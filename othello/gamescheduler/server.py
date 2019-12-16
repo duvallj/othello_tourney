@@ -97,6 +97,10 @@ class GameScheduler(asyncio.Protocol):
             data = data.encode('utf-8')
         log.debug("sending out {} to {}".format(data, room_id))
 
+        # Add newline to seperate out data in case multiple methods become
+        # buffered into one message
+        data = data + b'\n'
+
         if room_id not in self.rooms:
             # changing to debug b/c this happens so often
             log.debug("room_id {} does not exist anymore! ignoring b/c probably already killed".format(room_id))
@@ -191,7 +195,7 @@ class GameScheduler(asyncio.Protocol):
         log.debug("Starting game {} v {} ({}) for room {}".format(
             black_ai, white_ai, timelimit, room_id
         ))
-        self.rooms[room_id].task = self.loop.create_task(self.loop.run_in_executor(executor, game.run, q))
+        self.rooms[room_id].task = self.loop.run_in_executor(executor, game.run, q)
 
 
     def watch_game(self, parsed_data, room_id):

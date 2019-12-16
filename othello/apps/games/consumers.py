@@ -78,10 +78,10 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         data = json.dumps(content).encode('utf-8')
         self.transport.write(data)
 
-    async def recieve_json(self, content):
+    async def receive_json(self, content):
         # with the data we recieve from the websocket,
         # send it to the GameScheduler
-        log.debug("Recieving json {}".format(content))
+        log.debug("Receiving json {}".format(content))
         if getattr(self, 'room_id', False):
             self.handle_incoming(content)
         else:

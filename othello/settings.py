@@ -123,7 +123,7 @@ LOGGING = {
         'othello': {
             'handlers': ['console', 'file'],
             # DEVEL: might want to set this to 'DEBUG' sometimes
-            'level': 'INFO',
+            'level': 'DEBUG',
             'propagate': True,
         },
     },
@@ -176,7 +176,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # DEVEL: set this to False
-SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = False 
 
 AUTH_USER_MODEL = "users.User"
 

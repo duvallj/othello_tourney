@@ -27,6 +27,13 @@ class GameSchedulerClient(asyncio.Protocol):
         """
         log.debug("Recieved data {}".format(data))
         decoded_data = data.decode('utf-8').strip()
+        
+        # Handle case where multiple message were bundled together
+        # Ordering is still guaranteed
+        for sub_data in decoded_data.split("\n"):
+            self._handle_received(sub_data)
+
+    def _handle_received(self, decoded_data):
         if self.has_recieved:
             """
             Check if the callback is a couroutine or regular callable,
