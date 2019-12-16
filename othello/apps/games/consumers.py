@@ -43,7 +43,7 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         """
         self.loop = asyncio.get_event_loop()
         self.transport, self.protocol = await self.loop.create_connection(
-            game_scheduler_client_factory(self.loop, self.first_init, self.handle_outgoing),
+            game_scheduler_client_factory(self.loop, self.first_init, self.handle_outgoing, self.force_close),
             host=settings.SCHEDULER_HOST,
             port=settings.SCHEDULER_PORT
         )
@@ -54,6 +54,10 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         # called when we actually have a room id assigned (hopefully)
         self.room_id = data
 
+    async def force_close(self, close_data):
+        log.debug("Server callback closing socket")
+        await self.close(close_data)
+
     async def disconnect(self, close_data):
         """
         Should be called when the websocket closes for any reason.
@@ -61,8 +65,6 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         """
         log.debug("{} disconnect {}".format(self.room_id, close_data))
         self.transport.close()
-
-        raise StopConsumer
 
     async def handle_outgoing(self, data):
         # with the data we recieve from the GameScheduler,
@@ -85,7 +87,7 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         if getattr(self, 'room_id', False):
             self.handle_incoming(content)
         else:
-            log.info("Recieved data before we could get a room id! ignoring...")
+            log.info("Received data before we could get a room id! ignoring...")
 
     # just in case of wonkiness
     def __del__(self):

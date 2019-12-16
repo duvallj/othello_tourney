@@ -61,7 +61,7 @@ class GameScheduler(asyncio.Protocol):
         log.debug("Made GameScheduler")
 
     def connection_made(self, transport):
-        log.debug("Recieved connection")
+        log.debug("Received connection")
         new_id = generate_id()
         # extremely low chance to block, ~~we take those~~
         while new_id in self.rooms: new_id = generate_id()
@@ -128,11 +128,12 @@ class GameScheduler(asyncio.Protocol):
         self._send(json_data, room_id)
 
     def data_received(self, data):
-        log.debug("Recieved data {}".format(data))
+        log.debug("Received data {}".format(data))
         # taking HUGE assumption here that all data is properly line-buffered
         # should mostly work out tho, the packets are tiny
         parsed_data = None
         parsed_data = json.loads(data.decode('utf-8').strip())
+        log.debug("Parsed data in {}".format(parsed_data))
 
         if not (parsed_data is None):
             room_id = parsed_data.get('room_id', None)
@@ -150,11 +151,11 @@ class GameScheduler(asyncio.Protocol):
                 self.play_game(parsed_data, room_id)
             elif msg_type == 'watch_request':
                 self.watch_game(parsed_data, room_id)
-            elif msg_type == 'move_reply':
+            elif msg_type == 'movereply':
                 self.move_reply(parsed_data, room_id)
 
     def eof_received(self):
-        log.debug("Recieved EOF")
+        log.debug("Received EOF")
 
     # From client to server
 
@@ -217,7 +218,7 @@ class GameScheduler(asyncio.Protocol):
             self.rooms[room_id].queue.put_nowait(move)
         else:
             # don't have a queue to put in to
-            pass
+            log.warn("Room {} has no queue to put move {} into!".format(room_id, parsed_data))
 
     # From GameRunner to server
 
