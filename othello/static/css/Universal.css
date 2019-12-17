@@ -2,6 +2,8 @@
 
 @import url('https://fonts.googleapis.com/css?family=Roboto+Mono');
 
+/* Styling for basic elements */
+
 body {
   font-family: 'Roboto Mono', monospace;
 }
@@ -49,22 +51,20 @@ code {
   color: #805229;
 }
 
-div.main {
-  font-size: 16px;
-  color: #229011;
-  width: 70%;
-  padding: 2% 15%;
+a{
+  color: #a06633;
 }
 
-div.top {
-  background-color: #33a122;
-  text-align: center;
-  font-size: 4vh;
+a:visited{
+  color: #a06633;
+}
+
+a:hover{
   color: #fffff0;
-  padding-top: 1px; /* hack to stop margin from leaking outside container (theres probably a better way to do this) */
+  background-color: #805229;
 }
 
-div.title{
+.title{
   color: #ffffff;
   text-align: center;
   overflow: hidden;
@@ -75,48 +75,112 @@ div.title{
   justify-content: center;
 }
 
+/* Styling for layout, template elements */
+
+.main {
+  font-size: 16px;
+  color: #229011;
+  width: 70%;
+  padding: 2% 15%;
+}
+
+.top {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+
+  background-color: #33a122;
+  font-size: 20px;
+  color: #fffff0;
+  padding-top: 1px; /* hack to stop margin from leaking outside container (theres probably a better way to do this) */
+}
+
+.header {
+  margin-left: 10px;
+  flex-grow: 1;
+}
+
+.header p {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+#expandbutton {
+  display: none;
+  position: absolute;
+  top: 7px;
+  right: 5px;
+}
+
+.linkbar-container {
+  align-self: stretch;
+}
+
+.linkbar {
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+
+  background-color: #805229;
+  font-size: 20px;
+  width: 80%;
+  color: #33a122;
+  padding-left: 10%;
+  padding-right: 10%;
+  text-align: center;
+}
+
+@media (max-width: 575.98px) {
+  #expandbutton {
+    display: block;
+    color: #805229;
+  }
+
+  .top {
+    flex-direction: column;
+  }
+
+  .linkbar {
+    flex-direction: column;
+  }
+}
+
+.linkbar a {
+  flex-grow: 1;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+.linkbar a:link{
+  color: #fffff0;
+}
+
+.linkbar a:visited{
+  color: #fffff0;
+}
+
+.linkbar a:hover{
+  color: #a06633;
+  background-color: #fffff0;
+}
+
+/* Styling for the one place I use a canvas */
+
 canvas{
   cursor: pointer;
 }
 
 #canvas{
   /* is a square
-   * multiplied by .75 to not touch screen edges */
+   * multiplied by .75 to not touch screen edges 
+   * fairly sure this works by pure magic */
   width: 75vw;
   height: 75vw;
   max-height: 75vh;
   max-width: 75vh;
 }
 
-a{
-  color: #a06633;
-}
 
-a:hover{
-  color: #fffff0;
-  background-color: #805229;
-}
-
-/*a:visited{
-  color: #805229;
-}*/
-
-div.linkbar {
-  background-color: #805229;
-  font-size: 2.5vh;
-  width: 80%;
-  color: #33a122;
-  padding-left: 10%;
-  padding-right: 10%;
-  padding-top: 1%;
-  padding-bottom: 1%;
-  text-align: center;
-}
-
-div.linkbar a:link{
-  color: #fffff0;
-}
-
-div.linkbar a:visited{
-  color: #fffff0;
-}
