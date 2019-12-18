@@ -19,7 +19,7 @@ function ajaxConfig(path, callback){
 };
 
 function putConfigToPage(output){
-  output += '\nYourself'
+  //output += '\nYourself'
   pdict = output.split('\n');
   //console.log(output);
   var player1 = me;

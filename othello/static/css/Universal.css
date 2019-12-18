@@ -92,7 +92,6 @@ a:hover{
   background-color: #33a122;
   font-size: 20px;
   color: #fffff0;
-  padding-top: 1px; /* hack to stop margin from leaking outside container (theres probably a better way to do this) */
 }
 
 .header {

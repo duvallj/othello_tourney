@@ -1,3 +1,1 @@
-apparmor
-
-whitelist /home/me/othello_tourney
+whitelist /home/othello/django
