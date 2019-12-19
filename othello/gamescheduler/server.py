@@ -110,6 +110,8 @@ class GameScheduler(asyncio.Protocol):
         if self.rooms[room_id].transport:
             if self.rooms[room_id].transport.is_closing():
                 self.game_end_actual(room_id)
+                # Early return because this closes all the watching ones anyway
+                return
             else:
                 log.debug("Writing to transport {}".format(room_id))
                 self.rooms[room_id].transport.write(data)
@@ -272,6 +274,7 @@ class GameScheduler(asyncio.Protocol):
         self.game_end_actual(room_id)
 
     def game_end_actual(self, room_id):
+        log.debug("attempting to end {}".format(room_id))
         if room_id not in self.rooms: return
         log.debug("actually ending {}".format(room_id))
 
