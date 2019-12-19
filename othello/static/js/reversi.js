@@ -1,12 +1,21 @@
+// Warning: I was bad when I wrote this code, and as such, it has
+// hard-to-follow logic and zero comments except for commented-out code.
+// As I go over it again, I will try to comment it but no promises.
+
+// Start at the drawBoard function for stuff to make the most sense
+
+// Define magic constants used throughout program
 EMPTY_NM = 0;
 WHITE_NM = 1;
 BLACK_NM = 2;
 
+// (need to be the same characters as used by the server)
 EMPTY_CH = '.';
 WHITE_CH = 'o';
 BLACK_CH = '@';
 OUTER_CH = '?';
 
+// CO = "color"
 EMPTY_CO = '#117711';
 WHITE_CO = '#ffffff';
 BLACK_CO = '#000000';
@@ -16,6 +25,7 @@ HIGHLIGHT_CO = '#fff700';
 GOODMOVE_CO  = '#33ccff';
 LASTMOVE_CO  = '#ff9900';
 
+// Pre-load all images
 WHITE_IMG = new Image();
 WHITE_IMG.src = './static/images/white.png';
 BLACK_IMG = new Image();
@@ -33,6 +43,7 @@ for (var i = 0; i < 20; i++) {
   STONE_IMAGES[i].src = './static/images/stones/'+i+'.png';
 }
 
+// Create lookup dictionaries for easy conversion later one
 CH2NM = {};
 CH2NM[EMPTY_CH] = EMPTY_NM;
 CH2NM[WHITE_CH] = WHITE_NM;
@@ -46,12 +57,6 @@ NM2CO[BLACK_NM] = BLACK_CO;
 HISTORY = []
 RCANVAS = null;
 
-function addBorders(rCanvas, bSize, un, bd, rc) {
-  for(var i=0; i<=bSize; i++){
-    rCanvas.add(new RRect(un*i, 0, bd, rc, BORDER_CO, 1.0));
-    rCanvas.add(new RRect(0, un*i, rc, bd, BORDER_CO, 1.0));
-  }
-}
 
 function addPieces(rCanvas, bSize, bArray, un, bd, sq, animArray) {
   if (bSize !== rCanvas.lBSize) {
@@ -199,6 +204,14 @@ function startAnimation(rCanvas, animArray) {
 
 function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
   console.log('redrawing board');
+  // OK so I used two-letter variable names when writing this initially
+  // because I was stupid. Here's a key as best as I can figure now:
+  // rc == "row-column", should be the length of the square area we are
+  //          working in
+  // bd == "border", the width of the borders between squares on the board
+  // sq == "square", the width/height of a square on the board
+  // un == "united border+square", the total width+height of a square
+  //          including it's surrouding border
   var rc = Math.min(rCanvas.rWidth, rCanvas.rHeight);
   var bd = rc/(11*bSize+1); //from sq*s+bd*(s+1)=w, sq=10*bd
   var sq = 10*bd;
@@ -208,11 +221,13 @@ function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
   rCanvas.sq = sq;
   rCanvas.un = un;
 
+  // I originally designed the board to be arbitrarily resizable,
+  // not entirely sure why, so each time the board updates, we destroy
+  // all of the objects on it...
   rCanvas.objects = [];
 
+  // ...and add new ones using the helper methods defined above
   rCanvas.add(rCanvas.fullbg);
-  //addBorders(rCanvas, bSize, un, bd, rc);
-
   addTiles(rCanvas, bSize, bArray, un, bd, sq);
 
   rCanvas.add(rCanvas.lastmove);
@@ -220,10 +235,6 @@ function drawBoard(rCanvas, bSize, bArray, tomove, animArray){
   addPieces(rCanvas, bSize, bArray, un, bd, sq, animArray);
   addPossibleMoves(rCanvas, bSize, bArray, tomove, un, bd, sq);
   rCanvas.add(rCanvas.select);
-
-  /*rCanvas.add(rCanvas.textbg);
-  rCanvas.add(rCanvas.black);
-  rCanvas.add(rCanvas.white);*/
 
   var counts = countPieces(bSize, bArray);
   rCanvas.black.innerHTML = rCanvas.black_name+': '+counts[BLACK_NM].toString();
@@ -261,6 +272,9 @@ function resize(canvas, gWidth, gHeight){
   }
 }
 
+// Begin history downloading code (not great in another file b/c it uses
+// so much stuff from this file, yeah it sucks)
+
 var tagsToReplace = {
     '&': '&amp;',
     '<': '&lt;',
@@ -274,7 +288,6 @@ function replaceTag(tag) {
 function safe_tags_replace(str) {
     return str.replace(/[&<>]/g, replaceTag);
 }
-
 
 function add_to_history(data) {
   HISTORY[HISTORY.length] = data;
@@ -373,19 +386,17 @@ function historyDownload() {
 }
 
 function init(socket, ai_name1, ai_name2, timelimit, watching){
-  document.getElementById('canvasContainer').style.display = "flex";
+  document.getElementById('gameContainer').style.display = "flex";
   document.getElementById('player-selection-text').style.display = "none";
 
   var canvas = document.getElementById('canvas');
   var gWidth = 1000;
   var gHeight = 1000;
 
-  //resize(canvas, gWidth, gHeight);
   var rCanvas = new RCanvas(canvas, gWidth, gHeight);
   RCANVAS = rCanvas;
   rCanvas.resize();
   window.addEventListener('resize', function(){
-    //resize(canvas, gWidth, gHeight);
     rCanvas.resize();
   });
 
@@ -492,11 +503,6 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
     console.log('move requested');
     rCanvas.lastClicked = -1;
   };
-  /* function alwaysDraw() {
-    drawBoard(rCanvas, rCanvas.lBSize, rCanvas.board, rCanvas.tomove, animArray);
-    requestAnimationFrame(alwaysDraw);
-  }
-  requestAnimationFrame(alwaysDraw); */
 
   on_gameend = function(data){
     //Clean up tasks, end socket

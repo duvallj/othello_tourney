@@ -165,21 +165,3 @@ a:hover{
   color: #a06633;
   background-color: #fffff0;
 }
-
-/* Styling for the one place I use a canvas */
-
-canvas{
-  cursor: pointer;
-}
-
-#canvas{
-  /* is a square
-   * multiplied by .75 to not touch screen edges 
-   * fairly sure this works by pure magic */
-  width: 75vw;
-  height: 75vw;
-  max-height: 75vh;
-  max-width: 75vh;
-}
-
-

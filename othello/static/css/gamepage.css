@@ -1,0 +1,43 @@
+.gameContainer {
+
+}
+
+/* Canvas styling */
+
+
+#canvas{
+  cursor: pointer;
+  /* is a square
+   * multiplied by .75 to not touch screen edges 
+   * fairly sure this works by pure magic */
+  width: 75vw;
+  height: 75vw;
+  max-height: 75vh;
+  max-width: 75vh;
+}
+
+/* Styling for the score box */
+div#player-score-box {
+  background-color: #805229;
+}
+p.player-score {
+  font-size: 2.5vh;
+}
+p#player-white {
+  color: #ffffff;
+}
+p#player-black {
+  color: #000000;
+}
+
+/* Styling for the logs */
+.log pre {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-line;
+}
+
+#err_log {
+  color: #ff2600;
+}

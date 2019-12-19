@@ -1,39 +1,20 @@
-{% extends "template.html" %}
+
+{% extends "game.html" %}
 {% load static %}
-{% block title %}Othello{% endblock %}
-{% block header %}Watch Othello{% endblock %}
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/playerscorebox.css' %}"/>
+{% block header %}Play Othello{% endblock %}
+{% block extra_extra_head %}
+<link rel="stylesheet" href="{% static 'css/selectize.min.css' %}"/>
+<style>
+div.selectize-input, div.selectize-dropdown {
+  color:#805229;
+  border:#a06633 2px solid;
+  font-size: 16px;
+}
+</style>
 {% endblock %}
-{% block content %}
-      <div id="canvasContainer" style="display:none" class="centered">
-        <div>
-          <canvas id="canvas" onClick=""></canvas>
-          <div id="player-score-box" class="centered">
-            <p id="player-black" class="player-score">Player 1</p>
-            <p style="visibility: hidden">WWW</p>
-            <p id="player-white" class="player-score">Player 2</p>
-          </div>
-          <br>
-          <button onclick="historyDownload();">Download Game</button>
-          <br>
-          <p>Download Format:</p>
-          <input type="radio" name="downloadFormat" id="downloadFormat-pretty" value="pretty" checked="true" />
-          <label for="downloadFormat-pretty">Pretty</label>
-          <input type="radio" name="downloadFormat" id="downloadFormat-parseable" value="parseable" />
-          <label for="downloadFormat-parseable">Parseable</label>
-          <br>
-          <code id="err_log" style="word-wrap:break-word; overflow-wrap:break-word;word-break:break-word;"></code>
-        </div>
-      </div>
-      <div class="centered">
-        <p id="player-selection-text">
-          Loading port list...
-        </p>
-      </div>
-      <script src="{% static 'js/websocketbridge.js' %}"></script>
-      <script src="{% static 'js/get_config.js' %}"></script>
-      <script src="{% static 'js/get_games.js' %}"></script>
-      <script src="{% static 'js/resize.js' %}"></script>
-      <script src="{% static 'js/reversi.js' %}" onload="ajaxConfig('{% url 'game_list' %}', putGamesToPage);"></script>
+
+{% block extra_extra_js %}
+<script src="{% static 'js/get_games.js' %}"></script>
 {% endblock %}
+{% block request_url %}{% url 'game_list' %}{% endblock %}
+{% block request_callback %}putGamesToPage{% endblock %} 

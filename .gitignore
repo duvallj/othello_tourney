@@ -66,3 +66,5 @@ ion_secret.py
 students/
 students-2017-18/
 students-2018-19/
+# Or the firejail profile (differs by machine :/ ah well)
+python-custom.profile
