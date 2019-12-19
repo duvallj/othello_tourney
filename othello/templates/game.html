@@ -7,24 +7,27 @@
 {% endblock %}
 {% block content %}
       <div class="gameContainer" id="gameContainer" style="display:none">
-        <div class="canvasContainer">
-          <canvas id="canvas" onclick=""></canvas>
-          <div id="player-score-box" class="centered">
-            <p id="player-black" class="player-score">Player 1</p>
-            <p style="visibility: hidden">WWW</p>
-            <p id="player-white" class="player-score">Player 2</p>
+        <div class="gameContainer-left">
+          <div class="canvasContainer">
+            <canvas id="canvas" onclick=""></canvas>
+            <div id="player-score-box" class="centered">
+              <p id="player-black" class="player-score">Player 1</p>
+              <p style="visibility: hidden">WWW</p>
+              <p id="player-white" class="player-score">Player 2</p>
+            </div>
+          </div>
+          <div class="historyDownload">
+            <button onclick="historyDownload();">Download Game</button>
+            <p>
+              Download Format:
+              <input type="radio" name="downloadFormat" id="downloadFormat-pretty" value="pretty" checked="true" />
+              <label for="downloadFormat-pretty">Pretty</label>
+              <input type="radio" name="downloadFormat" id="downloadFormat-parseable" value="parseable" />
+              <label for="downloadFormat-parseable">Parseable</label>
+            </p>
           </div>
         </div>
-        <div class="historyDownload">
-          <button onclick="historyDownload();">Download Game</button>
-          <br>
-          <p>Download Format:</p>
-          <input type="radio" name="downloadFormat" id="downloadFormat-pretty" value="pretty" checked="true" />
-          <label for="downloadFormat-pretty">Pretty</label>
-          <input type="radio" name="downloadFormat" id="downloadFormat-parseable" value="parseable" />
-          <label for="downloadFormat-parseable">Parseable</label>
-        </div>
-        <div class="gameOutput">
+        <div class="gameContainer-right gameOutput">
           <code class="log"><pre id="game_log"></pre></code>
           <code class="log"><pre id="err_log"></pre></code>
         </div>

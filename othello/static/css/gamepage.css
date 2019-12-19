@@ -1,9 +1,34 @@
 .gameContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.gameContainer-left {
 
 }
 
-/* Canvas styling */
+.gameContainer-right {
+  margin-left: 10px;
+}
 
+.canvasContainer {
+  margin-bottom: 10px;
+}
+
+/* For mobile devices */
+@media (max-width: 575.98px) {
+  .gameContainer {
+    flex-direction: column;
+  }
+
+  .gameContainer-right {
+    margin-left: 0px;
+  }
+}
+/* Canvas styling */
 
 #canvas{
   cursor: pointer;
@@ -21,7 +46,7 @@ div#player-score-box {
   background-color: #805229;
 }
 p.player-score {
-  font-size: 2.5vh;
+  font-size: 20px;
 }
 p#player-white {
   color: #ffffff;

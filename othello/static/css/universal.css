@@ -132,6 +132,7 @@ a:hover{
   text-align: center;
 }
 
+/* For mobile devices */
 @media (max-width: 575.98px) {
   #expandbutton {
     display: block;
