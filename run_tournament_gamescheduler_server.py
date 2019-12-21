@@ -39,7 +39,7 @@ def write_results(results, results_lock):
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    gs = TournamentScheduler(loop, write_results, ['random', 'T17-Duvall'], TOURNAMENT_TIMELIMIT)
+    gs = TournamentScheduler(loop, write_results, AI_LIST, TOURNAMENT_TIMELIMIT)
     def game_scheduler_factory(): return gs
     coro = loop.create_server(game_scheduler_factory, host=SCHEDULER_HOST, port=SCHEDULER_PORT)
     server = loop.run_until_complete(coro)

@@ -19,9 +19,7 @@ function ajaxConfig(path, callback){
 };
 
 function putConfigToPage(output){
-  output += '\nYourself'
   pdict = output.split('\n');
-  //console.log(output);
   var player1 = me;
   if(window.localStorage.getItem("player1")){
       player1 = window.localStorage.getItem("player1");
@@ -30,8 +28,6 @@ function putConfigToPage(output){
   if(window.localStorage.getItem("player2")){
       player2 = window.localStorage.getItem("player2");
   }
-  // console.log(player1);
-  // console.log(player2);
   buf = 'Black: <select id="ai1" placeholder="Player 1">';
   buf += '<option value="">Player 1</option>'
   for (var i=0; i<pdict.length; i++){

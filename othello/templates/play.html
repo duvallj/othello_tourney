@@ -1,7 +1,7 @@
-{% extends "template.html" %}
+{% extends "game.html" %}
 {% load static %}
-{% block title %}Othello{% endblock %}
-{% block extra_head %}
+{% block header %}Play Othello{% endblock %}
+{% block extra_extra_head %}
 <link rel="stylesheet" href="{% static 'css/selectize.min.css' %}"/>
 <style>
 div.selectize-input, div.selectize-dropdown {
@@ -10,44 +10,11 @@ div.selectize-input, div.selectize-dropdown {
   font-size: 16px;
 }
 </style>
-<link rel="stylesheet" href="{% static 'css/playerscorebox.css' %}"/>
 {% endblock %}
-{% block header %}Play Othello{% endblock %}
-{% block content %}
-      <div id="canvasContainer" style="display:none" class="centered">
-        <div>
-          <canvas id="canvas" onclick=""></canvas>
-          <div id="player-score-box" class="centered">
-            <p id="player-black" class="player-score">Player 1</p>
-            <p style="visibility: hidden">WWW</p>
-            <p id="player-white" class="player-score">Player 2</p>
-          </div>
-          <br>
-          <button onclick="historyDownload();">Download Game</button>
-          <br>
-          <p>Download Format:</p>
-          <input type="radio" name="downloadFormat" id="downloadFormat-pretty" value="pretty" checked="true" />
-          <label for="downloadFormat-pretty">Pretty</label>
-          <input type="radio" name="downloadFormat" id="downloadFormat-parseable" value="parseable" />
-          <label for="downloadFormat-parseable">Parseable</label>
-          <br>
-          <code id="err_log" style="word-wrap:break-word; overflow-wrap:break-word;word-break:break-word;"></code>
-        </div>
-      </div>
-      <div class="centered">
-        <p id="player-selection-text">
-          Loading port list...
-        </p>
-      </div>
-      <script type="text/javascript">
-        var me = "{{ current_user.name }}";
-      </script>
-      <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
-      <script src="{% static 'js/selectize.min.js' %}"></script>
-      <script src="{% static 'js/websocketbridge.js' %}"></script>
-      <script src="{% static 'js/get_config.js' %}"></script>
-      <script src="{% static 'js/resize.js' %}"></script>
-      <script src="{% static 'js/reversi.js' %}" onload="ajaxConfig('{% url 'ai_list' %}', putConfigToPage);"></script>
-      <script>
-      </script>
+
+{% block extra_extra_js %}
+<script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
+<script src="{% static 'js/selectize.min.js' %}"></script>
 {% endblock %}
+{% block request_url %}{% url 'ai_list' %}{% endblock %}
+{% block request_callback %}putConfigToPage{% endblock %} 

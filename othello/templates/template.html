@@ -6,20 +6,25 @@
     <meta charset="UTF-8">
     <meta width="device-width">
     <link rel="icon" type="image/vnd.microsoft.icon" href="{% static 'logo.ico' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/Universal.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/universal.css' %}">
     {% block extra_head %}{% endblock %}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body>
-    <div class="top">
-      <p id="header">{% block header %}{% endblock %}</p>
-      <div class="linkbar">
-        <a href="{% url 'index' %}">Home</a>
-        <a href="{% url 'about' %}">About</a>
-        <a href="{% url 'upload' %}">Upload</a>
-        <a href="{% url 'play' %}">Play</a>
-        <a href="{% url 'watch' %}">Watch</a>
-        <a href="{% url 'tournament list' %}">Tournaments</a>
+    <div class="top" id="top">
+      <div class="header" id="header">
+        <p>{% block header %}{% endblock %}</p>
+        <div id="expandbutton"><img src="{% static 'images/menu.svg' %}" /></div>
+      </div>
+      <div class="linkbar-container">
+        <nav class="linkbar" id="linkbar">
+          <a href="{% url 'index' %}">Home</a>
+          <a href="{% url 'about' %}">About</a>
+          <a href="{% url 'upload' %}">Upload</a>
+          <a href="{% url 'play' %}">Play</a>
+          <a href="{% url 'watch' %}">Watch</a>
+          <a href="{% url 'tournament list' %}">Tournaments</a>
+        </nav>
       </div>
     </div>
     <div class="main" id="text">
@@ -28,5 +33,7 @@
         <p style="font-size: 1em;">{{ user.username }} <a style="font-size: 1em;" href="/logout/">Logout</a></p>
       {% endif %}
     </div>
+    <script src="{% static 'js/menuexpand.js' %}"></script>
+    {% block extra_js %}{% endblock %}
   </body>
 </html>
