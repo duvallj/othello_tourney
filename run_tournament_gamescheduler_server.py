@@ -2,7 +2,7 @@ import asyncio
 import os
 import logging
 
-from othello.gamescheduler.server import TournamentScheduler
+from othello.gamescheduler.server import RRTournamentScheduler
 from othello.gamescheduler.utils import get_possible_strats
 from othello.gamescheduler.settings import SCHEDULER_HOST, SCHEDULER_PORT, PROJECT_ROOT
 
@@ -39,7 +39,7 @@ def write_results(results, results_lock):
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    gs = TournamentScheduler(loop, write_results, AI_LIST, TOURNAMENT_TIMELIMIT)
+    gs = RRTournamentScheduler(loop, write_results, AI_LIST, TOURNAMENT_TIMELIMIT)
     def game_scheduler_factory(): return gs
     coro = loop.create_server(game_scheduler_factory, host=SCHEDULER_HOST, port=SCHEDULER_PORT)
     server = loop.run_until_complete(coro)

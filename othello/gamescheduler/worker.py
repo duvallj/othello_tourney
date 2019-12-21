@@ -29,7 +29,6 @@ class GameRunner:
         self.do_quit_lock = Lock()
 
     def emit(self, data):
-        # TODO: implement this somehow
         log.debug("GameRunner emmitting {}".format(data))
         data['room_id'] = self.room_id
         self.loop.call_soon_threadsafe(self.emit_callback, data)

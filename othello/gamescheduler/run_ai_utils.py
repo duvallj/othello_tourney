@@ -8,7 +8,7 @@ import time
 
 from .settings import OTHELLO_AI_RUN_COMMAND, OTHELLO_AI_NAME_REPLACE, OTHELLO_AI_MAX_TIME
 from .settings import PROJECT_ROOT
-from .utils import get_strat, get_stream_queue
+from .utils import get_strat, get_stream_queue, safe_int
 from .othello_admin import Strategy
 from .othello_core import BLACK, WHITE, EMPTY
 
@@ -35,7 +35,12 @@ class LocalRunner:
         self.strat = None
         self.new_path = self.old_path = os.getcwd()
         self.new_sys = self.old_sys = ORIGINAL_SYS
-        self.strat, self.new_path, self.new_sys = get_strat(self.name)
+        try:
+            self.strat, self.new_path, self.new_sys = get_strat(self.name)
+        except:
+            log.warn("LocalRunner threw exception when importing {}. Traceback below".format(ai_name))
+            traceback.print_exc()
+            self.strat = None
 
     def strat_wrapper(self, board, player, best_shared, running, pipe_to_parent):
         with HiddenPrints():
@@ -50,6 +55,9 @@ class LocalRunner:
         Starts a multiprocessing.Process with the student AI inside,
         automatically kills it after the timelimit expires
         """
+        if self.strat is None:
+            return -1, "Failed to load Strategy"
+
         best_shared = mp.Value("i", -1)
         running = mp.Value("i", 1)
 
@@ -213,11 +221,7 @@ class JailedRunnerCommunicator:
                 last_err_line = None
         errs += "".join(errs2)
         log.debug('Got full report from subprocess')
-        try:
-            move = int(outs.split("\n")[0])
-        except:
-            traceback.print_exc()
-            move = -1
+        move = safe_int(outs.split("\n")[0])
         return move, errs #.decode()
 
     def stop(self):
