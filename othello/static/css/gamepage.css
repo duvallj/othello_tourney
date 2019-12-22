@@ -18,8 +18,8 @@
   margin-bottom: 10px;
 }
 
-/* For mobile devices */
-@media (max-width: 575.98px) {
+/* For non-large devices */
+@media (max-width: 1199.98px) {
   .gameContainer {
     flex-direction: column;
   }

@@ -150,8 +150,31 @@ class BracketTournamentScheduler(TournamentScheduler):
         # All the logic is handled in the other method
         self.remaining_ai_list = self.ai_list.copy()
         self.last_result_recorded = -1
+        self.add_games_from_remaining()
+        while self.num_games < self.max_games and not self.game_queue.empty():
+            self.play_next_game()
+
+    def add_games_from_remaining(self):
         self.regenerate_win_data()
-        self.check_game_queue()
+
+        # If we have an even number, play everyone
+        if len(self.remaining_ai_list) % 2 == 0:
+            for i in range(len(self.remaining_ai_list)//2):
+                ai1 = self.remaining_ai_list[i]
+                ai2 = self.remaining_ai_list[len(self.remaining_ai_list)-i-1]
+                self.add_new_game(ai1, ai2)
+                self.add_new_game(ai2, ai1)
+        # If we have an odd number, let the first seed have a bye
+        else:
+            for i in range(1, len(self.remaining_ai_list)//2+1):
+                ai1 = self.remaining_ai_list[i]
+                ai2 = self.remaining_ai_list[len(self.remaining_ai_list)-i]
+                self.add_new_game(ai1, ai2)
+                self.add_new_game(ai2, ai1)
+            # Also don't forget to give first person a bye
+            self.results.append((self.remaining_ai_list[0],"BYE",1,0,BLACK,0))
+            self.results.append(("BYE",self.remaining_ai_list[0],0,1,WHITE,0))
+
 
     def regenerate_win_data(self):
         self.differential_dict = dict()
@@ -187,9 +210,9 @@ class BracketTournamentScheduler(TournamentScheduler):
             new_remaining_ai_list = []
             for i in range(len(self.remaining_ai_list)):
                 ai = self.remaining_ai_list[i]
-                if self.differential_dict.get(ai, 1) > 0:
+                if self.differential_dict.get(ai, 0) > 0:
                     new_remaining_ai_list.append(ai)
-                elif i < len(self.remaining_ai_list)//2+1 and self.differential_dict.get(ai, 0) == 0:
+                elif i < len(self.remaining_ai_list)//2 and self.differential_dict.get(ai, 0) == 0:
                     # In case of tie, higher seeded AI advances
                     new_remaining_ai_list.append(ai)
                 else:
@@ -203,20 +226,7 @@ class BracketTournamentScheduler(TournamentScheduler):
                 self.tournament_end()
                 return
 
-            # If we have an even number, play everyone
-            if len(self.remaining_ai_list) % 2 == 0:
-                for i in range(len(self.remaining_ai_list)//2):
-                    ai1 = self.remaining_ai_list[i]
-                    ai2 = self.remaining_ai_list[len(self.remaining_ai_list)-i-1]
-                    self.add_new_game(ai1, ai2)
-                    self.add_new_game(ai2, ai1)
-            # If we have an odd number, let the first seed have a by
-            else:
-                for i in range(1, len(self.remaining_ai_list)//2+1):
-                    ai1 = self.remaining_ai_list[i]
-                    ai2 = self.remaining_ai_list[len(self.remaining_ai_list)-i]
-                    self.add_new_game(ai1, ai2)
-                    self.add_new_game(ai2, ai1)
+            self.add_games_from_remaining()
 
         while self.num_games < self.max_games and not self.game_queue.empty():
             self.play_next_game()
