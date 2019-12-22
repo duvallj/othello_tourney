@@ -49,7 +49,6 @@ Temporary Items
 #Temporary python files
 __pycache__
 *.pyc
-*.log
 
 # Don't back up venv, other development things
 venv
@@ -58,6 +57,7 @@ miniconda3
 db.sqlite3
 .vs
 .vscode
+*.log
 *.csv
 
 # Don't expose oauth keys

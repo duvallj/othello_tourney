@@ -13,17 +13,13 @@ Debuggig any of this is not for the faint of heart. Consider yourself warned.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
 import queue
 import logging
 import json
 
-import itertools
-
 from .worker import GameRunner
 from .utils import generate_id
 from .settings import OTHELLO_AI_UNKNOWN_PLAYER
-from .othello_core import BLACK, WHITE, EMPTY
 
 log = logging.getLogger(__name__)
 
@@ -295,125 +291,3 @@ class GameScheduler(asyncio.Protocol):
         del self.rooms[room_id]
         for watching_id in watching:
             self.game_end_actual(watching_id)
-
-
-class TournamentScheduler(GameScheduler):
-    """
-    A subclass that doesn't allow anyone to make new games, and
-    is instead started with a list of initial games to start running.
-    Logs results of tournament to CSV file for easy processing,
-    either by Django shell or other method.
-    """
-
-    """
-    Methods needed to be implemented by the subclass:
-      * populate_game_queue
-      * check_game_queue
-    Exposed internal variables:
-      * results: list
-      * results_lock: threading.Lock
-    Using add_new_game to add new games to the game queue
-    """
-
-    def __init__(self, loop, completed_callback, ai_list, timelimit, num_games=2):
-        super().__init__(loop)
-
-        self.completed_callback = completed_callback
-        self.ai_list = ai_list
-        self.timelimit = timelimit
-        self.num_games = num_games
-
-        self.game_queue = queue.Queue()
-        self.results = []
-        self.results_lock = Lock()
-
-        # populate queue with initial matchups to play
-        self.populate_game_queue()
-
-        # independent of tournament type, start running as many games as we can
-        for x in range(self.num_games):
-            self.play_next_game()
-
-    def add_new_game(self, black, white, timelimit=None):
-        if timelimit is None:
-            self.game_queue.put_nowait((black, white, self.timelimit))
-        else:
-            self.game_queue.put_nowait((black, white, timelimit))
-
-    def populate_game_queue(self):
-        # Called in __init__, should be defined by subclasses in order to start
-        # the initial matches
-        raise NotImplementedError
-
-    def check_game_queue(self):
-        # Called after each game ends, when the result has been recorded as
-        # the last element in self.results
-        raise NotImplementedError
-
-    def play_game(self, parsed_data, room_id):
-        # send an error message back telling them they can't play
-        log.warn("Client {} tried to play during a tournament".format(room_id))
-        self.game_error({'error': "You cannot start a game during a tournament."}, room_id)
-        self.game_end(dict(), room_id)
-
-    def play_tournament_game(self, black, white, timelimit):
-        self.loop.call_soon_threadsafe(self._play_tournament_game, black, white, timelimit)
-
-    def play_next_game(self):
-        if not self.game_queue.empty():
-            self.play_tournament_game(*self.game_queue.get_nowait())
-
-    def _play_tournament_game(self, black, white, timelimit):
-        log.info("Playing next game: {} v {}".format(black, white))
-        new_id = generate_id()
-        # extremely low chance to block, ~~we take those~~
-        while new_id in self.rooms: new_id = generate_id()
-        room = Room()
-        room.id = new_id
-        self.rooms[new_id] = room
-        log.debug("Creating new room id {}".format(new_id))
-
-        self.play_game_actual(black, white, timelimit, new_id)
-
-    def game_end(self, parsed_data, room_id):
-        log.debug("Overridded game_end called")
-        # log result
-        board = parsed_data.get('board', "")
-        forfeit = parsed_data.get('forfeit', False)
-        winner = parsed_data.get('winner', '?')
-        black_score = board.count(BLACK)
-        white_score = board.count(WHITE)
-        black_ai = self.rooms[room_id].black_ai
-        white_ai = self.rooms[room_id].white_ai
-
-        with self.results_lock:
-            result = (
-                black_ai, white_ai, black_score, white_score, winner, int(forfeit),
-            )
-
-            self.results.append(result)
-
-        log.debug("Added to results: {}".format(result))
-
-        super().game_end(parsed_data, room_id)
-
-        # handle putting new games into queue, if necessary
-        self.check_game_queue()
-
-    def tournament_end(self):
-        log.info("Tournament completed! Returning results...")
-        self.loop.call_soon_threadsafe(self.completed_callback, self.results, self.results_lock)
-
-class RRTournamentScheduler(TournamentScheduler):
-    def populate_game_queue(self):
-        for black, white in itertools.permutations(self.ai_list, 2):
-            self.add_new_game(black, white)
-    
-    def check_game_queue(self):
-        if self.game_queue.empty():
-            self.tournament_end()
-        else:
-            self.play_next_game()
-
-class BracketTournamentScheduler(TournamentScheduler):
-    pass
