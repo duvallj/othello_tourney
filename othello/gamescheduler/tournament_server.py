@@ -14,7 +14,6 @@ from .othello_core import BLACK, WHITE, EMPTY
 
 log = logging.getLogger(__name__)
 
-
 class TournamentScheduler(GameScheduler):
     """
     A subclass that doesn't allow anyone to make new games, and
@@ -37,10 +36,11 @@ class TournamentScheduler(GameScheduler):
     Using add_new_game to add new games to the game queue
     """
 
-    def __init__(self, loop, completed_callback, ai_list, timelimit, max_games=2):
+    def __init__(self, loop, completed_callback=lambda *x:None, record_callback=lambda *y:None, ai_list=[], timelimit=5, max_games=2):
         super().__init__(loop)
 
         self.completed_callback = completed_callback
+        self.record_callback = record_callback
         self.ai_list = ai_list
         self.timelimit = timelimit
         self.max_games = max_games
@@ -135,7 +135,7 @@ class RRTournamentScheduler(TournamentScheduler):
         for black, white in itertools.permutations(self.ai_list, 2):
             self.add_new_game(black, white)
         
-        for x in range(self.num_games):
+        while self.num_games < self.max_games and not self.game_queue.empty():
             self.play_next_game()
     
     def check_game_queue(self):
