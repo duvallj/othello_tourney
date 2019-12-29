@@ -64,7 +64,6 @@ db.sqlite3
 ion_secret.py
 # Or student files
 students/
-students-2017-18/
-students-2018-19/
+students*/
 # Or the firejail profile (differs by machine :/ ah well)
 python-custom.profile

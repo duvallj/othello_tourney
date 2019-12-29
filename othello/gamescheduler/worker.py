@@ -5,10 +5,11 @@ import multiprocessing as mp
 import subprocess
 import time
 from threading import Lock
+from queue import Empty
 
 from .run_ai_utils import JailedRunnerCommunicator
 from .othello_admin import Strategy
-from .othello_core import BLACK, WHITE, EMPTY
+from .othello_core import BLACK, WHITE, EMPTY, OUTER
 from .utils import get_possible_strats
 from .settings import OTHELLO_AI_HUMAN_PLAYER
 
@@ -36,8 +37,9 @@ class GameRunner:
     def run(self, in_q):
         """
         Main loop used to run the game in.
-        Does not have multiprocess support yet.
+        Does not have multiprocess support, expects to be run inside a thread
         """
+        # NOTE: on any exit from this function, you MUST call self.cleanup()
         log.debug("GameRunner started to run {} vs {} ({})".format(
             self.black,
             self.white,
@@ -143,10 +145,24 @@ class GameRunner:
         })
 
         log.debug("Game over, exiting...")
-        self.cleanup()
+        self.cleanup(False)
 
 
-    def cleanup(self):
+    def cleanup(self, messy_end=True):
+        # NOTE: putting this in here b/c otherwise, caller doesn't know we
+        # errored in a wierd place
+        if messy_end:
+            self.emit({
+                "type": "game.error",
+                "error": "GameRunner Thread asking to be cleaned up"
+            })
+            self.emit({
+                "type": "game.end",
+                "winner": OUTER,
+                "board": "",
+                "forfeit": False
+            })
+
         if getattr(self.strats.get(BLACK, None), "stop", False):
             self.strats[BLACK].stop()
             log.debug("successfully stopped BLACK jailed runner")
@@ -170,7 +186,19 @@ class GameRunner:
         errs = None
         if strat is None:
             self.emit({"type":"move.request"})
-            move = in_q.get()
+            waiting_for_move = True
+            move = None
+            # Using a timeout on the move queue so we can detect
+            # if we are supposed to stop while we are waiting for the move
+            while waiting_for_move:
+                try:
+                    move = in_q.get(timeout=1)
+                    waiting_for_move = False
+                except Empty:
+                    with self.do_quit_lock:
+                        if self.do_quit:
+                            self.cleanup()
+                            return
         else:
             move, errs = strat.get_move(board, player, self.timelimit)
 

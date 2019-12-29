@@ -61,9 +61,13 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     async def disconnect(self, close_data):
         """
         Should be called when the websocket closes for any reason.
-        In reality, there are a few edge cases where it doesn't. See
+        I really, really hope this is true.
         """
         log.debug("{} disconnect {}".format(self.room_id, close_data))
+
+        self.handle_incoming({
+            "type": "disconnect"
+        })
         self.transport.close()
 
     async def handle_outgoing(self, data):

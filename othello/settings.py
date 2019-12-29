@@ -123,7 +123,7 @@ LOGGING = {
         'othello': {
             'handlers': ['console', 'file'],
             # DEVEL: might want to set this to 'DEBUG' sometimes
-            'level': 'INFO',
+            'level': 'DEBUG',
             'propagate': True,
         },
     },

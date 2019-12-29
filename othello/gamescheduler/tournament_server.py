@@ -144,6 +144,19 @@ class RRTournamentScheduler(TournamentScheduler):
         else:
             self.play_next_game()
 
+def SetTournamentScheduler(TournamentScheduler):
+    def __init__(self, *args, **kwargs, sets=[]): 
+        super.__init__(*args, **kwargs)
+
+        self.sets = sets
+        for i in range(len(self.sets)):
+            self.sets[i].num = i
+
+    def populate_game_queue(self):
+        pass
+
+    def check_game_queue(self):
+        pass
 
 class BracketTournamentScheduler(TournamentScheduler):
     def populate_game_queue(self):

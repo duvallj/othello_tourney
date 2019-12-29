@@ -141,6 +141,16 @@ def create_single_elim_bracket(ai_list):
     """
     pass
 
+def create_round_robin(ai_list):
+    """
+    Identical to above, only creates a round-robin tournament instead.
+    """
+    output = []
+    for black, white in itertools.combinations(self.ai_list, 2):
+        output.append(SetData(black, white))
+
+    return output
+
 class ResultsCSVWriter:
     """
     A class that writes tournament results (list of SetData objects) to a CSV file
@@ -149,7 +159,7 @@ class ResultsCSVWriter:
         self.sets_filename = name+"_sets.csv"
         self.games_filename = name+"_games.csv"
         
-    def write(self, results):
+    def write(self, sets_results):
         with open(self.sets_filename, "w") as sfout, \
                 open(self.games_filename, "w") as gfout:
             sfout.write("Set_Num,Black,Black_From_Set,White,White_From_Set,Winner,Winner_Set,Loser_Set\n")

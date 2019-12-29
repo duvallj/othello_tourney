@@ -70,7 +70,7 @@ class GameScheduler(asyncio.Protocol):
         log.debug("Assigning room id {}".format(new_id))
         transport.write((new_id+'\n').encode('utf-8'))
 
-    def gamerunner_callback(self, event):
+    def gamerunner_emit_callback(self, event):
         log.debug("Got data from subprocess: {}".format(event))
         msg_type = event.get('type', None)
         room_id = event.get('room_id', None)
@@ -153,6 +153,8 @@ class GameScheduler(asyncio.Protocol):
                 self.watch_game(parsed_data, room_id)
             elif msg_type == 'movereply':
                 self.move_reply(parsed_data, room_id)
+            elif msg_type == 'disconnect':
+                self.game_end(parsed_data, room_id)
 
     def eof_received(self):
         log.debug("Received EOF")
@@ -183,7 +185,7 @@ class GameScheduler(asyncio.Protocol):
 
     def play_game_actual(self, black_ai, white_ai, timelimit, room_id):
         game = GameRunner(black_ai, white_ai, timelimit, \
-            self.loop, room_id, self.gamerunner_callback)
+            self.loop, room_id, self.gamerunner_emit_callback)
         q = queue.Queue()
         executor = ThreadPoolExecutor()
 
@@ -282,7 +284,6 @@ class GameScheduler(asyncio.Protocol):
                 self.rooms[room_id].game.do_quit = True
             self.rooms[room_id].task.cancel()
             self.rooms[room_id].executor.shutdown(wait=True)
-            #self.rooms[room_id].game.cleanup() # shouldn't be necessary, already gets called
 
         if self.rooms[room_id].transport:
             self.rooms[room_id].transport.close()
