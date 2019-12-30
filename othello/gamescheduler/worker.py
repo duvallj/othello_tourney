@@ -172,7 +172,7 @@ class GameRunner:
 
     # just in case of wonkiness
     def __del__(self):
-        self.cleanup()
+        self.cleanup(False)
 
     def do_game_tick(self, in_q, core, board, player, names):
         """

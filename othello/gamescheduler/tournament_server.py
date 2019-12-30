@@ -11,6 +11,7 @@ import itertools
 from .server import Room, GameScheduler
 from .utils import generate_id
 from .othello_core import BLACK, WHITE, EMPTY
+from .tournament_utils import GameData
 
 log = logging.getLogger(__name__)
 
@@ -51,8 +52,12 @@ class TournamentScheduler(GameScheduler):
         self.results_lock = Lock()
 
         # populate queue with initial matchups to play
-        # Should also start to play games on its own
         self.populate_game_queue()
+        
+        # Take care of starting games ourself, because this is done way too
+        # often otherwise
+        while self.num_games < self.max_games and not self.game_queue.empty():
+            self.play_next_game()
 
     def add_new_game(self, black, white, timelimit=None):
         if timelimit is None:
@@ -103,6 +108,10 @@ class TournamentScheduler(GameScheduler):
     def game_end(self, parsed_data, room_id):
         log.debug("Overridded game_end called")
         # log result
+        if room_id not in self.rooms:
+            log.warn("Tried to end room {}, which might've already ended".format(room_id))
+            return
+
         board = parsed_data.get('board', "")
         forfeit = parsed_data.get('forfeit', False)
         winner = parsed_data.get('winner', EMPTY)
@@ -110,6 +119,10 @@ class TournamentScheduler(GameScheduler):
         white_score = board.count(WHITE)
         black_ai = self.rooms[room_id].black_ai
         white_ai = self.rooms[room_id].white_ai
+
+        if black_ai is None or white_ai is None:
+            log.debug("Ignoring room with blank AI...")
+            return
 
         with self.results_lock:
             result = (
@@ -125,6 +138,9 @@ class TournamentScheduler(GameScheduler):
 
         # handle putting new games into queue, if necessary
         self.check_game_queue()
+        
+        while self.num_games < self.max_games and not self.game_queue.empty():
+            self.play_next_game()
 
     def tournament_end(self):
         log.info("Tournament completed! Returning results...")
@@ -133,10 +149,7 @@ class TournamentScheduler(GameScheduler):
 class RRTournamentScheduler(TournamentScheduler):
     def populate_game_queue(self):
         for black, white in itertools.permutations(self.ai_list, 2):
-            self.add_new_game(black, white)
-        
-        while self.num_games < self.max_games and not self.game_queue.empty():
-            self.play_next_game()
+            self.add_new_game(black, white)     
     
     def check_game_queue(self):
         if self.game_queue.empty():
@@ -144,19 +157,115 @@ class RRTournamentScheduler(TournamentScheduler):
         else:
             self.play_next_game()
 
-def SetTournamentScheduler(TournamentScheduler):
-    def __init__(self, *args, **kwargs, sets=[]): 
-        super.__init__(*args, **kwargs)
-
+class SetTournamentScheduler(TournamentScheduler):
+    def __init__(self, *args, sets=[], games_per_set=1, **kwargs):
         self.sets = sets
+        self.games_per_set = games_per_set 
+        self.currently_playing = set()
+
         for i in range(len(self.sets)):
             self.sets[i].num = i
+        
+        super().__init__(*args, **kwargs)
+    
+    def play_next_set(self, next_set_index):
+        if next_set_index in self.currently_playing:
+            return
 
+        next_set = self.sets[next_set_index]
+
+        if not (next_set.black_from_set is None):
+            black_prev_set = next_set.black_from_set
+            winner = black_prev_set.get_overall_winner()
+            # TODO: Consider using some other method besides direct object
+            # comparison to tell if two sets are the same
+            if black_prev_set.winner_set == next_set:
+                if winner == WHITE:
+                    next_set.black = black_prev_set.white
+                else:
+                    # I guess this is kind of like a tiebreaker,
+                    # black continues if previous set was a tie?
+                    # idk, tie handling is hard
+                    next_set.black = black_prev_set.black
+
+            elif black_prev_set.loser_set == next_set:
+                if winner == WHITE:
+                    next_set.black = black_prev_set.black
+                else:
+                    next_set.black = black_prev_set.white
+            else:
+                log.warn("Set {}'s black previous set ({}) does not have a pointer to it".format(next_set_index, black_prev_set.num))
+
+        if not (next_set.white_from_set is None):
+            white_prev_set = next_set.white_from_set
+            winner = white_prev_set.get_overall_winner()
+            # TODO: Consider using some other method besides direct object
+            # comparison to tell if two sets are the same
+            if white_prev_set.winner_set == next_set:
+                if winner == WHITE:
+                    next_set.white = white_prev_set.white
+                else:
+                    next_set.white = white_prev_set.black
+
+            elif white_prev_set.loser_set == next_set:
+                if winner == WHITE:
+                    next_set.white = white_prev_set.black
+                else:
+                    next_set.white = white_prev_set.white
+            else:
+                log.warn("Set {}'s white previous set ({}) does not have a pointer to it".format(next_set_index, white_prev_set.num))
+
+        for g in range(self.games_per_set):
+            self.add_new_game(next_set.black, next_set.white)
+            self.add_new_game(next_set.white, next_set.black)
+       
+        self.currently_playing.add(next_set_index)
+
+    # TODO: adapt this to allow checking to see if sets are constructed
+    # incorrectly, i.e. there is no way to finish a tournament because
+    # the results of two games depend on each other somehow
     def populate_game_queue(self):
-        pass
+        all_played = True
+        for i in range(len(self.sets)):
+            s = self.sets[i]
+            all_played = all_played and s.played
+            
+            if s.played or i in self.currently_playing:
+                continue
+
+            black_set_done = (s.black_from_set is None) or (s.black_from_set.played)
+            white_set_done = (s.white_from_set is None) or (s.white_from_set.played)
+
+            if black_set_done and white_set_done: 
+                self.play_next_set(i)
+
+        if all_played:
+            self.tournament_end()
 
     def check_game_queue(self):
-        pass
+        # Use the latest item in results to add game to set
+        black_ai, white_ai, black_score, white_score, winner, forfeit = self.results[-1]
+        game = GameData(black_ai, white_ai)
+        game.black_score = black_score
+        game.white_score = white_score
+        game.winner = winner
+        game.by_forfeit = bool(forfeit)
+
+        for i in self.currently_playing:
+            s = self.sets[i]
+            if (s.black == black_ai and s.white == white_ai) or \
+                    s.black == white_ai and s.white == black_ai:
+                s.add_game(game)
+
+            if len(s.games) >= 2*self.games_per_set:
+                s.played = True
+
+        self.populate_game_queue()
+
+    def tournament_end(self):
+        log.info("SetTournament completed! Returning results...")
+        self.loop.call_soon_threadsafe(self.completed_callback, self.sets, self.results_lock)
+
 
 class BracketTournamentScheduler(TournamentScheduler):
     def populate_game_queue(self):

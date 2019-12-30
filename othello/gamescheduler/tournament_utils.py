@@ -1,4 +1,5 @@
 from asyncio import Future
+import itertools
 
 from .othello_core import BLACK, WHITE, EMPTY
 
@@ -38,6 +39,8 @@ class SetData:
             winner_set=None, loser_set=None):
         # Index of set in list, again set when exporting
         self.num = -1
+        # Flag to see whether or not the set has been played
+        self.played = False
         
         # Should be strings of AIs
         assert(isinstance(black, str))
@@ -59,9 +62,6 @@ class SetData:
         assert(loser_set is None or isinstance(loser_set, SetData))
         self.winner_set = winner_set
         self.loser_set = loser_set
-
-    def __init__(self, game):
-        self.__init__(game.black, game.white)
 
     def add_game(self, game):
         if (game.black != self.black or game.white != self.white) and \
@@ -146,7 +146,7 @@ def create_round_robin(ai_list):
     Identical to above, only creates a round-robin tournament instead.
     """
     output = []
-    for black, white in itertools.combinations(self.ai_list, 2):
+    for black, white in itertools.combinations(ai_list, 2):
         output.append(SetData(black, white))
 
     return output
@@ -159,7 +159,7 @@ class ResultsCSVWriter:
         self.sets_filename = name+"_sets.csv"
         self.games_filename = name+"_games.csv"
         
-    def write(self, sets_results):
+    def write(self, set_results):
         with open(self.sets_filename, "w") as sfout, \
                 open(self.games_filename, "w") as gfout:
             sfout.write("Set_Num,Black,Black_From_Set,White,White_From_Set,Winner,Winner_Set,Loser_Set\n")
@@ -169,7 +169,7 @@ class ResultsCSVWriter:
                 set_results[i].num = i
 
             for s in set_results:
-                sfout.write(f"{s.num},{s.black},{s.black_from_game.num if s.black_from_game else 'None'},{s.white},{s.white_from_game.num if s.white_from_game else 'None'},{s.winner},{s.winner_game.num if s.winner_game else 'None'},{s.loser_game.num if s.loser_game else 'None'}\n")
+                sfout.write(f"{s.num},{s.black},{s.black_from_set.num if s.black_from_set else 'None'},{s.white},{s.white_from_set.num if s.white_from_set else 'None'},{s.get_overall_winner()},{s.winner_set.num if s.winner_set else 'None'},{s.loser_set.num if s.loser_set else 'None'}\n")
                 for game in s.games:
                     gfout.write(f"{game.black},{game.white},{game.black_score},{game.white_score},{game.winner},{game.by_forfeit}\n")
 

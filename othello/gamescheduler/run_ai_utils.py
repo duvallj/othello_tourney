@@ -209,7 +209,7 @@ class JailedRunnerCommunicator:
         # this needs to be .get() in order to block until queue has something,
         # i.e. process is finished. Trusting JailedRunner to always output, but
         # just in case, actually do time out
-        outs = self.proc_stdout.get(timeout=OTHELLO_AI_MAX_TIME+10)
+        outs = self.proc_stdout.get(timeout=timelimit+10)
         log.debug("Got output, reading errors")
         errs2 = []
         last_err_line = ""
