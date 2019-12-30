@@ -13,6 +13,7 @@ Debuggig any of this is not for the faint of heart. Consider yourself warned.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import functools
 import queue
 import logging
 import json
@@ -67,8 +68,9 @@ class GameScheduler(asyncio.Protocol):
         room.id = new_id
         room.transport = transport
         self.rooms[new_id] = room
-        log.debug("Assigning room id {}".format(new_id))
+        log.debug("{} assigning room id".format(new_id))
         transport.write((new_id+'\n').encode('utf-8'))
+        self.check_room_validity(new_id)
 
     def gamerunner_emit_callback(self, event):
         log.debug("Got data from subprocess: {}".format(event))
@@ -91,9 +93,10 @@ class GameScheduler(asyncio.Protocol):
         log.debug("Lost connection")
 
     def _send(self, data, room_id):
+        self.check_room_validity(room_id)
         if type(data) is str:
             data = data.encode('utf-8')
-        log.debug("sending out {} to {}".format(data, room_id))
+        log.debug("{} will receive data {}".format(room_id, data))
 
         # Add newline to seperate out data in case multiple methods become
         # buffered into one message
@@ -101,7 +104,7 @@ class GameScheduler(asyncio.Protocol):
 
         if room_id not in self.rooms:
             # changing to debug b/c this happens so often
-            log.debug("room_id {} does not exist anymore! ignoring b/c probably already killed".format(room_id))
+            log.debug("{} does not exist anymore! ignoring b/c probably already killed".format(room_id))
             return
 
         # don't send to a client that's disconnected
@@ -111,7 +114,7 @@ class GameScheduler(asyncio.Protocol):
                 # Early return because this closes all the watching ones anyway
                 return
             else:
-                log.debug("Writing to transport {}".format(room_id))
+                log.debug("{} writing to transport".format(room_id))
                 self.rooms[room_id].transport.write(data)
 
         for watching_id in self.rooms[room_id].watching:
@@ -120,8 +123,10 @@ class GameScheduler(asyncio.Protocol):
                 if self.rooms[watching_id].transport.is_closing():
                     self.game_end_actual(watching_id)
                 else:
-                    log.debug("Writing to watching transport {}".format(room_id))
+                    log.debug("{} writing to watching transport".format(room_id))
                     self.rooms[watching_id].transport.write(data)
+
+        self.rooms[room_id].watching = [w_id for w_id in self.rooms[room_id].watching if w_id in self.rooms]
 
     def _send_json(self, data, room_id):
         json_data = json.dumps(data)
@@ -162,6 +167,7 @@ class GameScheduler(asyncio.Protocol):
     # From client to server
 
     def list_games(self, parsed_data, room_id):
+        self.check_room_validity(room_id)
         room_list = dict(
             (id, [self.rooms[id].black_ai, self.rooms[id].white_ai, self.rooms[id].timelimit]) \
             for id in self.rooms.keys() \
@@ -171,16 +177,18 @@ class GameScheduler(asyncio.Protocol):
         self._send(list_json, room_id)
 
     def play_game(self, parsed_data, room_id):
+        self.check_room_validity(room_id)
+        
         black_ai = parsed_data.get('black', None)
         white_ai = parsed_data.get('white', None)
         timelimit = parsed_data.get('t', None)
         if black_ai is None or \
           white_ai is None or \
           timelimit is None:
-            log.info("Play request was invalid! ignoring...")
+            log.info("{} Play request was invalid! ignoring...".format(room_id))
             return
 
-        log.info("Playing game: {} v {}".format(black_ai, white_ai))
+        log.info("{} Playing game: {} v {}".format(room_id, black_ai, white_ai))
         self.play_game_actual(black_ai, white_ai, timelimit, room_id)
 
     def play_game_actual(self, black_ai, white_ai, timelimit, room_id):
@@ -196,36 +204,43 @@ class GameScheduler(asyncio.Protocol):
         self.rooms[room_id].queue = q
         self.rooms[room_id].executor = executor
         # here's where the **magic** happens. Tasks should be scheduled to run automatically
-        log.debug("Starting game {} v {} ({}) for room {}".format(
-            black_ai, white_ai, timelimit, room_id
+        log.debug("{} Starting game {} v {} ({})".format(
+            room_id, black_ai, white_ai, timelimit
         ))
         self.rooms[room_id].task = self.loop.run_in_executor(executor, game.run, q)
-
+        self.rooms[room_id].task.add_done_callback(
+                lambda fut: self.game_end(dict(), room_id)
+        )
+        
+        self.check_room_validity(room_id)
 
     def watch_game(self, parsed_data, room_id):
-        log.debug("watch_game from {}".format(room_id))
+        self.check_room_validity(room_id)
+        log.debug("{} watch_game".format(room_id))
         id_to_watch = parsed_data.get('watching', None)
         if id_to_watch is None:
-            log.info("Watch request was invalid! ignoring...")
+            log.info("{} Watch request was invalid! ignoring...".format(room_id))
             return
         if id_to_watch not in self.rooms:
-            log.warn("Client wants to watch game {}, but it doesn't exist!".format(id_to_watch))
+            log.warn("{} wants to watch game {}, but it doesn't exist!".format(room_id, id_to_watch))
             return
 
         self.rooms[id_to_watch].watching.append(room_id)
 
     def move_reply(self, parsed_data, room_id):
+        self.check_room_validity(room_id)
         if self.rooms[room_id].queue:
             move = parsed_data.get('move', -1)
             log.debug("{} move_reply {}".format(room_id, move))
             self.rooms[room_id].queue.put_nowait(move)
         else:
             # don't have a queue to put in to
-            log.warn("Room {} has no queue to put move {} into!".format(room_id, parsed_data))
+            log.warn("{} has no queue to put move {} into!".format(room_id, parsed_data))
 
     # From GameRunner to server
 
     def board_update(self, event, room_id):
+        self.check_room_validity(room_id)
         """
         Called when there is an update on the board
         that we need to send to the client
@@ -241,6 +256,7 @@ class GameScheduler(asyncio.Protocol):
         }, room_id)
 
     def move_request(self, event, room_id):
+        self.check_room_validity(room_id)
         """
         Called when the game wants the user to input a move.
         Sends out a similar call to the client
@@ -249,6 +265,7 @@ class GameScheduler(asyncio.Protocol):
         self._send_json({'type':"moverequest"}, room_id)
 
     def game_error(self, event, room_id):
+        self.check_room_validity(room_id)
         """
         Called whenever the AIs/server errors out for whatever reason.
         Could be used in place of game_end
@@ -261,6 +278,7 @@ class GameScheduler(asyncio.Protocol):
         # game_end is called after this, no need to ternimate room just yet
 
     def game_end(self, event, room_id):
+        self.check_room_validity(room_id)
         """
         Called when the game has ended, tells client that message too.
         Really should log the result but doesn't yet.
@@ -273,22 +291,70 @@ class GameScheduler(asyncio.Protocol):
             'board': event.get('board', ""),
         }, room_id)
         self.game_end_actual(room_id)
+   
+    # General utility methods
 
     def game_end_actual(self, room_id):
-        log.debug("attempting to end {}".format(room_id))
+        log.debug("{} attempting to end".format(room_id))
         if room_id not in self.rooms: return
-        log.debug("actually ending {}".format(room_id))
+        log.debug("{} actually ending".format(room_id))
 
         if self.rooms[room_id].game:
+            log.debug("{} setting do_quit to True".format(room_id))
             with self.rooms[room_id].game.do_quit_lock:
                 self.rooms[room_id].game.do_quit = True
+            log.debug("{} cancelling task".format(room_id))
             self.rooms[room_id].task.cancel()
+            log.debug("{} shutting down executor".format(room_id))
             self.rooms[room_id].executor.shutdown(wait=True)
 
+        log.debug("{} shutting down transport?".format(room_id))
         if self.rooms[room_id].transport:
+            log.debug("{} yes, shutting down transport".format(room_id))
             self.rooms[room_id].transport.close()
         # avoiding any cylcical bs
         watching = self.rooms[room_id].watching.copy()
         del self.rooms[room_id]
         for watching_id in watching:
             self.game_end_actual(watching_id)
+
+    def check_room_validity(self, room_id):
+        if room_id not in self.rooms:
+            log.debug("{} wasn't in self.rooms!".format(room_id))
+        # Basic typing checks
+        room = self.rooms[room_id]
+        assert(room.id == room_id)
+        assert(room.black_ai is None or isinstance(room.black_ai, str))
+        assert(room.white_ai is None or isinstance(room.white_ai, str))
+        assert(isinstance(room.timelimit, float) or isinstance(room.timelimit, int))
+        assert(isinstance(room.watching, list))
+        #for w_id in room.watching:
+        #    assert(w_id in self.rooms)
+        assert(room.transport is None or isinstance(room.transport, asyncio.BaseTransport))
+        assert(room.game is None or isinstance(room.game, GameRunner))
+        assert(room.queue is None or isinstance(room.queue, queue.Queue))
+        assert(room.executor is None or isinstance(room.executor, ThreadPoolExecutor))
+        assert(room.task is None or isinstance(room.task, asyncio.Future))
+
+        # Extra checks if game is created:
+        if not (room.game is None):
+            # Make sure everything is defined
+            assert(not (room.black_ai is None))
+            assert(not (room.white_ai is None))
+            assert(not (room.queue is None))
+            assert(not (room.executor is None))
+            assert(not (room.task is None))
+
+            # Checks to make sure things are shutting down correctly
+            with room.game.do_quit_lock:
+                if room.game.do_quit:
+                    assert(room.task.done())
+                    assert(room.transport is None or room.transport.is_closing())
+                
+                if room.task.done():
+                    assert(room.game.do_quit)
+                    assert(room.transport is None or room.transport.is_closing())
+
+                if not (room.transport is None) and room.transport.is_closing():
+                    assert(room.game.do_quit)
+                    assert(room.task.done())

@@ -2,6 +2,7 @@ import logging
 import sys, os, io
 import shlex, traceback
 from threading import Event
+from queue import Empty
 import multiprocessing as mp
 import subprocess
 import time
@@ -209,7 +210,12 @@ class JailedRunnerCommunicator:
         # this needs to be .get() in order to block until queue has something,
         # i.e. process is finished. Trusting JailedRunner to always output, but
         # just in case, actually do time out
-        outs = self.proc_stdout.get(timeout=timelimit+10)
+        outs = ""
+        try:
+            outs = self.proc_stdout.get(timeout=timelimit+10)
+        except Empty:
+            log.warn("Timed out reading from subprocess!")
+
         log.debug("Got output, reading errors")
         errs2 = []
         last_err_line = ""

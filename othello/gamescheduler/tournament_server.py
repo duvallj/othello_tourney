@@ -10,7 +10,7 @@ import itertools
 
 from .server import Room, GameScheduler
 from .utils import generate_id
-from .othello_core import BLACK, WHITE, EMPTY
+from .othello_core import BLACK, WHITE, EMPTY, OUTER
 from .tournament_utils import GameData
 
 log = logging.getLogger(__name__)
@@ -77,12 +77,9 @@ class TournamentScheduler(GameScheduler):
 
     def play_game(self, parsed_data, room_id):
         # send an error message back telling them they can't play
-        log.warn("Client {} tried to play during a tournament".format(room_id))
+        log.warn("{} tried to play during a tournament".format(room_id))
         self.game_error({'error': "You cannot start a game during a tournament."}, room_id)
         self.game_end(dict(), room_id)
-
-    def play_tournament_game(self, black, white, timelimit):
-        self.loop.call_soon_threadsafe(self._play_tournament_game, black, white, timelimit)
 
     def play_next_game(self):
         if not self.game_queue.empty():
@@ -92,29 +89,30 @@ class TournamentScheduler(GameScheduler):
             if self.num_games > self.max_games:
                 log.warn("Playing more games at a time than allowed...")
 
+    def play_tournament_game(self, black, white, timelimit):
+        self.loop.call_soon_threadsafe(self._play_tournament_game, black, white, timelimit)
 
     def _play_tournament_game(self, black, white, timelimit):
-        log.info("Playing next game: {} v {}".format(black, white))
         new_id = generate_id()
         # extremely low chance to block, ~~we take those~~
         while new_id in self.rooms: new_id = generate_id()
+        log.info("{} playing next game: {} v {}".format(new_id, black, white))
         room = Room()
         room.id = new_id
         self.rooms[new_id] = room
-        log.debug("Creating new room id {}".format(new_id))
-
+        log.debug("{} starting to play".format(new_id))
         self.play_game_actual(black, white, timelimit, new_id)
 
     def game_end(self, parsed_data, room_id):
         log.debug("Overridded game_end called")
         # log result
         if room_id not in self.rooms:
-            log.warn("Tried to end room {}, which might've already ended".format(room_id))
+            log.warn("{} tried to end room, which might've already ended".format(room_id))
             return
 
         board = parsed_data.get('board', "")
         forfeit = parsed_data.get('forfeit', False)
-        winner = parsed_data.get('winner', EMPTY)
+        winner = parsed_data.get('winner', OUTER)
         black_score = board.count(BLACK)
         white_score = board.count(WHITE)
         black_ai = self.rooms[room_id].black_ai

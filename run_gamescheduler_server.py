@@ -8,6 +8,7 @@ LOGGING_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s %(mess
 LOGGING_LEVEL = logging.DEBUG
 LOGGING_HANDLERS = [
     logging.StreamHandler(),
+    logging.FileHandler('gs.log',mode='w'),
 ]
 for handler in LOGGING_HANDLERS:
     handler.setFormatter(LOGGING_FORMATTER)

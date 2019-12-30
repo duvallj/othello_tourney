@@ -21,10 +21,10 @@ for handler in LOGGING_HANDLERS:
     log.addHandler(handler)
 log.setLevel(LOGGING_LEVEL)
 
-TOURNAMENT_NUM = 5
+TOURNAMENT_NUM = 7
 TOURNAMENT_TIMELIMIT = 5
-TOURNAMENT_GAMES = 10
-AI_LIST = list(get_possible_strats())[:5]
+TOURNAMENT_GAMES = 15
+AI_LIST = list(get_possible_strats())[:12]
 SET_LIST = create_round_robin(AI_LIST)
 TOURNAMENT_FILE = os.path.join(PROJECT_ROOT, 'tournament-{}'.format(TOURNAMENT_NUM))
 

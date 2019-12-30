@@ -28,6 +28,7 @@ class GameRunner:
         self.strats = dict()
         self.do_quit = False
         self.do_quit_lock = Lock()
+        self.has_cleanuped = False
 
     def emit(self, data):
         log.debug("GameRunner emmitting {}".format(data))
@@ -35,6 +36,15 @@ class GameRunner:
         self.loop.call_soon_threadsafe(self.emit_callback, data)
 
     def run(self, in_q):
+        try:
+            self._run(in_q)
+        except:
+            log.error(traceback.format_exc())
+        finally:
+            log.debug("Cleaning up after _run")
+            self.cleanup()
+
+    def _run(self, in_q):
         """
         Main loop used to run the game in.
         Does not have multiprocess support, expects to be run inside a thread
@@ -95,6 +105,7 @@ class GameRunner:
         # first check to see if we should still emit
         with self.do_quit_lock:
             if self.do_quit:
+                log.debug("Quitting early")
                 self.cleanup()
                 return
 
@@ -113,6 +124,7 @@ class GameRunner:
             # another check before each tick
             with self.do_quit_lock:
                 if self.do_quit:
+                    log.debug("Quitting while running game")
                     self.cleanup()
                     return
             player, board, forfeit = self.do_game_tick(in_q, core, board, player, names)
@@ -127,6 +139,7 @@ class GameRunner:
         # final check before game ends (just in case ya know)
         with self.do_quit_lock:
             if self.do_quit:
+                log.debug("Quit at final check")
                 self.cleanup()
                 return
 
@@ -151,7 +164,7 @@ class GameRunner:
     def cleanup(self, messy_end=True):
         # NOTE: putting this in here b/c otherwise, caller doesn't know we
         # errored in a wierd place
-        if messy_end:
+        if messy_end and not self.has_cleanuped:
             self.emit({
                 "type": "game.error",
                 "error": "GameRunner Thread asking to be cleaned up"
@@ -169,6 +182,8 @@ class GameRunner:
         if getattr(self.strats.get(WHITE, None), "stop", False):
             self.strats[WHITE].stop()
             log.debug("successfully stopped WHITE jailed runner")
+
+        self.has_cleanuped = True
 
     # just in case of wonkiness
     def __del__(self):
@@ -197,15 +212,22 @@ class GameRunner:
                 except Empty:
                     with self.do_quit_lock:
                         if self.do_quit:
+                            log.debug("Quitting in middle of waiting for move")
                             self.cleanup()
                             return
         else:
             move, errs = strat.get_move(board, player, self.timelimit)
 
+        if errs:
+            self.emit({
+                'type': "game.error",
+                'error': "{} error on board {}:\n{}\n".format(names[player], ''.join(board), errs)
+            })
+
         if not core.is_legal(move, player, board):
             self.emit({
                 'type': "game.error",
-                'error': "{}: {} is an invalid move for board {}\nMore info:\n{}".format(names[player], move, ''.join(board), errs)
+                'error': "{}: {} is an invalid move for board {}\n".format(names[player], move, ''.join(board))
             })
             return player, board, True
 
