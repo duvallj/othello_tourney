@@ -14,7 +14,9 @@ mainly handled by django_channels
 
 Steps 1-4 communicate exclusively with JSON "packets". The format of one of
 these packets is listed below:
-<TODO>
+
+*TODO* (if you turn on debug logging and play a game, you will be able to see 
+the packets yourself in the log)
 
 1.  django_channels
   * Handles incomming connections to Websocket
