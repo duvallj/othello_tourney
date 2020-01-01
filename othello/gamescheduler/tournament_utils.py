@@ -43,8 +43,8 @@ class SetData:
         self.played = False
         
         # Should be strings of AIs
-        assert(isinstance(black, str))
-        assert(isinstance(white, str))
+        assert(black is None or isinstance(black, str))
+        assert(white is None or isinstance(white, str))
         self.black = black
         self.white = white
 
@@ -129,6 +129,62 @@ class SetData:
                     return EMPTY
 
 
+# Allows adding player v player, player v winner of set, or winners of sets together
+def add_to_sets(set_list, black_item, white_item, black_winner=True, white_winner=True):
+    if isinstance(black_item, SetData):
+        if isinstance(white_item, SetData):
+            new_set = SetData(None, None, black_from_set=black_item, white_from_set=white_item)
+            
+            if black_winner:
+                black_item.winner_set = new_set
+            else:
+                black_item.loser_set = new_set
+            if white_winner:
+                white_item.winner_set = new_set
+            else:
+                white_item.loser_set = new_set
+            
+            set_list.append(new_set)
+        else:
+            new_set = SetData(None, white_item, black_from_set=black_item)
+            
+            if black_winner:
+                black_item.winner_set = new_set
+            else:
+                black_item.loser_set = new_set
+            
+            set_list.append(new_set)
+    else:
+        if isinstance(white_item, SetData):
+            new_set = SetData(black_item, None, white_from_set=white_item)
+            
+            if white_winner:
+                white_item.winner_set = new_set
+            else:
+                white_item.loser_set = new_set
+            
+            set_list.append(new_set)
+        else:
+            set_list.append(SetData(black_item, white_item))
+
+def create_single_elim_round_helper(set_list):
+    out_sets = []
+    if len(set_list) % 2 == 0:
+        for i in range(len(set_list)//2):
+            set1 = set_list[i]
+            set2 = set_list[len(set_list)-i-1]
+            add_to_sets(out_sets, set1, set2)
+    # If we have an odd number, let the first seed have a bye
+    else:
+        for i in range(1, len(set_list)//2+1):
+            set1 = set_list[i]
+            set2 = set_list[len(set_list)-i]
+            add_to_sets(out_sets, set1, set2)
+        # This is equivalent to a bye b/c their game is included in the next round
+        out_sets.append(set_list[0])
+
+    return out_sets
+
 def create_single_elim_bracket(ai_list):
     """
     Arguments:
@@ -139,7 +195,19 @@ def create_single_elim_bracket(ai_list):
         A list of sets that need to be played, two games for each (one for
         each AI starting)
     """
-    pass
+    if len(ai_list) <= 1:
+        return []
+
+    overall_sets = []
+    current_sets = ai_list
+    next_sets = []
+    
+    while len(current_sets) > 1:
+        next_sets = create_single_elim_round_helper(current_sets)
+        overall_sets.extend(next_sets)
+        current_sets = next_sets
+
+    return overall_sets
 
 def create_round_robin(ai_list):
     """
