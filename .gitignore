@@ -65,5 +65,8 @@ ion_secret.py
 # Or student files
 students/
 students*/
+# Or the tournament rankings
+tournament*.csv
+round*-rankings.txt
 # Or the firejail profile (differs by machine :/ ah well)
 python-custom.profile

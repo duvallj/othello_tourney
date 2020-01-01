@@ -151,6 +151,17 @@ def create_round_robin(ai_list):
 
     return output
 
+def create_everyone_vs(ai_list, who="random"):
+    """
+    Matches everyone against a baseline player (usually random)
+    """
+    output = []
+    for black in ai_list:
+        if black != who:
+            output.append(SetData(black, who))
+
+    return output
+
 class ResultsCSVWriter:
     """
     A class that writes tournament results (list of SetData objects) to a CSV file

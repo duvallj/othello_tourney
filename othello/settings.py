@@ -32,7 +32,7 @@ PROJECT_ROOT = BASE_DIR
 #SECRET_KEY = ""
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEVEL: change this to true
-DEBUG = True
+DEBUG = False
 
 # DEVEL: change this if necessary
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "127.0.0.3", "othello.tjhsst.edu"]
@@ -176,7 +176,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # DEVEL: set this to False
-SOCIAL_AUTH_REDIRECT_IS_HTTPS = False 
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 
 AUTH_USER_MODEL = "users.User"
 

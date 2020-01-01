@@ -11,7 +11,7 @@ import itertools
 from .server import Room, GameScheduler
 from .utils import generate_id
 from .othello_core import BLACK, WHITE, EMPTY, OUTER
-from .tournament_utils import GameData
+from .tournament_utils import GameData, SetData
 
 log = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class TournamentScheduler(GameScheduler):
 
         # handle putting new games into queue, if necessary
         self.check_game_queue()
-        
+
         while self.num_games < self.max_games and not self.game_queue.empty():
             self.play_next_game()
 
@@ -147,8 +147,8 @@ class TournamentScheduler(GameScheduler):
 class RRTournamentScheduler(TournamentScheduler):
     def populate_game_queue(self):
         for black, white in itertools.permutations(self.ai_list, 2):
-            self.add_new_game(black, white)     
-    
+            self.add_new_game(black, white)
+
     def check_game_queue(self):
         if self.game_queue.empty():
             self.tournament_end()
@@ -158,14 +158,14 @@ class RRTournamentScheduler(TournamentScheduler):
 class SetTournamentScheduler(TournamentScheduler):
     def __init__(self, *args, sets=[], games_per_set=1, **kwargs):
         self.sets = sets
-        self.games_per_set = games_per_set 
+        self.games_per_set = games_per_set
         self.currently_playing = set()
 
         for i in range(len(self.sets)):
             self.sets[i].num = i
-        
+
         super().__init__(*args, **kwargs)
-    
+
     def play_next_set(self, next_set_index):
         if next_set_index in self.currently_playing:
             return
@@ -216,7 +216,7 @@ class SetTournamentScheduler(TournamentScheduler):
         for g in range(self.games_per_set):
             self.add_new_game(next_set.black, next_set.white)
             self.add_new_game(next_set.white, next_set.black)
-       
+
         self.currently_playing.add(next_set_index)
 
     # TODO: adapt this to allow checking to see if sets are constructed
@@ -227,14 +227,14 @@ class SetTournamentScheduler(TournamentScheduler):
         for i in range(len(self.sets)):
             s = self.sets[i]
             all_played = all_played and s.played
-            
+
             if s.played or i in self.currently_playing:
                 continue
 
             black_set_done = (s.black_from_set is None) or (s.black_from_set.played)
             white_set_done = (s.white_from_set is None) or (s.white_from_set.played)
 
-            if black_set_done and white_set_done: 
+            if black_set_done and white_set_done:
                 self.play_next_set(i)
 
         if all_played:
@@ -249,6 +249,7 @@ class SetTournamentScheduler(TournamentScheduler):
         game.winner = winner
         game.by_forfeit = bool(forfeit)
 
+        new_currently_playing = self.currently_playing.copy()
         for i in self.currently_playing:
             s = self.sets[i]
             if (s.black == black_ai and s.white == white_ai) or \
@@ -257,12 +258,66 @@ class SetTournamentScheduler(TournamentScheduler):
 
             if len(s.games) >= 2*self.games_per_set:
                 s.played = True
+                new_currently_playing.remove(i)
+
+        self.currently_playing = new_currently_playing
 
         self.populate_game_queue()
 
     def tournament_end(self):
         log.info("SetTournament completed! Returning results...")
         self.loop.call_soon_threadsafe(self.completed_callback, self.sets, self.results_lock)
+
+class SwissTournamentScheduler(SetTournamentScheduler):
+    def __init__(self, *args, rounds=8, **kwargs):
+        self.rounds = rounds
+        self.current_round = 0
+        self.num_wins = dict()
+
+        self.last_recorded_index = 0
+
+        super().__init__(*args, **kwargs)
+
+    def populate_game_queue(self):
+        # First, check if the current round is over
+        all_played = True
+        for i in range(len(self.sets)):
+            s = self.sets[i]
+            if not s.played:
+                all_played = False
+                break
+
+        # If it is, go to the next round
+        if all_played and self.current_round < self.rounds:
+
+            # First, calculate number of wins each AI has
+            for i in range(self.last_recorded_index, len(self.sets)):
+                s = self.sets[i]
+                winner = s.get_overall_winner()
+                if winner == BLACK:
+                    black_wins = self.num_wins.get(s.black, 0)
+                    self.num_wins[s.black] = black_wins + 1
+                elif winner == WHITE:
+                    white_wins = self.num_wins.get(s.white, 0)
+                    self.num_wins[s.white] = white_wins + 1
+
+            self.last_recorded_index = len(self.sets)
+            # Sort by number of wins
+            ranking = sorted(self.ai_list, key=lambda ai: -self.num_wins.get(ai, 0))
+            for i in range(0, len(ranking), 2):
+                black = ranking[i]
+                if i+1 >= len(ranking):
+                    white = "random" # lowest player gets equivalent of a "bye"
+                else:
+                    white = ranking[i+1]
+
+                # TODO: This doesn't record all the information I would like, i.e.
+                # the set each person came from, but this should do for now
+                self.sets.append(SetData(black, white))
+            
+            self.current_round += 1
+        
+        super().populate_game_queue()
 
 
 class BracketTournamentScheduler(TournamentScheduler):
@@ -319,7 +374,7 @@ class BracketTournamentScheduler(TournamentScheduler):
                 white_diff = self.differential_dict.get(white_ai, 0)
                 self.differential_dict[black_ai] = black_diff + black_score - white_score
                 self.differential_dict[white_ai] = white_diff + white_score - black_score
-            
+
             self.last_result_recorded += 1
             log.debug("Result of {} vs {} recorded".format(black_ai, white_ai))
 
