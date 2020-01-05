@@ -11,45 +11,46 @@ import itertools
 from .server import Room, GameScheduler
 from .utils import generate_id
 from .othello_core import BLACK, WHITE, EMPTY, OUTER
-from .tournament_utils import GameData, SetData
+from ..apps.tournament.models import GameModel, SetModel, MoveModel
+from ..apps.tournament.models import add_game_to_set, calc_set_winner, \
+    get_player, create_set
 
 log = logging.getLogger(__name__)
 
-class TournamentScheduler(GameScheduler):
+class AutomaticGameScheduler(GameScheduler):
     """
     A subclass that doesn't allow anyone to make new games, and
     is instead started with a list of initial games to start running.
-    Logs results of tournament to CSV file for easy processing,
-    either by Django shell or other method.
     """
 
     """
     Methods needed to be implemented by the subclass:
-      * populate_game_queue
-      * check_game_queue
+      * populate_game_queue()
+      * check_game_queue()
+    Optional methods to be implemented by subclass:
+      * log_move(room_id, board, to_move)
+      * log_game(room_id, black_ai, white_ai, black_score, white_score, winner, by_forfeit)
     Exposed internal variables:
       * ai_list: list of AIs, supposedly in order from strongest to weakest
       * timelimit: float
       * max_games: int, maximum number of games to play at once
       * num_games: int, current number of games running
-      * results: list
-      * results_lock: threading.Lock
     Using add_new_game to add new games to the game queue
     """
 
-    def __init__(self, loop, completed_callback=lambda *x:None, record_callback=lambda *y:None, ai_list=[], timelimit=5, max_games=2):
+    def __init__(self, name, loop, ai_list=[], timelimit=5, max_games=2):
         super().__init__(loop)
+        
+        self.name = name
 
         self.completed_callback = completed_callback
-        self.record_callback = record_callback
+        self.record_callback = record_callback if not (record_callback is None) else completed_callback
         self.ai_list = ai_list
         self.timelimit = timelimit
         self.max_games = max_games
         self.num_games = 0
     
         self.game_queue = queue.Queue()
-        self.results = []
-        self.results_lock = Lock()
 
         # populate queue with initial matchups to play
         self.populate_game_queue()
@@ -75,6 +76,14 @@ class TournamentScheduler(GameScheduler):
         # the last element in self.results
         raise NotImplementedError
 
+    def log_move(room_id, board, to_move):
+        # Called whenever board_update intercepts a valid board
+        pass
+
+    def log_game(room_id, black_ai, white_ai, black_score, white_score, winner, by_forfeit):
+        # Called whenever game_end sees that a game has ended
+        pass
+
     def play_game(self, parsed_data, room_id):
         # send an error message back telling them they can't play
         log.warn("{} tried to play during a tournament".format(room_id))
@@ -83,16 +92,16 @@ class TournamentScheduler(GameScheduler):
 
     def play_next_game(self):
         if not self.game_queue.empty():
-            self.play_tournament_game(*self.game_queue.get_nowait())
+            self.play_automatic_game(*self.game_queue.get_nowait())
             self.num_games += 1
             
             if self.num_games > self.max_games:
                 log.warn("Playing more games at a time than allowed...")
 
-    def play_tournament_game(self, black, white, timelimit):
-        self.loop.call_soon_threadsafe(self._play_tournament_game, black, white, timelimit)
+    def play_automatic_game(self, black, white, timelimit):
+        self.loop.call_soon_threadsafe(self._play_automatic_game, black, white, timelimit)
 
-    def _play_tournament_game(self, black, white, timelimit):
+    def _play_automatic_game(self, black, white, timelimit):
         new_id = generate_id()
         # extremely low chance to block, ~~we take those~~
         while new_id in self.rooms: new_id = generate_id()
@@ -104,10 +113,10 @@ class TournamentScheduler(GameScheduler):
         self.play_game_actual(black, white, timelimit, new_id)
 
     def game_end(self, parsed_data, room_id):
-        log.debug("Overridded game_end called")
+        log.debug("{} overridded game_end called".format(room_id))
         # log result
         if room_id not in self.rooms:
-            log.warn("{} tried to end room, which might've already ended".format(room_id))
+            log.debug("{} tried to end room, which might've already ended".format(room_id))
             return
 
         board = parsed_data.get('board', "")
@@ -119,17 +128,8 @@ class TournamentScheduler(GameScheduler):
         white_ai = self.rooms[room_id].white_ai
 
         if black_ai is None or white_ai is None:
-            log.debug("Ignoring room with blank AI...")
+            log.info("{} ignoring room with blank AI...".format(room_id))
             return
-
-        with self.results_lock:
-            result = (
-                black_ai, white_ai, black_score, white_score, winner, int(forfeit),
-            )
-
-            self.results.append(result)
-
-        log.debug("Added to results: {}".format(result))
 
         super().game_end(parsed_data, room_id)
         self.num_games -= 1
@@ -165,6 +165,14 @@ class SetTournamentScheduler(TournamentScheduler):
             self.sets[i].num = i
 
         super().__init__(*args, **kwargs)
+    
+    def log_move(room_id, board, to_move):
+        # Called whenever board_update intercepts a valid board
+        pass
+
+    def log_game(room_id, black_ai, white_ai, black_score, white_score, winner, by_forfeit):
+        # Called whenever game_end sees that a game has ended
+        pass
 
     def play_next_set(self, next_set_index):
         if next_set_index in self.currently_playing:
@@ -174,7 +182,7 @@ class SetTournamentScheduler(TournamentScheduler):
 
         if not (next_set.black_from_set is None):
             black_prev_set = next_set.black_from_set
-            winner = black_prev_set.get_overall_winner()
+            winner = black_prev_set.winner
             # TODO: Consider using some other method besides direct object
             # comparison to tell if two sets are the same
             if black_prev_set.winner_set == next_set:
@@ -196,7 +204,7 @@ class SetTournamentScheduler(TournamentScheduler):
 
         if not (next_set.white_from_set is None):
             white_prev_set = next_set.white_from_set
-            winner = white_prev_set.get_overall_winner()
+            winner = white_prev_set.winner
             # TODO: Consider using some other method besides direct object
             # comparison to tell if two sets are the same
             if white_prev_set.winner_set == next_set:
@@ -226,13 +234,13 @@ class SetTournamentScheduler(TournamentScheduler):
         all_played = True
         for i in range(len(self.sets)):
             s = self.sets[i]
-            all_played = all_played and s.played
+            all_played = all_played and s.completed
 
-            if s.played or i in self.currently_playing:
+            if s.completed or i in self.currently_playing:
                 continue
 
-            black_set_done = (s.black_from_set is None) or (s.black_from_set.played)
-            white_set_done = (s.white_from_set is None) or (s.white_from_set.played)
+            black_set_done = (s.black_from_set is None) or (s.black_from_set.completed)
+            white_set_done = (s.white_from_set is None) or (s.white_from_set.completed)
 
             if black_set_done and white_set_done:
                 self.play_next_set(i)
@@ -243,21 +251,26 @@ class SetTournamentScheduler(TournamentScheduler):
     def check_game_queue(self):
         # Use the latest item in results to add game to set
         black_ai, white_ai, black_score, white_score, winner, forfeit = self.results[-1]
-        game = GameData(black_ai, white_ai)
-        game.black_score = black_score
-        game.white_score = white_score
-        game.winner = winner
-        game.by_forfeit = bool(forfeit)
+        game = GameModel(
+            black=black_ai,
+            white=white_ai,
+            timelimit=int(self.timelimit),
+            black_score=black_score,
+            white_score=white_score,
+            winner=winner,
+            by_forfeit=forfeit
+        )
 
         new_currently_playing = self.currently_playing.copy()
         for i in self.currently_playing:
             s = self.sets[i]
             if (s.black == black_ai and s.white == white_ai) or \
                     s.black == white_ai and s.white == black_ai:
-                s.add_game(game)
+                add_game_to_set(s, game)
 
             if len(s.games) >= 2*self.games_per_set:
-                s.played = True
+                s.completed = True
+                calc_set_winner(s)
                 new_currently_playing.remove(i)
 
         self.currently_playing = new_currently_playing
@@ -283,7 +296,7 @@ class SwissTournamentScheduler(SetTournamentScheduler):
         all_played = True
         for i in range(len(self.sets)):
             s = self.sets[i]
-            if not s.played:
+            if not s.completed:
                 all_played = False
                 break
 
@@ -293,11 +306,10 @@ class SwissTournamentScheduler(SetTournamentScheduler):
             # First, calculate number of wins each AI has
             for i in range(self.last_recorded_index, len(self.sets)):
                 s = self.sets[i]
-                winner = s.get_overall_winner()
-                if winner == BLACK:
+                if s.winner == BLACK:
                     black_wins = self.num_wins.get(s.black, 0)
                     self.num_wins[s.black] = black_wins + 1
-                elif winner == WHITE:
+                elif s.winner == WHITE:
                     white_wins = self.num_wins.get(s.white, 0)
                     self.num_wins[s.white] = white_wins + 1
 
@@ -313,7 +325,7 @@ class SwissTournamentScheduler(SetTournamentScheduler):
 
                 # TODO: This doesn't record all the information I would like, i.e.
                 # the set each person came from, but this should do for now
-                self.sets.append(SetData(black, white))
+                self.sets.append(create_set(black, white))
             
             self.current_round += 1
         

@@ -28,7 +28,8 @@ class GameListRetriever:
         self.transport.write(encoded_content)
 
     def close(self, reason):
-        self.fut.set_result(reason)
+        if not self.fut.done():
+            self.fut.set_result(reason)
         self.transport.close()
 
     async def get(self):
