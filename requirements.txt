@@ -5,7 +5,7 @@ requests
 requests-oauthlib
 six
 django
-daphne
+hypercorn
 social-auth-app-django
 social-auth-core
 channels

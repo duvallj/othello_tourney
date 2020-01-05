@@ -23,14 +23,14 @@ for handler in LOGGING_HANDLERS:
     log.addHandler(handler)
 log.setLevel(LOGGING_LEVEL)
 
-TOURNAMENT_NUM = 8
-TOURNAMENT_TIMELIMIT = 1
-TOURNAMENT_GAMES = 10
-AI_LIST = list(get_possible_strats())[:16]
+TOURNAMENT_NUM = 6
+TOURNAMENT_TIMELIMIT = 5
+TOURNAMENT_GAMES = 12
+#AI_LIST = list(get_possible_strats())[:16]
+AI_LIST = read_rankings("round{}-rankings.txt".format(TOURNAMENT_NUM-1))[:16]
 #SET_LIST = create_round_robin(AI_LIST)
 #SET_LIST = create_everyone_vs(AI_LIST, "random")
 SET_LIST = create_single_elim_bracket(AI_LIST)
-#AI_LIST = read_rankings("round{}-rankings.txt".format(1))
 TOURNAMENT_FILE = os.path.join(PROJECT_ROOT, 'tournament-{}'.format(TOURNAMENT_NUM))
 
 

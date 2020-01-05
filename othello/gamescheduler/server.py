@@ -17,6 +17,7 @@ import functools
 import queue
 import logging
 import json
+import traceback
 
 from .worker import GameRunner
 from .utils import generate_id
@@ -278,6 +279,9 @@ class GameScheduler(asyncio.Protocol):
         # game_end is called after this, no need to ternimate room just yet
 
     def game_end(self, event, room_id):
+        if room_id not in self.rooms:
+            log.debug("{} getting ended twice".format(room_id))
+            return
         self.check_room_validity(room_id)
         """
         Called when the game has ended, tells client that message too.
@@ -319,42 +323,49 @@ class GameScheduler(asyncio.Protocol):
             self.game_end_actual(watching_id)
 
     def check_room_validity(self, room_id):
-        if room_id not in self.rooms:
-            log.debug("{} wasn't in self.rooms!".format(room_id))
-        # Basic typing checks
-        room = self.rooms[room_id]
-        assert(room.id == room_id)
-        assert(room.black_ai is None or isinstance(room.black_ai, str))
-        assert(room.white_ai is None or isinstance(room.white_ai, str))
-        assert(isinstance(room.timelimit, float) or isinstance(room.timelimit, int))
-        assert(isinstance(room.watching, list))
-        #for w_id in room.watching:
-        #    assert(w_id in self.rooms)
-        assert(room.transport is None or isinstance(room.transport, asyncio.BaseTransport))
-        assert(room.game is None or isinstance(room.game, GameRunner))
-        assert(room.queue is None or isinstance(room.queue, queue.Queue))
-        assert(room.executor is None or isinstance(room.executor, ThreadPoolExecutor))
-        assert(room.task is None or isinstance(room.task, asyncio.Future))
+        try:
+            if room_id not in self.rooms:
+                log.debug("{} wasn't in self.rooms!".format(room_id))
+                return False
+            # Basic typing checks
+            room = self.rooms[room_id]
+            assert(room.id == room_id)
+            assert(room.black_ai is None or isinstance(room.black_ai, str))
+            assert(room.white_ai is None or isinstance(room.white_ai, str))
+            assert(isinstance(room.timelimit, float) or isinstance(room.timelimit, int))
+            assert(isinstance(room.watching, list))
+            #for w_id in room.watching:
+            #    assert(w_id in self.rooms)
+            assert(room.transport is None or isinstance(room.transport, asyncio.BaseTransport))
+            assert(room.game is None or isinstance(room.game, GameRunner))
+            assert(room.queue is None or isinstance(room.queue, queue.Queue))
+            assert(room.executor is None or isinstance(room.executor, ThreadPoolExecutor))
+            assert(room.task is None or isinstance(room.task, asyncio.Future))
 
-        # Extra checks if game is created:
-        if not (room.game is None):
-            # Make sure everything is defined
-            assert(not (room.black_ai is None))
-            assert(not (room.white_ai is None))
-            assert(not (room.queue is None))
-            assert(not (room.executor is None))
-            assert(not (room.task is None))
+            # Extra checks if game is created:
+            if not (room.game is None):
+                # Make sure everything is defined
+                assert(not (room.black_ai is None))
+                assert(not (room.white_ai is None))
+                assert(not (room.queue is None))
+                assert(not (room.executor is None))
+                assert(not (room.task is None))
 
-            # Checks to make sure things are shutting down correctly
-            with room.game.do_quit_lock:
-                if room.game.do_quit:
-                    assert(room.task.done())
-                    assert(room.transport is None or room.transport.is_closing())
-                
-                if room.task.done():
-                    assert(room.game.do_quit)
-                    assert(room.transport is None or room.transport.is_closing())
+                # Checks to make sure things are shutting down correctly
+                with room.game.do_quit_lock:
+                    if room.game.do_quit:
+                        assert(room.task.done())
+                        assert(room.transport is None or room.transport.is_closing())
+                    
+                    if room.task.done():
+                        assert(room.game.do_quit)
+                        assert(room.transport is None or room.transport.is_closing())
 
-                if not (room.transport is None) and room.transport.is_closing():
-                    assert(room.game.do_quit)
-                    assert(room.task.done())
+                    if not (room.transport is None) and room.transport.is_closing():
+                        assert(room.game.do_quit)
+                        assert(room.task.done())
+
+            return True
+        except AssertionError:
+            log.warn(traceback.format_exc())
+            return False
