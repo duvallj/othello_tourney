@@ -50,6 +50,7 @@ class GameModel(models.Model):
             default=OUTER)
     by_forfeit = models.BooleanField(default=False)
 
+    completed = models.BooleanField(default=False)
     played_when = models.DateField(auto_now=True)
     in_set = models.ForeignKey(SetModel, on_delete=models.CASCADE, 
             related_name='games')

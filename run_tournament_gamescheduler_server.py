@@ -47,9 +47,10 @@ if __name__ == "__main__":
     tournament = reset_or_create_tournament(TOURNAMENT_NAME)
     #SET_LIST = create_round_robin(AI_LIST, tournament)
     #SET_LIST = create_everyone_vs(AI_LIST, tournament, who="random")
-    SET_LIST = create_single_elim_bracket(AI_LIST, tournament)
-    
-    gs = SetTournamentScheduler(tournament, loop, completed_callback=write_results, ai_list=AI_LIST, sets=SET_LIST, timelimit=TOURNAMENT_TIMELIMIT, max_games=TOURNAMENT_GAMES)
+    #SET_LIST = create_single_elim_bracket(AI_LIST, tournament)
+    SET_LIST = []
+
+    gs = SwissTournamentScheduler(tournament, loop, rounds=3, completed_callback=write_results, ai_list=AI_LIST, sets=SET_LIST, timelimit=TOURNAMENT_TIMELIMIT, max_games=TOURNAMENT_GAMES)
     def game_scheduler_factory(): return gs
     coro = loop.create_server(game_scheduler_factory, host=SCHEDULER_HOST, port=SCHEDULER_PORT)
     server = loop.run_until_complete(coro)

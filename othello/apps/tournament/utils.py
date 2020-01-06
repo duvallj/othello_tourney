@@ -1,17 +1,20 @@
 from asyncio import Future
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 import itertools
+import logging
 
 from ...gamescheduler.othello_core import BLACK, WHITE, EMPTY, OUTER
 from .models import GameModel, SetModel, PlayerModel, TournamentModel
 
-# Safely calls the function with the specified arguments in another thread
-def safely_call(func, *args):
-    t = Thread(target=func, args=args)
-    t.daemon = True
+log = logging.getLogger(__name__)
 
-    t.start()
-    t.join()
+# Safely calls the function with the specified arguments in another thread
+# Use this whenever you'd get a SynchronousOnlyOperation otherwise
+def safely_call(func, *args):
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args)
+
+        return future.result()
 
 def add_game_to_set(setm, game):
     if (game.black != setm.black or game.white != setm.white) and \
@@ -80,6 +83,10 @@ def calc_set_winner(setm):
                 setm.winner = EMPTY
 
     setm.save()
+
+# Counts the number of completed games in a set
+def count_completed_games(setm):
+    return setm.games.filter(completed=True).count()
 
 # Allows adding player v player, player v winner of set, or winners of sets together
 def create_set(tournament, black_item, white_item, *, black_winner=True, white_winner=True):
@@ -229,19 +236,24 @@ class ResultsCSVWriter:
     def write(self, set_results):
         safely_call(self._write, set_results)
 
+    def get_id_of(self, obj):
+        if obj is None:
+            return 'None'
+        else:
+            return str(obj.id)
+
     def _write(self, set_results):
         with open(self.sets_filename, "w") as sfout, \
                 open(self.games_filename, "w") as gfout:
-            sfout.write("Set_Num,Black,Black_From_Set,White,White_From_Set,Winner,Winner_Set,Loser_Set\n")
-            gfout.write("Black,White,Black_Score,White_Score,Winner,By_Forfeit\n")
-            
-            for i in range(len(set_results)):
-                set_results[i].num = i
+            sfout.write("Set_Num,Black,Black_From_Set,White,White_From_Set,Winner_Set,Loser_Set,Winner\n")
+            gfout.write("Black,White,Black_Score,White_Score,Winner,By_Forfeit\n")           
 
             for s in set_results:
                 calc_set_winner(s)
-                sfout.write(f"{s.id},{s.black.id},{s.black_from_set.id if s.black_from_set else 'None'},{s.white.id},{s.white_from_set.id if s.white_from_set else 'None'},{s.winner},{s.winner_set.id if s.winner_set else 'None'},{s.loser_set.id if s.loser_set else 'None'}\n")
+                sfout.write(",".join(map(self.get_id_of,
+                    (s, s.black, s.black_from_set, s.white, s.white_from_set, s.winner_set, s.loser_set)
+                )) + f",{s.winner}\n")
                 for game in s.games.all():
-                    gfout.write(f"{game.black.id},{game.white.id},{game.black_score},{game.white_score},{game.winner},{game.by_forfeit}\n")
-
+                    gfout.write(f"{self.get_id_of(game.black)},{self.get_id_of(game.white)},{game.black_score},{game.white_score},{game.winner},{game.by_forfeit}\n")
+        log.info("Finished writing results to CSV")
 
