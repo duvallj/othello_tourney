@@ -1,11 +1,17 @@
 from asyncio import Future
+from threading import Thread
 import itertools
 
-from ...gamescheduler.othello_core import BLACK, WHITE, EMPTY, BORDER
-from .models import GameModel, SetModel, PlayerModel
+from ...gamescheduler.othello_core import BLACK, WHITE, EMPTY, OUTER
+from .models import GameModel, SetModel, PlayerModel, TournamentModel
 
-# TODO: Make this all specific to a tournament by setting the 
-# `in_tournament` field of all the sets you add (eventually)
+# Safely calls the function with the specified arguments in another thread
+def safely_call(func, *args):
+    t = Thread(target=func, args=args)
+    t.daemon = True
+
+    t.start()
+    t.join()
 
 def add_game_to_set(setm, game):
     if (game.black != setm.black or game.white != setm.white) and \
@@ -76,13 +82,15 @@ def calc_set_winner(setm):
     setm.save()
 
 # Allows adding player v player, player v winner of set, or winners of sets together
-def create_set(black_item, white_item, *, black_winner=True, white_winner=True):
-    new_set = SetData()
+def create_set(tournament, black_item, white_item, *, black_winner=True, white_winner=True):
+    assert(isinstance(tournament, TournamentModel))
+    new_set = SetModel(in_tournament=tournament)
     if isinstance(black_item, SetModel):
         if isinstance(white_item, SetModel):
             new_set.black_from_set = black_item
             new_set.white_from_set = white_item
-            
+            new_set.save()
+
             if black_winner:
                 black_item.winner_set = new_set
             else:
@@ -98,6 +106,7 @@ def create_set(black_item, white_item, *, black_winner=True, white_winner=True):
             
             new_set.black_from_item = black_item
             new_set.white = white_item
+            new_set.save()
 
             if black_winner:
                 black_item.winner_set = new_set
@@ -109,6 +118,7 @@ def create_set(black_item, white_item, *, black_winner=True, white_winner=True):
         if isinstance(white_item, SetModel):
             new_set.black = black_item
             new_set.white_from_set = white_item
+            new_set.save()
 
             if white_winner:
                 white_item.winner_set = new_set
@@ -119,40 +129,50 @@ def create_set(black_item, white_item, *, black_winner=True, white_winner=True):
             assert(isinstance(white_item, PlayerModel))
             new_set.black = black_item
             new_set.white = white_item
+            new_set.save()
 
-    new_set.save()
     return new_set
 
 # Gets (or creates) a PlayerModel object from the player id string
 def get_player(player_id):
     obj, created = PlayerModel.objects.get_or_create(
-            name=player_id)
+            id=player_id)
+    return obj
+
+# Resets (or creates) a TournamentModel object from the tournament name
+def reset_or_create_tournament(tournament_name):
+    # First, delete all old tournaments of the same name
+    TournamentModel.objects.filter(tournament_name=tournament_name).delete()
+    obj = TournamentModel.objects.create(tournament_name=tournament_name)
     return obj
 
 
-def create_single_elim_round_helper(set_list):
+def create_single_elim_round_helper(set_list, tournament):
     out_sets = []
     if len(set_list) % 2 == 0:
         for i in range(len(set_list)//2):
             set1 = set_list[i]
             set2 = set_list[len(set_list)-i-1]
-            out_sets.append(create_set(set1, set2))
+            out_sets.append(create_set(tournament, set1, set2))
     # If we have an odd number, let the first seed have a bye
     else:
         for i in range(1, len(set_list)//2+1):
             set1 = set_list[i]
             set2 = set_list[len(set_list)-i]
-            out_sets.append(create_set(set1, set2))
+            out_sets.append(create_set(tournament, set1, set2))
         # This is equivalent to a bye b/c their game is included in the next round
         out_sets.append(set_list[0])
 
     return out_sets
 
-def create_single_elim_bracket(ai_list):
+def create_single_elim_bracket(ai_list, tournament):
     """
     Arguments:
         ai_list : list
             All the AIs, in seeded order, to create the bracket from
+        tournament : TournamentModel
+            The django ORM object representing the tournament to create the
+            bracket in to
 
     Returns:
         A list of sets that need to be played, two games for each (one for
@@ -166,24 +186,24 @@ def create_single_elim_bracket(ai_list):
     next_sets = []
     
     while len(current_sets) > 1:
-        next_sets = create_single_elim_round_helper(current_sets)
+        next_sets = create_single_elim_round_helper(current_sets, tournament)
         overall_sets.extend(next_sets)
         current_sets = next_sets
 
     return overall_sets
 
-def create_round_robin(ai_list):
+def create_round_robin(ai_list, tournament):
     """
     Identical to above, only creates a round-robin tournament instead.
     """
     output = []
     act_ai_list = [get_player(player) for player in ai_list]
     for black, white in itertools.combinations(act_ai_list, 2):
-        output.append(create_set(black, white))
+        output.append(create_set(tournament, black, white))
 
     return output
 
-def create_everyone_vs(ai_list, who="random"):
+def create_everyone_vs(ai_list, tournament, who="random"):
     """
     Matches everyone against a baseline player (usually random)
     """
@@ -192,7 +212,7 @@ def create_everyone_vs(ai_list, who="random"):
     act_who = get_player(who)
     for black in act_ai_list:
         if black.name != who.name:
-            output.append(create_set(black, who))
+            output.append(create_set(tournament, black, who))
 
     return output
 
@@ -204,7 +224,12 @@ class ResultsCSVWriter:
         self.sets_filename = name+"_sets.csv"
         self.games_filename = name+"_games.csv"
         
+    # SyNcHrOnOuSoNlYOpErAtIoN... why can't Django work around this
+    # on it's own?
     def write(self, set_results):
+        safely_call(self._write, set_results)
+
+    def _write(self, set_results):
         with open(self.sets_filename, "w") as sfout, \
                 open(self.games_filename, "w") as gfout:
             sfout.write("Set_Num,Black,Black_From_Set,White,White_From_Set,Winner,Winner_Set,Loser_Set\n")
@@ -214,9 +239,9 @@ class ResultsCSVWriter:
                 set_results[i].num = i
 
             for s in set_results:
-                SetModelUtil().calc_overall_winner(s)
-                sfout.write(f"{s.id},{s.black},{s.black_from_set.id if s.black_from_set else 'None'},{s.white},{s.white_from_set.id if s.white_from_set else 'None'},{s.winner},{s.winner_set.id if s.winner_set else 'None'},{s.loser_set.id if s.loser_set else 'None'}\n")
-                for game in s.games:
-                    gfout.write(f"{game.black},{game.white},{game.black_score},{game.white_score},{game.winner},{game.by_forfeit}\n")
+                calc_set_winner(s)
+                sfout.write(f"{s.id},{s.black.id},{s.black_from_set.id if s.black_from_set else 'None'},{s.white.id},{s.white_from_set.id if s.white_from_set else 'None'},{s.winner},{s.winner_set.id if s.winner_set else 'None'},{s.loser_set.id if s.loser_set else 'None'}\n")
+                for game in s.games.all():
+                    gfout.write(f"{game.black.id},{game.white.id},{game.black_score},{game.white_score},{game.winner},{game.by_forfeit}\n")
 
 

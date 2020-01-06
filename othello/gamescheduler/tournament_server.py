@@ -12,8 +12,8 @@ from .server import Room, GameScheduler
 from .utils import generate_id
 from .othello_core import BLACK, WHITE, EMPTY, OUTER
 from ..apps.tournament.models import GameModel, SetModel, MoveModel
-from ..apps.tournament.models import add_game_to_set, calc_set_winner, \
-    get_player, create_set
+from ..apps.tournament.utils import add_game_to_set, calc_set_winner, \
+    get_player, create_set, safely_save
 
 log = logging.getLogger(__name__)
 
@@ -38,13 +38,9 @@ class AutomaticGameScheduler(GameScheduler):
     Using add_new_game to add new games to the game queue
     """
 
-    def __init__(self, name, loop, ai_list=[], timelimit=5, max_games=2):
+    def __init__(self, loop, ai_list=[], timelimit=5, max_games=2):
         super().__init__(loop)
-        
-        self.name = name
 
-        self.completed_callback = completed_callback
-        self.record_callback = record_callback if not (record_callback is None) else completed_callback
         self.ai_list = ai_list
         self.timelimit = timelimit
         self.max_games = max_games
@@ -98,8 +94,11 @@ class AutomaticGameScheduler(GameScheduler):
             if self.num_games > self.max_games:
                 log.warn("Playing more games at a time than allowed...")
 
-    def play_automatic_game(self, black, white, timelimit):
-        self.loop.call_soon_threadsafe(self._play_automatic_game, black, white, timelimit)
+    # You'll notice the number of arguments isn't specified here.
+    # This is so I can add an extra argument to _play_automatic_game in a
+    # below subclass. <this is fine meme>
+    def play_automatic_game(self, *args):
+        self.loop.call_soon_threadsafe(self._play_automatic_game, *args)
 
     def _play_automatic_game(self, black, white, timelimit):
         new_id = generate_id()
@@ -111,6 +110,8 @@ class AutomaticGameScheduler(GameScheduler):
         self.rooms[new_id] = room
         log.debug("{} starting to play".format(new_id))
         self.play_game_actual(black, white, timelimit, new_id)
+
+        return new_id
 
     def game_end(self, parsed_data, room_id):
         log.debug("{} overridded game_end called".format(room_id))
@@ -134,58 +135,117 @@ class AutomaticGameScheduler(GameScheduler):
         super().game_end(parsed_data, room_id)
         self.num_games -= 1
 
+        # log game
+        self.log_game(room_id, black_ai, white_ai, black_score, white_score, winner, forfeit)
+
         # handle putting new games into queue, if necessary
         self.check_game_queue()
 
         while self.num_games < self.max_games and not self.game_queue.empty():
             self.play_next_game()
 
-    def tournament_end(self):
-        log.info("Tournament completed! Returning results...")
-        self.loop.call_soon_threadsafe(self.completed_callback, self.results, self.results_lock)
 
-class RRTournamentScheduler(TournamentScheduler):
+# Simple class to test AutomaticGameScheduler functionality
+class RRTournamentScheduler(AutomaticGameScheduler):
     def populate_game_queue(self):
         for black, white in itertools.permutations(self.ai_list, 2):
             self.add_new_game(black, white)
 
     def check_game_queue(self):
-        if self.game_queue.empty():
-            self.tournament_end()
-        else:
+        if not self.game_queue.empty():
             self.play_next_game()
 
-class SetTournamentScheduler(TournamentScheduler):
-    def __init__(self, *args, sets=[], games_per_set=1, **kwargs):
+class SetTournamentScheduler(AutomaticGameScheduler):
+    # completed_callback and record_callback are called with a list of SetModel
+    # object as their first argument, protected by a threading.Lock object as
+    # their second argument
+    def __init__(self, tournament, *args, sets=[], games_per_set=1, completed_callback=lambda *x: None, record_callback=None, **kwargs):
+        self.tournament = tournament
+
         self.sets = sets
+        self.games = dict()
+        self.results_lock = Lock()
         self.games_per_set = games_per_set
         self.currently_playing = set()
 
-        for i in range(len(self.sets)):
-            self.sets[i].num = i
+        self.completed_callback = completed_callback
+        self.record_callback = record_callback if not (record_callback is None) else completed_callback
 
         super().__init__(*args, **kwargs)
     
-    def log_move(room_id, board, to_move):
+    def log_move(self, room_id, board, to_move):
         # Called whenever board_update intercepts a valid board
         pass
 
-    def log_game(room_id, black_ai, white_ai, black_score, white_score, winner, by_forfeit):
-        # Called whenever game_end sees that a game has ended
-        pass
+    def log_game(self, room_id, black_ai, white_ai, black_score, white_score, winner, by_forfeit):
+        if room_id in self.games:
+            game = self.games[room_id]
+            game.black = get_player(black_ai)
+            game.white = get_player(white_ai)
+            game.black_score = black_score
+            game.white_score = white_score
+            game.winner = winner
+            game.by_forfeit = by_forfeit
+            
+            safely_save(game)
+
+            # Maybe I need to do this? idk throw it out and accept the leak if
+            # bad things happen
+            del self.games[room_id]
+        else:
+            log.warn("Couldn't find existing game! Falling back to old method...")
+
+            game = GameModel(
+                black=black_ai,
+                white=white_ai,
+                timelimit=int(self.timelimit),
+                black_score=black_score,
+                white_score=white_score,
+                winner=winner,
+                by_forfeit=by_forfeit
+            )
+            
+            for i in self.currently_playing:
+                s = self.sets[i]
+                # No room_id -> game mapping anymore, need to search for set
+                # to add it to
+                if (s.black == black_ai and s.white == white_ai) or \
+                        s.black == white_ai and s.white == black_ai:
+                    add_game_to_set(s, game)
+
+    # I wish there was a better way to do this, i.e. have GameModels correspond
+    # to room_ids so we can record moves that get captured, and have us know
+    # which set tried to add them at creation time.
+    # But there isn't. So now we have to live with this.
+    def add_new_game(self, black, white, setm, timelimit=None):
+        if timelimit is None:
+            self.game_queue.put_nowait((black, white, self.timelimit, setm))
+        else:
+            self.game_queue.put_nowait((black, white, timelimit, setm))
+    
+    def _play_automatic_game(self, black, white, timelimit, setm):
+        room_id = super()._play_automatic_game(black.id, white.id, timelimit)
+
+        self.games[room_id] = GameModel(
+            black=black,
+            white=white,
+            in_set=setm,
+        )
+        safely_save(self.games[room_id])
 
     def play_next_set(self, next_set_index):
         if next_set_index in self.currently_playing:
             return
 
         next_set = self.sets[next_set_index]
-
+        
+        # TODO: check that `is None` works for fields set to NULL in the database
+        # (because that's what these are)
         if not (next_set.black_from_set is None):
             black_prev_set = next_set.black_from_set
             winner = black_prev_set.winner
-            # TODO: Consider using some other method besides direct object
-            # comparison to tell if two sets are the same
-            if black_prev_set.winner_set == next_set:
+            
+            if black_prev_set.winner_set.id == next_set.id:
                 if winner == WHITE:
                     next_set.black = black_prev_set.white
                 else:
@@ -194,7 +254,7 @@ class SetTournamentScheduler(TournamentScheduler):
                     # idk, tie handling is hard
                     next_set.black = black_prev_set.black
 
-            elif black_prev_set.loser_set == next_set:
+            elif black_prev_set.loser_set.id == next_set.id:
                 if winner == WHITE:
                     next_set.black = black_prev_set.black
                 else:
@@ -207,23 +267,25 @@ class SetTournamentScheduler(TournamentScheduler):
             winner = white_prev_set.winner
             # TODO: Consider using some other method besides direct object
             # comparison to tell if two sets are the same
-            if white_prev_set.winner_set == next_set:
+            if white_prev_set.winner_set.id == next_set.id:
                 if winner == WHITE:
                     next_set.white = white_prev_set.white
                 else:
                     next_set.white = white_prev_set.black
 
-            elif white_prev_set.loser_set == next_set:
+            elif white_prev_set.loser_set.id == next_set.id:
                 if winner == WHITE:
                     next_set.white = white_prev_set.black
                 else:
                     next_set.white = white_prev_set.white
             else:
                 log.warn("Set {}'s white previous set ({}) does not have a pointer to it".format(next_set_index, white_prev_set.num))
+        
+        safely_save(next_set)
 
         for g in range(self.games_per_set):
-            self.add_new_game(next_set.black, next_set.white)
-            self.add_new_game(next_set.white, next_set.black)
+            self.add_new_game(next_set.black, next_set.white, next_set)
+            self.add_new_game(next_set.white, next_set.black, next_set)
 
         self.currently_playing.add(next_set_index)
 
@@ -247,27 +309,16 @@ class SetTournamentScheduler(TournamentScheduler):
 
         if all_played:
             self.tournament_end()
+        else:
+            self.tournament_record()
 
     def check_game_queue(self):
         # Use the latest item in results to add game to set
         black_ai, white_ai, black_score, white_score, winner, forfeit = self.results[-1]
-        game = GameModel(
-            black=black_ai,
-            white=white_ai,
-            timelimit=int(self.timelimit),
-            black_score=black_score,
-            white_score=white_score,
-            winner=winner,
-            by_forfeit=forfeit
-        )
 
         new_currently_playing = self.currently_playing.copy()
         for i in self.currently_playing:
             s = self.sets[i]
-            if (s.black == black_ai and s.white == white_ai) or \
-                    s.black == white_ai and s.white == black_ai:
-                add_game_to_set(s, game)
-
             if len(s.games) >= 2*self.games_per_set:
                 s.completed = True
                 calc_set_winner(s)
@@ -277,8 +328,12 @@ class SetTournamentScheduler(TournamentScheduler):
 
         self.populate_game_queue()
 
+    def tournament_record(self):
+        log.info("Recording tournament results...")
+        self.loop.call_soon_threadsafe(self.record_callback, self.sets, self.results_lock)
+
     def tournament_end(self):
-        log.info("SetTournament completed! Returning results...")
+        log.info("Tournament completed! Returning results...")
         self.loop.call_soon_threadsafe(self.completed_callback, self.sets, self.results_lock)
 
 class SwissTournamentScheduler(SetTournamentScheduler):
