@@ -5,7 +5,7 @@ from othello.gamescheduler.server import GameScheduler
 from othello.gamescheduler.settings import SCHEDULER_HOST, SCHEDULER_PORT
 
 LOGGING_FORMATTER = logging.Formatter('%(asctime)s:%(name)s:%(levelname)s %(message)s')
-LOGGING_LEVEL = logging.DEBUG
+LOGGING_LEVEL = logging.INFO
 LOGGING_HANDLERS = [
     logging.StreamHandler(),
     logging.FileHandler('gs.log',mode='w'),

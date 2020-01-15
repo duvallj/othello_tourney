@@ -25,7 +25,7 @@ class HiddenPrints:
     """
     def __enter__(self):
         self._original_stdout = sys.stdout
-        sys.stdout = None
+        sys.stdout = sys.stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout = self._original_stdout
@@ -46,6 +46,7 @@ class LocalRunner:
     def strat_wrapper(self, board, player, best_shared, running, pipe_to_parent):
         with HiddenPrints():
             try:
+                best_shared.value = -6
                 self.strat(board, player, best_shared, running)
                 pipe_to_parent.send(None)
             except:
@@ -57,9 +58,9 @@ class LocalRunner:
         automatically kills it after the timelimit expires
         """
         if self.strat is None:
-            return -1, "Failed to load Strategy"
+            return -5, "Failed to load Strategy"
 
-        best_shared = mp.Value("i", -1)
+        best_shared = mp.Value("i", -7)
         running = mp.Value("i", 1)
 
         os.chdir(self.new_path)
@@ -83,7 +84,7 @@ class LocalRunner:
             return move, err
         except:
             traceback.print_exc()
-            return -1, 'Server Error'
+            return -8, 'Server Error'
         finally:
             os.chdir(self.old_path)
             sys.path = self.old_sys
