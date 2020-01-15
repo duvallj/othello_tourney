@@ -214,7 +214,9 @@ class GameRunner:
                         if self.do_quit:
                             log.debug("Quitting in middle of waiting for move")
                             self.cleanup()
-                            return
+                            # Cause the outer loop to continue, but return 
+                            # prematurely b/c we are in the process of quitting
+                            return player, board, False
         else:
             move, errs = strat.get_move(board, player, self.timelimit)
 

@@ -1,9 +1,14 @@
 import asyncio
 import os
 import logging
+import django
+
+# Needed to get Django ORM to work
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "othello.settings")
+django.setup()
 
 from othello.gamescheduler.tournament_server import SetTournamentScheduler, SwissTournamentScheduler
-from othello.gamescheduler.tournament_utils import create_round_robin, create_everyone_vs, create_single_elim_bracket, ResultsCSVWriter, SetData
+from othello.apps.tournament.utils import reset_or_create_tournament, create_round_robin, create_everyone_vs, create_single_elim_bracket, ResultsCSVWriter
 from othello.gamescheduler.utils import get_possible_strats
 from othello.gamescheduler.settings import SCHEDULER_HOST, SCHEDULER_PORT, PROJECT_ROOT
 
@@ -26,24 +31,26 @@ log.setLevel(LOGGING_LEVEL)
 TOURNAMENT_NUM = 6
 TOURNAMENT_TIMELIMIT = 5
 TOURNAMENT_GAMES = 12
-#AI_LIST = list(get_possible_strats())[:16]
 AI_LIST = read_rankings("round{}-rankings.txt".format(TOURNAMENT_NUM-1))[:16]
-#SET_LIST = create_round_robin(AI_LIST)
-#SET_LIST = create_everyone_vs(AI_LIST, "random")
-SET_LIST = create_single_elim_bracket(AI_LIST)
-TOURNAMENT_FILE = os.path.join(PROJECT_ROOT, 'tournament-{}'.format(TOURNAMENT_NUM))
-
+TOURNAMENT_NAME = os.path.join(PROJECT_ROOT, 'tournament-{}'.format(TOURNAMENT_NUM))
 
 def write_results(results, results_lock):
     log.info("Writing results!")
 
-    writer = ResultsCSVWriter(TOURNAMENT_FILE)
+    writer = ResultsCSVWriter(TOURNAMENT_NAME)
     with results_lock:
         writer.write(results)
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    gs = SetTournamentScheduler(loop, completed_callback=write_results, ai_list=AI_LIST, sets=SET_LIST, timelimit=TOURNAMENT_TIMELIMIT, max_games=TOURNAMENT_GAMES)
+
+    tournament = reset_or_create_tournament(TOURNAMENT_NAME)
+    #SET_LIST = create_round_robin(AI_LIST, tournament)
+    #SET_LIST = create_everyone_vs(AI_LIST, tournament, who="random")
+    #SET_LIST = create_single_elim_bracket(AI_LIST, tournament)
+    SET_LIST = []
+
+    gs = SwissTournamentScheduler(tournament, loop, rounds=3, completed_callback=write_results, ai_list=AI_LIST, sets=SET_LIST, timelimit=TOURNAMENT_TIMELIMIT, max_games=TOURNAMENT_GAMES)
     def game_scheduler_factory(): return gs
     coro = loop.create_server(game_scheduler_factory, host=SCHEDULER_HOST, port=SCHEDULER_PORT)
     server = loop.run_until_complete(coro)
