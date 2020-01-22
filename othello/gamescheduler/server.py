@@ -18,10 +18,13 @@ import queue
 import logging
 import json
 import traceback
+import datetime
 
 from .worker import GameRunner
 from .utils import generate_id
-from .settings import OTHELLO_AI_UNKNOWN_PLAYER
+from .settings import OTHELLO_AI_UNKNOWN_PLAYER, OTHELLO_GAME_MAX_TIME, \
+        OTHELLO_GAME_MAX_TIMEDELTA 
+from .cron_scheduler import CronScheduler
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +45,8 @@ class Room:
         self.task = None
         self.executor = None
 
+        self.started_when = datetime.datetime.utcnow()
+
 
 class GameScheduler(asyncio.Protocol):
     """
@@ -58,6 +63,12 @@ class GameScheduler(asyncio.Protocol):
         super().__init__()
         self.loop = loop
         self.rooms = dict()
+
+        self.cron_scheduler = CronScheduler(self.loop)
+        self.cron_scheduler.schedule_periodic(
+                func=self.cleanup_all_games, args=[], kwargs=dict(),
+                time=OTHELLO_GAME_MAX_TIME // 2, taskid='cleanup_all_games_task')
+        self.cron_scheduler.start_task('cleanup_all_games_task')
         log.debug("Made GameScheduler")
 
     def connection_made(self, transport):
@@ -204,6 +215,7 @@ class GameScheduler(asyncio.Protocol):
         self.rooms[room_id].game = game
         self.rooms[room_id].queue = q
         self.rooms[room_id].executor = executor
+        self.rooms[room_id].started_when = datetime.datetime.utcnow()
         # here's where the **magic** happens. Tasks should be scheduled to run automatically
         log.debug("{} Starting game {} v {} ({})".format(
             room_id, black_ai, white_ai, timelimit
@@ -341,6 +353,7 @@ class GameScheduler(asyncio.Protocol):
             assert(room.queue is None or isinstance(room.queue, queue.Queue))
             assert(room.executor is None or isinstance(room.executor, ThreadPoolExecutor))
             assert(room.task is None or isinstance(room.task, asyncio.Future))
+            assert(isinstance(room.started_when, datetime.datetime))
 
             # Extra checks if game is created:
             if not (room.game is None):
@@ -369,3 +382,23 @@ class GameScheduler(asyncio.Protocol):
         except AssertionError:
             log.warn(traceback.format_exc())
             return False
+
+    # Needs to be async for... reasons
+    # actually there is no reason I just would rather change this than
+    # change the code that calls it
+    async def cleanup_all_games(self):
+        # to avoid repeated calls, why not
+        current_time = datetime.datetime.utcnow()
+        # can't change size of dictionary while iterating, create new dict instead
+        # yeah storing everything in an in-memory dict isn't the best solution,
+        # but DB stuff is worse I guarantee it
+        rooms_to_remove = []
+        for room_id in self.rooms.keys():
+            room = self.rooms[room_id]
+
+            if current_time > room.started_when + OTHELLO_GAME_MAX_TIMEDELTA:
+                log.error("{} timed out! please figure out why.".format(room_id))
+                rooms_to_remove.append(room_id)
+
+        for room_id in rooms_to_remove:
+            self.game_end_actual(room_id)

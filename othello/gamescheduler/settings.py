@@ -1,4 +1,5 @@
 import os, sys
+import datetime
 import logging
 
 # Main settings file for the GameScheduler
@@ -21,6 +22,8 @@ OTHELLO_AI_RUN_COMMAND = "firejail --quiet --profile={0} --whitelist={1} python3
 )
 
 OTHELLO_AI_MAX_TIME = 60
+OTHELLO_GAME_MAX_TIME = OTHELLO_AI_MAX_TIME * 75 # fairly arbitrary, don't want to limit people's games too much
+OTHELLO_GAME_MAX_TIMEDELTA = datetime.timedelta(seconds=OTHELLO_GAME_MAX_TIME)
 
 SCHEDULER_HOST = "127.0.0.1"
 SCHEDULER_PORT = 13770
