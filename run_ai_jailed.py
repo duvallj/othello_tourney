@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 if __name__=="__main__":
     logging.basicConfig(format='%(asctime)s:%(levelname)s:[JAILED]:%(message)s', level=logging.WARN)
 
-    handler = logging.FileHandler(os.path.join(OTHELLO_STUDENT_PATH, time.strftime("log-%Y-%m-%d-%H-%M-%S.log")))
+    handler = logging.FileHandler(os.path.join(OTHELLO_STUDENT_PATH, sys.argv[-1], time.strftime("log-%Y-%m-%d-%H-%M-%S.log")))
     handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:[JAILED]:%(message)s"))
     log.addHandler(handler)
     log.setLevel(logging.INFO)
