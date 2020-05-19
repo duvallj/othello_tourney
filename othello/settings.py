@@ -32,7 +32,7 @@ PROJECT_ROOT = BASE_DIR
 #SECRET_KEY = ""
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEVEL: change this to true
-DEBUG = False
+DEBUG = True
 
 # DEVEL: change this if necessary
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "127.0.0.3", "othello.tjhsst.edu"]

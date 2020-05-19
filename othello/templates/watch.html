@@ -16,5 +16,4 @@ div.selectize-input, div.selectize-dropdown {
 {% block extra_extra_js %}
 <script src="{% static 'js/get_games.js' %}"></script>
 {% endblock %}
-{% block request_url %}{% url 'game_list' %}{% endblock %}
-{% block request_callback %}putGamesToPage{% endblock %} 
+{% block onload_request %}websocketConfig('{% url 'game_list' %}', wsPutGamesToPage);{% endblock %}

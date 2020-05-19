@@ -45,5 +45,5 @@
 {% block extra_extra_js %}{% endblock %}      
 <script src="{% static 'js/get_config.js' %}"></script>
 <script src="{% static 'js/resize.js' %}"></script>
-<script src="{% static 'js/reversi.js' %}" onload="ajaxConfig('{% block request_url %}{% endblock %}', {% block request_callback %}{% endblock %});"></script>
+<script src="{% static 'js/reversi.js' %}" onload="{% block onload_request %}{% endblock %}"></script>
 {% endblock %}
