@@ -593,9 +593,9 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
 function makeSocketFromPage(ai_name1, ai_name2, timelimit, watching){
   var socket;
   if (watching) {
-    socket = new WebSocket(PATH+"watch/watching="+watching);
+    socket = new WebSocket(PATH+"watch?watching="+watching);
   } else {
-    socket = new WebSocket(PATH+"play/black="+ai_name1+",white="+ai_name2+",t="+timelimit);
+    socket = new WebSocket(PATH+"play?black="+ai_name1+"&white="+ai_name2+"&t="+timelimit);
   }
 
   console.log('made socket');

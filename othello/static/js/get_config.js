@@ -2,7 +2,7 @@ SCHEME = window.location.protocol == "https:" ? "wss": "ws";
 //HOST = window.location.host;
 HOST = "localhost:10771";
 // PATH = SCHEME + "://" + HOST + "/ws/"
-PATH = SCHEME + "://" + HOST;
+PATH = SCHEME + "://" + HOST + "/";
 
 function ajaxConfig(path, callback){
     var xmlhttp = new XMLHttpRequest();
