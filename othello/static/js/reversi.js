@@ -48,6 +48,7 @@ CH2NM = {};
 CH2NM[EMPTY_CH] = EMPTY_NM;
 CH2NM[WHITE_CH] = WHITE_NM;
 CH2NM[BLACK_CH] = BLACK_NM;
+CH2NM[OUTER_CH] = EMPTY_NM;
 
 NM2CO = [];
 NM2CO[EMPTY_NM] = EMPTY_CO;
@@ -482,7 +483,7 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
     rCanvas.tomove = CH2NM[data.tomove];
     add_to_history(data);
     var bArray = bStringToBArray(data.board);
-    var bSize = parseInt(data.bSize);
+    var bSize = 8; // parseInt(data.bSize);
     if (bSize === rCanvas.lBSize) {
       for (var cx=0; cx<bSize; cx++) {
         for (var cy=0; cy<bSize; cy++) {
@@ -505,6 +506,10 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
   };
 
   on_gameend = function(data){
+    // draw last board
+    var bArray = bStringToBArray(data.board);
+    var bSize = 8; // parseInt(data.bSize);
+    drawBoard(rCanvas, bSize, bArray, CH2NM[data.winner], animArray);
     //Clean up tasks, end socket
     document.removeEventListener('click', clickHandler);
     socket.close();
@@ -529,16 +534,15 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
             return;
         }
       }
-    } else if (data.winner === EMPTY_CH) {
-      black_text = "[Tie] " + black_text;
-      white_text = "[Tie] " + white_text;
+    // tungstenite_testings has no concept of player code being used to communicate server error
+    // Player::Unknown is used for ties
     } else {
       if (data.forfeit) {
         black_text = " [Game Over] " + black_text;
         white_text = " [Game Over] " + white_text;
       } else {
-        black_text = " [Server error] " + black_text;
-        white_text = " [Server error] " + white_text;
+        black_text = " [Tie] " + black_text;
+        white_text = " [Tie] " + white_text;
       }
     }
     //Add text signifying that the game is over
@@ -560,16 +564,16 @@ function init(socket, ai_name1, ai_name2, timelimit, watching){
     //  return;
     //}
     switch (data.type) {
-      case 'reply':
+      case 'board_update':
         on_reply(data);
         break;
-      case 'moverequest':
+      case 'move_request':
         on_moverequest(data);
         break;
-      case 'gameend':
+      case 'game_end':
         on_gameend(data);
         break;
-      case 'gameerror':
+      case 'game_error':
         on_gameerror(data);
         break;
       default:
