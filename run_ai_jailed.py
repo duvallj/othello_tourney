@@ -2,7 +2,6 @@ import os, sys
 import logging
 import time
 
-
 from othello.gamescheduler.run_ai_utils import JailedRunner
 from othello.gamescheduler.settings import OTHELLO_STUDENT_PATH
 

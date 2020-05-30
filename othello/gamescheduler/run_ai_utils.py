@@ -6,6 +6,7 @@ from queue import Empty
 import multiprocessing as mp
 import subprocess
 import time
+import signal
 
 from .settings import OTHELLO_AI_RUN_COMMAND, OTHELLO_AI_NAME_REPLACE, OTHELLO_AI_MAX_TIME
 from .settings import PROJECT_ROOT
@@ -56,6 +57,9 @@ class LocalRunner:
         """
         Starts a multiprocessing.Process with the student AI inside,
         automatically kills it after the timelimit expires
+
+        Different negative numbers used for debugging purposes, to know exactly
+        where it fails
         """
         if self.strat is None:
             return -5, "Failed to load Strategy"
@@ -66,26 +70,69 @@ class LocalRunner:
         os.chdir(self.new_path)
         sys.path = self.new_sys
         to_child, to_self = mp.Pipe()
+        p = None
         try:
-            p = mp.Process(target=self.strat_wrapper, args=("".join(list(board)), player, best_shared, running, to_child))
+            p = mp.Process(
+                target = self.strat_wrapper,
+                args = (
+                    "".join(list(board)),
+                    player,
+                    best_shared,
+                    running,
+                    to_child
+                )
+            )
             p.start()
             p.join(timelimit)
+
+            move = -9
+            err = None
+
+            # Join with a timelimit doesn't mean that the process has ended yet
             if p.is_alive():
+                # Notify process that it is about to be killed
                 running.value = 0
                 p.join(0.05)
-                if p.is_alive(): p.terminate()
-            move = best_shared.value
-            if to_self.poll():
-                err = to_self.recv()
-                log.info("LocalRunner caught threwn error")
+                # We need to read from shared value and pipe **before** killing
+                # the process because otherwise the subprocess could be
+                # holding a lock on one of them and deadlock this process
+                move = best_shared.value
+                if to_self.poll():
+                    err = to_self.recv()
+                    log.info("LocalRunner caught threwn error")
+                else:
+                    err = None
+                    log.debug("LocalRunner did not throw an error")
+
+                # If the subprocess was still alive, kill it fully
+                if p.is_alive():
+                    p.terminate()
+                    # Should be instantaneous now that process is killed... I hope
+                    p.join()
+                    p = None
             else:
-                err = None
-                log.debug("LocalRunner did not throw an error")
+                # No need to worry about any deadlocks or stuff, just
+                # read move and error as normal
+                move = best_shared.value
+                if to_self.poll():
+                    err = to_self.recv()
+                    log.info("LocalRunner caught threwn error")
+                else:
+                    err = None
+                    log.debug("LocalRunner did not throw an error")
+
             return move, err
+
         except:
             traceback.print_exc()
             return -8, 'Server Error'
         finally:
+            # Kill process even if something crazy happens
+            # And yes, this is called even when we `return` above
+            if not (p is None):
+                p.terminate()
+                p.join()
+                p = None
             os.chdir(self.old_path)
             sys.path = self.old_sys
 
@@ -93,7 +140,7 @@ class LocalRunner:
 class JailedRunner:
     """
     The class that is run in the subprocess to handle the games
-    Keeps running until it is killed forcefully
+    UPDATE: needs to be told to quit so that all processes are cleaned up
     """
 
     # just in case some doofus wants to do distributed AI running instead
@@ -101,6 +148,7 @@ class JailedRunner:
     def __init__(self, ai_name):
         self.strat = self.AIClass(ai_name)
         self.name = ai_name
+        self.running = False
 
     def handle(self, client_in, client_out, client_err):
         """
@@ -110,6 +158,21 @@ class JailedRunner:
         client_in, client_out, and client_err are socket-like objects.
         input received on client_in, output sent out on client_out, any
         errors the AI throws are sent on client_err
+
+        Expects one line containing the command, other lines should be sent
+        as the command requires.
+        """
+        command = client_in.readline().strip()
+        if command == "get_move":
+            self.get_move(client_in, client_out, client_err)
+        elif command == "stop":
+            self.running = False
+        else:
+            log.info("Unknown command \"{}\"".format(command))
+
+    def get_move(self, client_in, client_out, client_err):
+        """
+        Receives data of what moves to make, then prints out the move
         """
         name = client_in.readline().strip()
         timelimit = client_in.readline().strip()
@@ -125,24 +188,25 @@ class JailedRunner:
             except ValueError:
                 timelimit = 5
             log.debug("Data is ok")
-            # Now, we don't want any debug statements
-            # messing up the output. So, we replace
-            # sys.stdout temporarily
+            # We don't want any debug statements messing up the output. 
+            # So, we replace sys.stdout with sys.stderr temporarily
             with HiddenPrints():
                 move, err = self.strat.get_move(board, player, timelimit)
 
-            if err is not None: client_err.write(err)
+            if not (err is None):
+                client_err.write(err)
 
             log.debug("Got move {}".format(move))
-            client_out.write(str(move)+"\n")
+            client_out.write("{}\n".format(move))
         else:
             log.debug("Data not ok")
-            client_out.write("-1"+"\n")
+            client_out.write("-1\n")
         client_out.flush()
         client_err.flush()
 
     def run(self):
-        while True:
+        self.running = True
+        while self.running:
             self.handle(sys.stdin, sys.stdout, sys.stderr)
 
 class JailedRunnerCommunicator:
